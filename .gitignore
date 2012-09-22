@@ -1,0 +1,11 @@
+*.o
+*.mod
+*.txt
+exec
+*.swp
+*.py
+*.out
+*.png
+:w
+*tags*
+*.sh
