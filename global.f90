@@ -18,8 +18,8 @@ integer, parameter::nperiods=22 				!< number of solution periods
 integer, parameter:: shocksize1=5		!< how many shocks in emax calculation, with one child
 integer, parameter:: shocksize2=5		!< how many shocks in emax calculation, with two children
 integer, parameter:: shocksize3=8 		!< how many shocks in emax calculation, with one child, fecund period
-!integer, parameter:: Gsize=16			!< the number of regressors in the intrapolating function g.
-integer, parameter:: Gsize1=14			!< the number of regressors in the intrapolating function g. NOT INC. INTERCEPT 
+integer, parameter:: Gsize=14			!< the number of regressors in the intrapolating function g. NOT INC. INTERCEPT 
+integer, parameter:: Gsizeoc=10			!< the number of regressors in the intrapolating function g. for ONE CHILD FAMILIES, intercept sold separately.
 integer, parameter:: Ssize=16			!< the number of elements in state space
 integer, parameter:: Bsize=2			!< the number of regressors in the birth probability function other than the contraception
 

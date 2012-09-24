@@ -8,8 +8,8 @@ USE IFPORT ! for intel fortran only
 implicit none
 include 'mpif.h'
 
-!real(dble) coef(Gsize1+1)
-!real(dble) coeaf(Gsize1+1)
+!real(dble) coef(Gsize+1)
+!real(dble) coeaf(Gsize+1)
 !real(dble) mutype(3)
 
 ! mpi stuff
@@ -27,19 +27,19 @@ real(dble) ftypemat(5,nttypes)
 real(dble) ftypematoc(5,nttypesoc)
 real(dble) ocp(nctype+Bsize+2+nctype*nmtype)
 
-real(dble) solw(Gsize1+1, nperiods-deltamin+2, deltamax-deltamin+2) !< collects solution coef.
-real(dble) solwall(Gsize1+1, nperiods-deltamin+2, deltamax-deltamin+2,nttypes) !< collects solution coef for all types
-real(dble) solv(Gsize1+1,nperiods)
-real(dble) solvall(Gsize1+1,nperiods, nttypesoc)
+real(dble) solw(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2) !< collects solution coef.
+real(dble) solwall(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2,nttypes) !< collects solution coef for all types
+real(dble) solv(Gsize+1,nperiods)
+real(dble) solvall(Gsize+1,nperiods, nttypesoc)
 integer momorder
 integer k,j,l,m
-real(dble) wcoef(Gsize1+1, nperiods-deltamin+2, deltamax-deltamin+2,nctype) 		! for the vsolver trial
+real(dble) wcoef(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2,nctype) 		! for the vsolver trial
 real(dble) start,endtime, vtime
 !real(dble) omega1(4),omega2(5),omega3(4),eps(Nmc,shocksize1)
 !real(dble) ftype(5)
-!real(dble) solw(Gsize1,nperiods-deltamin+2,deltamax-deltamin+2)
-!real(dble) wcoefficients(Gsize1+1,nperiods-deltamin+2,deltamax-deltamin+2,2)
-!real(dble) solv(Gsize1+1,nperiods)
+!real(dble) solw(Gsize,nperiods-deltamin+2,deltamax-deltamin+2)
+!real(dble) wcoefficients(Gsize+1,nperiods-deltamin+2,deltamax-deltamin+2,2)
+!real(dble) solv(Gsize+1,nperiods)
 !real(dble) parB(4)
 !real(dble) typevec(2)
 !real(dble) typeprob(2)
@@ -79,7 +79,7 @@ if (rank==0) then
  	do while (number_received<nttypes)
 		call MPI_RECV(rorder, 1, MPI_INTEGER, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, status, ier)
 		sender=status(MPI_SOURCE)	
-		call MPI_RECV(solw,(Gsize1+1)*(nperiods-deltamin+2)*(deltamax-deltamin+2),MPI_DOUBLE_PRECISION,sender,MPI_ANY_TAG,MPI_COMM_WORLD,status,ier)
+		call MPI_RECV(solw,(Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+2),MPI_DOUBLE_PRECISION,sender,MPI_ANY_TAG,MPI_COMM_WORLD,status,ier)
 		solwall(:,:,:,rorder)=solw
 		print*, 'MASTER: received solw for order=',rorder,', total number received=', number_received+1
 		number_received=number_received+1
@@ -99,7 +99,7 @@ print*, '----MASTER: FINISHED THE SOLUTION OF THE WCOEF, NOW SWITCHING TO THE V-
 print*,'--------------------------------------------------------------------------------'
 	! first things first: workers need to the results of the last round
 	vtime=MPI_Wtime()
-	call MPI_BCAST(solwall, (Gsize1+1)*(nperiods-deltamin+2)*(deltamax-deltamin+2)*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+	call MPI_BCAST(solwall, (Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+2)*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 	print*, 'master broadcasted last stage results to workers successfully'
 	! sending the first group
 	number_sent=0
@@ -114,7 +114,7 @@ print*,'------------------------------------------------------------------------
  	do while (number_received<nttypesoc)
 		call MPI_RECV(rorder, 1, MPI_INTEGER, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, status, ier)
 		sender=status(MPI_SOURCE)	
-		call MPI_RECV(solv,(Gsize1+1)*nperiods,MPI_DOUBLE_PRECISION,sender,MPI_ANY_TAG,MPI_COMM_WORLD,status,ier)
+		call MPI_RECV(solv,(Gsize+1)*nperiods,MPI_DOUBLE_PRECISION,sender,MPI_ANY_TAG,MPI_COMM_WORLD,status,ier)
 		solvall(:,:,rorder)=solv
 		number_received=number_received+1
 			
@@ -127,7 +127,7 @@ print*,'------------------------------------------------------------------------
 		end if
 	end do
 	
-	! write vsolve matrix to a (Gsize1+1,nperiods)x nttypesoc matrix to print it
+	! write vsolve matrix to a (Gsize+1,nperiods)x nttypesoc matrix to print it
 	! out.
 
 	endtime=MPI_Wtime()	
@@ -139,7 +139,7 @@ print*,'------------------------------------------------------------------------
 	open(66,file='vcoef.txt')
 	do l=1,nttypesoc
 		write(66,*) "-------------- type order=",l,"------------" 
-		write(66,60) ((solvall(j,k,l),k=1,nperiods),j=1,Gsize1+1)
+		write(66,60) ((solvall(j,k,l),k=1,nperiods),j=1,Gsize+1)
 	end do
 	60 format(22F46.9)
 	close(66)
@@ -149,7 +149,7 @@ print*,'------------------------------------------------------------------------
 		write(77,*) "-------------- type order=",l,"------------" 
 		do m=1,deltamax-deltamin+2
 			write(77,*) "########   delta type=",m,"------------"
-			write(77,70) ((solwall(j,k,m,l),k=1,nperiods-deltamin+2),j=1,Gsize1+1)
+			write(77,70) ((solwall(j,k,m,l),k=1,nperiods-deltamin+2),j=1,Gsize+1)
 		end do
 	end do
 	70 format(22F46.9)
@@ -173,7 +173,7 @@ else
 			call wsolver(solw,ftypemat(:,order), parA,parW,parH,parU, beta,sigma1)
 			rorder=order
 			call MPI_SEND(rorder, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, ier)
-			call MPI_SEND(solw,(Gsize1+1)*(nperiods-deltamin+2)*(deltamax-deltamin+2),MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
+			call MPI_SEND(solw,(Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+2),MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
 			print*, 'worker',rank,'sent solw with order',order
 		else
 			EXIT
@@ -181,7 +181,7 @@ else
 	end do
 	! -------SOLVING FOR V COEFFICIENTS-------------
 	! receive all the coefficients from the master-from the w stage
-	call MPI_BCAST(solwall, (Gsize1+1)*(nperiods-deltamin+2)*(deltamax-deltamin+2)*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+	call MPI_BCAST(solwall, (Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+2)*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 	do
 		call MPI_RECV(order, 1, MPI_INTEGER, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, ier)
 		tag=status(MPI_TAG)
@@ -207,7 +207,7 @@ else
 				!print *, 'Worker=', rank, 'at order=',order, 'Types=', ftypematoc(:,order), 'mom type', momorder,'using condprob=', condprob(:,momorder)
 			rorder=order   ! returning the order
 			call MPI_SEND(rorder, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, ier)
-			call MPI_SEND(solv,(Gsize1+1)*nperiods,MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
+			call MPI_SEND(solv,(Gsize+1)*nperiods,MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
 		else
 			EXIT
 		end if

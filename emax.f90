@@ -21,6 +21,8 @@ contains
 		end do
 	end function sidestack
 
+
+	! ----------------------------- MODEL FUNCTIONS -------------------------------------------------------------------------	
 	
 	!> cognitive skill production function for one child families
 function pfone(inputs, constants,age, parameters,rho)
@@ -270,7 +272,7 @@ subroutine fvhc(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,rho)
 	
 	real(dble) fss(Ssize,3*cgridsize,Nmc) 	!future state space for each h,c,MCdraw
 	real(dble) filler((size(omega1)+size(omega2)+size(omega3)+size(omega4)),3*cgridsize) 	! filler matrix
-	real(dble) tfss(Gsize1+1,3*cgridsize,Nmc) 										!transformed future state space for each h,c,MCdraw
+	real(dble) tfss(Gsize+1,3*cgridsize,Nmc) 										!transformed future state space for each h,c,MCdraw
 	real(dble) omegaall(size(omega1)+size(omega2)+size(omega3)+size(omega4)) 	!combined state space
 	integer i,j,k
 	real(dble) :: inputs(5),constants(3), ages(2), parameters(9),As(2)
@@ -345,7 +347,7 @@ subroutine fvhcx(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA)
 	
 	real(dble) fss((size(omega1)+size(omega2)+size(omega3)+size(omega4)),3*cxgridsize,Nmc) 	!future state space for each h,c,MCdraw
 	real(dble) filler((size(omega1)+size(omega2)+size(omega3)+size(omega4)),3*cxgridsize) 	! filler matrix
-	real(dble) tfss(Gsize1+1,3*cxgridsize,Nmc) 										!transformed future state space for each h,c,MCdraw
+	real(dble) tfss(Gsize+1,3*cxgridsize,Nmc) 										!transformed future state space for each h,c,MCdraw
 	real(dble) omegaall(size(omega1)+size(omega2)+size(omega3)+size(omega4)) 	!combined state space
 	integer i,j,k,l
 	real(dble) :: inputs(5),constants(3), ages(2), parameters(7),As(2)
@@ -444,7 +446,7 @@ subroutine fvoclate(fv,omega1, omega2,omega3, omega4,fvpar)
 	
 	!locals
 	real(dble) fss((size(omega1)+size(omega2)+size(omega3)+size(omega4)),3) 	!future state space for each h
-	real(dble) tfss(size(fvpar),3) 												!transformed future state space 
+	real(dble) tfss(Gsizeoc,3) 												!transformed future state space 
 	real(dble) omegaall(size(omega1)+size(omega2)+size(omega3)+size(omega4)) 	!combined state space
 
 	omegaall=(/omega1,omega2,omega3,omega4/)
@@ -489,7 +491,7 @@ subroutine fvochc(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,rho)
 	real(dble) fss(Ssize,3*cgridsize,Nmc) 	!future state space for each h,c,MCdraw
 	real(dble) filler((size(omega1)+size(omega2)+size(omega3)+size(omega4)),3*cgridsize) 	! filler matrix
 	real(dble) omegaall(size(omega1)+size(omega2)+size(omega3)+size(omega4)) 	!combined state space
-	real(dble) tfss(Gsize1+1,3*cgridsize,Nmc) 										!transformed future state space for each h,c,MCdraw
+	real(dble) tfss(Gsizeoc+1,3*cgridsize,Nmc) 										!transformed future state space for each h,c,MCdraw
 	integer i,j,k
 	real(dble) :: inputs(3),constants(2), age, parameters(7),As
 	
@@ -536,7 +538,7 @@ subroutine fvochc(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,rho)
 	!	fv(k,:)=matmul(fvpar,fss(:,:,k))
 	end do
 	    ! FIXME REMINDER ftr_hc needs fixing
-		call ftr_hc(tfss,fss,3*cgridsize,Nmc)
+		call ftroc_hc(tfss,fss,3*cgridsize,Nmc)
 		do k=1,Nmc
 			fv(k,:)=matmul(fvpar,tfss(:,:,k))
 		end do
@@ -612,10 +614,7 @@ subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,par
 
 
 
-	! #FIXME Need to decide on the interpolating function.
-	! update: I will kick out age1, age2, age0m from the interpolating function.
-	! I AM ASSUMING: interpolating regression uses the following vector: A1,A2,E,lagh, agem, llms,agef, schooling, afqt,
-	! schooling for two child families and same without A2 for one child families.
+	! update: I will kick out age1, age2, age0m from the interpolating function. interpolating function described in jmpsimple.pdf
 	
 	! 1: insert the omegaind part=(agem, llms, schm,afqtm,omegaf)
 	omegaind=(/omega2(3,4),omega3(1:2),omega3(4)/)
@@ -623,16 +622,12 @@ subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,par
 	! increase the ages by one, second kid is not there yet so he is 0 years old so i will have to subtract that later if there is
 	! not child.
 	omegaind(1)=omegaind(1)+1 			! update mom's age
-	! not updating llms => myobic expectations, might change this later	
+	! NOTE: not updating llms => myobic expectations, might change this later	
 
-
-	! transform this before proceeding: transformation can eliminate some elements, or use functions of instead. For now, I will
-	! leave this array as it is. 
-	
 	! 2: extract the relevant part from the fvpar vector and multiply with the transformed omegaind to fill in the first part
 	! of the FV. 
 	do i=1,nctype+1
-		fvbig(:,:,i)=sum(omegaind*(/fvpar(4:7,i))
+		fvbig(:,:,i)=sum(omegaind*(fvpar(4:7,i))
 	end do 
 
 	! now subtract the 1*fvpar(6,1) from the one child family. NO need to do this anymore, age 2 is not in the interpolation.
@@ -642,9 +637,9 @@ subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,par
 	! then add h_t-1 component+and the experience derived component NO MORE h_t-1 component for jmpsimple, but we have experience
 	! squared. (cgridsize*2 if with b choice) (see jmpext september 2012 commits)
 	do i=1,nctype+1
-		fvbig(:,1:cgridsize,i)=fvbig(:,1:cgridsize,i)+fvpar(3,i)*omega1(3)+fvpar(10,i)*omega1(3)**2
-		fvbig(:,cgridsize+1:2*cgridsize,i)=fvbig(:,cgridsize+1:2*cgridsize,i)+fvpar(3,i)*(omega1(3)+0.5d0)+fvpar(10,i)*(omega1(3)+0.5d0)**2
-		fvbig(:,2*cgridsize+1:4*cgridsize,i)=fvbig(:,2*cgridsize+1:4*cgridsize,i)+fvpar(3,i)*(omega1(3)+1.0d0)++fvpar(10,i)*(omega1(3)+1.0d0)**2
+		fvbig(:,1:cgridsize,i)=fvbig(:,1:cgridsize,i)+fvpar(3,i)*omega1(3)+fvpar(9,i)*omega1(3)**2
+		fvbig(:,cgridsize+1:2*cgridsize,i)=fvbig(:,cgridsize+1:2*cgridsize,i)+fvpar(3,i)*(omega1(3)+0.5d0)+fvpar(9,i)*(omega1(3)+0.5d0)**2
+		fvbig(:,2*cgridsize+1:4*cgridsize,i)=fvbig(:,2*cgridsize+1:4*cgridsize,i)+fvpar(3,i)*(omega1(3)+1.0d0)+fvpar(9,i)*(omega1(3)+1.0d0)**2
 	end do	
 	! lastly add the component of FV that is derived from A's
 
@@ -662,7 +657,8 @@ subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,par
 						inputs(2)=1.0d0-0.5d0*((k-1.0d0)/2.0d0)
 						inputs(3)=(wage(j)*(k-1.0d0)/2+wageh(j))*(1-cgrid(l))
 						As=pfone(inputs, constants,age,parameters)
-						fvbig(j,(k-1)*cgridsize*2+(l-1)*2+m,i)=fvbig(j,(k-1)*cgridsize*2+(l-1)*2+m,1)+As*fvpar(1,i)
+						! new add on: added interaction terms with A and E
+						fvbig(j,(k-1)*cgridsize*2+(l-1)*2+m,i)=fvbig(j,(k-1)*cgridsize*2+(l-1)*2+m,1)+As*fvpar(1,i)+As*(omega1(3)+(k-1.0d0)*0.5d0)*fvpar(10,i)
 					!end do
 				end do
 			end do
@@ -1167,7 +1163,7 @@ end function emaxochcb
 !> regression for all. THIS IS ALTERNATIVE TO SOLVING THE COEF FOR EACH DELTA SEPARATELY
 !subroutine coef_finalalt(coef, mutype,parA,parU,parW,parH,beta,sigma)
 	!implicit none
-	!real(dble), intent(out) :: coef(Gsize1+1)
+	!real(dble), intent(out) :: coef(Gsize+1)
 	!real(dble), intent(in) :: mutype(:)
 	!real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:) 			!< parameter vectors except for Sigma and beta
 	!real(dble), intent(in):: beta 										!< discount factor
@@ -1176,7 +1172,7 @@ end function emaxochcb
 	!! locals
 	!real(dble) vemax(nintpfinal)            ! to collect emaxs, vector emax
 	!real(dble) mss(nintpfinal,Ssize) 		! to collect SS elements, matrix state space
-	!real(dble) tmss(nintpfinal, Gsize1+1) 	! transformed ss
+	!real(dble) tmss(nintpfinal, Gsize+1) 	! transformed ss
 	!real(dble) llmsvec(nintpfinal) 		 	! llms vector to drawn from a uniform (0,0.1) :unemploymen rate	
 	!integer i,j,k,l,m,n,p,r,q,s
 	!real(dble) veca1(5), veca2(5), vecE(5), veclagh(3)
@@ -1186,7 +1182,7 @@ end function emaxochcb
 	!real(dble) eps(Nmc,shocksize1)
 
 	!! lapack stuff
-     !real(dble) work(Gsize1+Gsize1*blocksize)
+     !real(dble) work(Gsize+Gsize*blocksize)
      !integer info
 	!! setting up the A1, A2, and E vecs and veclagh
 	!veca1=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)
@@ -1230,13 +1226,13 @@ end function emaxochcb
 	!end do
 	!end do
 	!call tr_late(tmss, mss,nintpfinal)
-	!call DGELS('N',nintpfinal,Gsize1,1,tmss, nintpfinal, vemax, nintpfinal,work, Gsize1+Gsize1*blocksize,info)
-	!coef=vemax(1:Gsize1+1)
+	!call DGELS('N',nintpfinal,Gsize,1,tmss, nintpfinal, vemax, nintpfinal,work, Gsize+Gsize*blocksize,info)
+	!coef=vemax(1:Gsize+1)
 !end subroutine coef_finalalt
 
 subroutine coeffinal(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma)
 	implicit none
-	real(dble), intent(out) :: coef(Gsize1+1)
+	real(dble), intent(out) :: coef(Gsize+1)
 	real(dble), intent(in) :: mutype(:) 								!< mu type of the family =omega4
 	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:) 			!< parameter vectors except for Sigma and beta
 	real(dble), intent(in):: beta 										!< discount factor
@@ -1253,10 +1249,10 @@ subroutine coeffinal(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma)
 	integer counter
 	real(dble) mu(shocksize1)
 	real(dble) eps(Nmc,shocksize1)
-	real(dble) tmss(nintp,Gsize1+1)
+	real(dble) tmss(nintp,Gsize+1)
 
 	! lapack stuff
- 	real(dble) work(Gsize1+Gsize1*blocksize)
+ 	real(dble) work(Gsize+Gsize*blocksize)
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
@@ -1295,14 +1291,14 @@ subroutine coeffinal(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma)
 	end do
 
 	call tr_late(tmss,mss,nintp) 			! transform the state space FIXME tr_late routine
-	call DGELS('N',nintp,Gsize1+1,1,tmss, nintp, vemax, nintp,work, Gsize1+(Gsize1)*blocksize,info)
-	coef=vemax(1:Gsize1+1)
+	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
+	coef=vemax(1:Gsize+1)
 end subroutine coeffinal
 
 
 subroutine coeflate(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	implicit none
-	real(dble), intent(out) :: coef(Gsize1+1)
+	real(dble), intent(out) :: coef(Gsize+1)
 	real(dble), intent(in) :: mutype(:)
 	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:), parFV(:)	!< parameter vectors except for Sigma and beta
 	real(dble), intent(in):: beta 										!< discount factor
@@ -1319,10 +1315,10 @@ subroutine coeflate(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,par
 	integer counter
 	real(dble) mu(shocksize1)
 	real(dble) eps(Nmc,shocksize1)
-	real(dble) tmss(nintp,Gsize1+1)
+	real(dble) tmss(nintp,Gsize+1)
 
 	! lapack stuff
- 	real(dble) work(Gsize1+Gsize1*blocksize)
+ 	real(dble) work(Gsize+Gsize*blocksize)
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
@@ -1361,8 +1357,8 @@ subroutine coeflate(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,par
 	end do
 
 	call tr_late(tmss,mss,nintp) 			! transform the state space FIXME tr_late
-	call DGELS('N',nintp,Gsize1+1,1,tmss, nintp, vemax, nintp,work, Gsize1+(Gsize1)*blocksize,info)
-	coef=vemax(1:Gsize1+1)
+	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
+	coef=vemax(1:Gsize+1)
 
 	
 	!open(12, file = 'a.txt')
@@ -1379,7 +1375,7 @@ end subroutine coeflate
 
 subroutine coefhc(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	implicit none
-	real(dble), intent(out) :: coef(Gsize1+1)
+	real(dble), intent(out) :: coef(Gsize+1)
 	real(dble), intent(in) :: mutype(:)
 	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:), parFV(:)	!< parameter vectors except for Sigma and beta
 	real(dble), intent(in):: beta 										!< discount factor
@@ -1396,10 +1392,10 @@ subroutine coefhc(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV
 	integer counter
 	real(dble) mu(shocksize1)
 	real(dble) eps(Nmc,shocksize1)
-	real(dble) tmss(nintp,Gsize1+1)
+	real(dble) tmss(nintp,Gsize+1)
 
 	! lapack stuff
- 	real(dble) work(Gsize1+Gsize1*blocksize)
+ 	real(dble) work(Gsize+Gsize*blocksize)
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
@@ -1439,14 +1435,14 @@ subroutine coefhc(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV
 	end do
 
 	call tr_late(tmss,mss,nintp) 			! transform the state space FIXME update tr_late
-	call DGELS('N',nintp,Gsize1+1,1,tmss, nintp, vemax, nintp,work, Gsize1+(Gsize1)*blocksize,info)
-	coef=vemax(1:Gsize1+1)
+	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
+	coef=vemax(1:Gsize+1)
 
 end subroutine coefhc
 
 subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	implicit none
-	real(dble), intent(out) :: coef(Gsize1+1)
+	real(dble), intent(out) :: coef(Gsize+1)
 	real(dble), intent(in) :: mutype(:)
 	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:), parFV(:)	!< parameter vectors except for Sigma and beta
 	real(dble), intent(in):: beta 										!< discount factor
@@ -1463,10 +1459,10 @@ subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parF
 	integer counter
 	real(dble) mu(shocksize1)
 	real(dble) eps(Nmc,shocksize1)
-	real(dble) tmss(nintp,Gsize1+1)
+	real(dble) tmss(nintp,Gsize+1)
 
 	! lapack stuff
- 	real(dble) work(Gsize1+Gsize1*blocksize)
+ 	real(dble) work(Gsize+Gsize*blocksize)
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
@@ -1506,8 +1502,8 @@ subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parF
 	end do
 
 	call tr_late(tmss,mss,nintp) 			! transform the state space FIXME tr_late
-	call DGELS('N',nintp,Gsize1+1,1,tmss, nintp, vemax, nintp,work, Gsize1+(Gsize1)*blocksize,info)
-	coef=vemax(1:Gsize1+1)
+	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
+	coef=vemax(1:Gsize+1)
 
 end subroutine coefhcx
 !---------------------------------------------------------------------------------------------------
@@ -1521,7 +1517,7 @@ end subroutine coefhcx
 !> one child version of coefoc
 subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 	implicit none
-	real(dble), intent(out) :: coef(Gsize1+1)
+	real(dble), intent(out) :: coef(Gsize+1)
 	real(dble), intent(in) :: mutype(:) 								!< mu1,0.0d0,mum
 	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:) 			!< parameter vectors except for Sigma and beta
 	real(dble), intent(in):: beta 										!< discount factor
@@ -1537,10 +1533,10 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 	integer counter
 	real(dble) mu(shocksize1)
 	real(dble) eps(Nmc,shocksize1)
-	real(dble) tmss(nintpoc,Gsize1+1)
+	real(dble) tmss(nintpoc,Gsize+1)
 
 	! lapack stuff
- 	real(dble) work(Gsize1+Gsize1*blocksize)
+ 	real(dble) work(Gsize+Gsize*blocksize)
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
@@ -1581,13 +1577,13 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 	end do
 
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space FIXME troc_late
-	call DGELS('N',nintpoc,Gsize1,1,tmss, nintpoc, vemax, nintpoc,work, Gsize1+(Gsize1)*blocksize,info)
-	coef=(/vemax(1),0.0d0,vemax(2:Gsize1)/)
+	call DGELS('N',nintpoc,Gsize,1,tmss, nintpoc, vemax, nintpoc,work, Gsize+(Gsize)*blocksize,info)
+	coef=(/vemax(1),0.0d0,vemax(2:Gsize)/)
 end subroutine coefocfinal
 
 subroutine coefoclate(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	implicit none
-	real(dble), intent(out) :: coef(Gsize1+1)
+	real(dble), intent(out) :: coef(Gsize+1)
 	real(dble), intent(in) :: mutype(:)
 	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:), parFV(:)	!< parameter vectors except for Sigma and beta
 	real(dble), intent(in):: beta 										!< discount factor
@@ -1603,10 +1599,10 @@ subroutine coefoclate(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	integer counter
 	real(dble) mu(shocksize1)
 	real(dble) eps(Nmc,shocksize1)
-	real(dble) tmss(nintpoc,Gsize1)
+	real(dble) tmss(nintpoc,Gsize)
 
 	! lapack stuff
- 	real(dble) work(Gsize1+Gsize1*blocksize)
+ 	real(dble) work(Gsize+Gsize*blocksize)
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
@@ -1646,15 +1642,15 @@ subroutine coefoclate(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	end do
 
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space FIXME
-	call DGELS('N',nintpoc,Gsize1,1,tmss, nintpoc, vemax, nintpoc,work, Gsize1+(Gsize1)*blocksize,info)
+	call DGELS('N',nintpoc,Gsize,1,tmss, nintpoc, vemax, nintpoc,work, Gsize+(Gsize)*blocksize,info)
 	! add a zero for the second child A2
-	coef=(/vemax(1),0.0d0,vemax(2:Gsize1)/)
+	coef=(/vemax(1),0.0d0,vemax(2:Gsize)/)
 end subroutine coefoclate
 
 
 subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	implicit none
-	real(dble), intent(out) :: coef(Gsize1+1)
+	real(dble), intent(out) :: coef(Gsize+1)
 	real(dble), intent(in) :: mutype(:)
 	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:), parFV(:)	!< parameter vectors except for Sigma and beta
 	real(dble), intent(in):: beta 										!< discount factor
@@ -1670,10 +1666,10 @@ subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	integer counter
 	real(dble) mu(shocksize1)
 	real(dble) eps(Nmc,shocksize1)
-	real(dble) tmss(nintpoc,Gsize1)
+	real(dble) tmss(nintpoc,Gsize)
 
 	! lapack stuff
- 	real(dble) work(Gsize1+Gsize1*blocksize)
+ 	real(dble) work(Gsize+Gsize*blocksize)
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
@@ -1714,9 +1710,9 @@ subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	end do
 
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space FIXME troc_late
-	call DGELS('N',nintpoc,Gsize1,1,tmss, nintpoc, vemax, nintpoc,work, Gsize1+(Gsize1)*blocksize,info)
+	call DGELS('N',nintpoc,Gsize,1,tmss, nintpoc, vemax, nintpoc,work, Gsize+(Gsize)*blocksize,info)
 	! add a zero for the second child A2
-	coef=(/vemax(1),0.0d0,vemax(2:Gsize1)/)
+	coef=(/vemax(1),0.0d0,vemax(2:Gsize)/)
 end subroutine coefochc
 
 
@@ -1725,10 +1721,10 @@ end subroutine coefochc
 !> subroutine to pick some ss points and calculate emaxs and get regression coefficients for one child families fertile period
 subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,parB,typevec,typeprob)
 	implicit none
-	real(dble), intent(out) :: coef(Gsize1+1)
+	real(dble), intent(out) :: coef(Gsize+1)
 	real(dble), intent(in) :: mutype(:)
 	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:), parFV(:,:)	!< parameter vectors except for Sigma and beta, parFV is
-																			!< of size (Gsize1,
+																			!< of size (Gsize,
 	real(dble), intent(in):: beta 										!< discount factor 
 	real(dble), intent(in) :: sigma(shocksize3,shocksize3)
 	real(dble), intent(in)::period 										!< what period we are in, or age of the first born
@@ -1743,10 +1739,10 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 	integer counter
 	real(dble) mu(shocksize3)
 	real(dble) eps(Nmc,shocksize3)
-	real(dble) tmss(nintpoc,Gsize1)
+	real(dble) tmss(nintpoc,Gsize)
 
 	! lapack stuff
- 	real(dble) work(Gsize1+Gsize1*blocksize)
+ 	real(dble) work(Gsize+Gsize*blocksize)
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
@@ -1787,9 +1783,9 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 	end do
 
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space troc_late
-	call DGELS('N',nintpoc,Gsize1,1,tmss, nintpoc, vemax, nintp,work, Gsize1+(Gsize1)*blocksize,info)
+	call DGELS('N',nintpoc,Gsize,1,tmss, nintpoc, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
 	! PUT A ZERO for the coefficient of A2
-	coef=(/vemax(1),0.0d0,vemax(2:Gsize1)/)
+	coef=(/vemax(1),0.0d0,vemax(2:Gsize)/)
 
 end subroutine coefochcb
 ! ####################################END OF COEF_ ROUTINES##############################################
@@ -1798,15 +1794,15 @@ end subroutine coefochcb
 !>coefficients for each time period for each type of delta.
 subroutine wsolver(solw,ftype,parA,parW,parH,parU,beta,Sigma)
 	implicit none
-	real(dble), intent(out):: solw(Gsize1+1, nperiods-deltamin+2, deltamax-deltamin+2) !< collects solution coef.
+	real(dble), intent(out):: solw(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2) !< collects solution coef.
 																				 !empty elements are marked -10000000
     real(dble), intent(in) ::  ftype(5) 				!< family unobserved type. mu1,mu2,mu_m,alpha,alpha1
 	real(dble), intent(in) :: parA(:),parW(:),parH(:),parU(:),beta,Sigma(:,:)
 
 	! locals
 	integer period, delta
-	real(dble) coef(Gsize1+1)
-	real(dble) coefnew(Gsize1+1)
+	real(dble) coef(Gsize+1)
+	real(dble) coefnew(Gsize+1)
 	real(dble) paractualU(size(parU))
 	! -------------------------ACTION-----------------------------------
 	! 
@@ -1861,18 +1857,18 @@ end subroutine wsolver
 !> that it needs the output from the wsolver for each type of second child.
 subroutine vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoef,typevec,typeprob)
 	implicit none
-	real(dble), intent(out):: solv(Gsize1+1, nperiods) !< collects solution coef.
+	real(dble), intent(out):: solv(Gsize+1, nperiods) !< collects solution coef.
     real(dble), intent(in) ::  ftype(5) 				!< family unobserved type. mu1,mu2,mu_m,alpha,alpha1
 	real(dble), intent(in) :: parA(:),parW(:),parH(:),parU(:),beta,Sigma(:,:),parB(:),typevec(:), typeprob(:)
-	real(dble), intent(in) :: wcoef(Gsize1+1, nperiods-deltamin+2, deltamax-deltamin+2,nctype)
+	real(dble), intent(in) :: wcoef(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2,nctype)
 
-	! NOTE THE DIFFERENCE: ftype has zero for the second child's A. It is as (mu1,0.0d0, mum, alpha, alpha1)
+	! THE DIFFERENCE: ftype has zero for the second child's A. It is as (mu1,0.0d0, mum, alpha, alpha1)
 	! locals
 	integer period, delta
-	real(dble) coef(Gsize1+1)
-	real(dble) coefnew(Gsize1+1)
+	real(dble) coef(Gsize+1)
+	real(dble) coefnew(Gsize+1)
 	real(dble) paractualU(size(parU))
-	real(dble) parFV(Gsize1+1, nctype+1)
+	real(dble) parFV(Gsize+1, nctype+1)
 	! 
 	! fill up the sol with -10^7
 	solv=-10000000.0d0
@@ -1938,13 +1934,13 @@ subroutine tr_final(tmss,mss,n)
 	implicit none
 	integer, intent(in):: n
 	real(dble), intent(in) :: mss(n,Ssize)
-	real(dble), intent(out) :: tmss(n,Gsize1+1)
+	real(dble), intent(out) :: tmss(n,Gsize+1)
 
 	! for now: use  
 	tmss(:,1:4)=mss(:,1:4)
-	tmss(:,5:Gsize1-1)=mss(:,7:11)
-	tmss(:,Gsize1)=mss(:,13)	
-	tmss(:,Gsize1+1)=mss(:,5)-mss(:,6)+1.0d0	
+	tmss(:,5:Gsize-1)=mss(:,7:11)
+	tmss(:,Gsize)=mss(:,13)	
+	tmss(:,Gsize+1)=mss(:,5)-mss(:,6)+1.0d0	
 end subroutine tr_final
 
 !> called tr_late but it will work for periods, too. It takes
@@ -1954,7 +1950,7 @@ subroutine tr_late(tmss, mss,n)
 	implicit none
 	integer, intent(in):: n 				!< the number of rows in the matrix to be transformed
 	real(dble), intent(in) :: mss(n,Ssize) 	!< matrix holding a subset of ss in its rows
-	real(dble), intent(out) :: tmss(n,Gsize1+1) !<regression matrix 
+	real(dble), intent(out) :: tmss(n,Gsize+1) !<regression matrix 
 		
 	! for now: use a subset of SS
 	tmss(:,1:3)=mss(:,1:3) 				!< A1, A2, E
@@ -1964,27 +1960,26 @@ subroutine tr_late(tmss, mss,n)
  	tmss(:,12)=mss(:,1)*mss(:,2)
  	tmss(:,13)=mss(:,1)*mss(:,3)
  	tmss(:,14)=mss(:,2)*mss(:,3)
-	tmss(:,Gsize1+1)=1.0d0 				!< NEW: add the intercept
+	tmss(:,Gsize+1)=1.0d0 				!< NEW: add the intercept
 end subroutine tr_late
 
 !> ONE CHILD VERSION of tr_late but it will work for periods, too. It takes
 !> matrix of ss variables (at which the emax's are calculated) and converts 
-!> it to the tmss matrix for regression. One child means no A2 in the state space
+!> it to the tmss matrix for regression. One child means no A2 in the state space so interpolating function is much smaller
 subroutine troc_late(tmss, mss,n)
 	implicit none
 	integer, intent(in):: n 				!< the number of rows in the matrix to be transformed
 	real(dble), intent(in) :: mss(n,Ssize) 	!< matrix holding a subset of ss in its rows
-	real(dble), intent(out) :: tmss(n,Gsize1) !<regression matrix 
+	real(dble), intent(out) :: tmss(n,Gsizeoc) !<regression matrix 
 
 	tmss(:,1)=mss(:,1) 				! A1
 	tmss(:,2)=mss(:,3) 				! E
 	tmss(:,3:6)=mss(:,6:9) 		!< age of the children are constant for a period and delta, so skip those 
  	tmss(:,7)=mss(:,11) 		! also skip age0m, because agem is already in.
- 	tmss(:,8:10)=mss(:,1:3)**2
- 	tmss(:,11)=mss(:,1)*mss(:,2)
- 	tmss(:,12)=mss(:,1)*mss(:,3)
- 	tmss(:,13)=mss(:,2)*mss(:,3)
-	tmss(:,Gsize1)=1.0d0 				!< NEW: add the intercept
+ 	tmss(:,8)=mss(:,1)**2
+ 	tmss(:,9)=mss(:,3)**2
+ 	tmss(:,10)=mss(:,1)*mss(:,3)
+	tmss(:,Gsizeoc+1)=1.0d0 				!< NEW: add the intercept
 end subroutine troc_late
 
 
@@ -1993,7 +1988,7 @@ end subroutine troc_late
 subroutine ftr_late(tfss,fss,n)
 	implicit none
 	integer,intent(in):: n
-	real(dble), intent(out) :: tfss(Gsize1+1,n)
+	real(dble), intent(out) :: tfss(Gsize+1,n)
 	real(dble), intent(in) ::  fss(SSize,n)
 	tfss(1:3,:)=fss(1:3,:)
 	tfss(4:7,:)=fss(6:9,:) 		!< age of the children are constant for a period and delta, so skip those 
@@ -2003,25 +1998,24 @@ subroutine ftr_late(tfss,fss,n)
  	tfss(13,:)=fss(1,:)*fss(3,:)
  	tfss(14,:)=fss(2,:)*fss(3,:)
 	! NEW: add a ones vector to include the intercept
-	tfss(Gsize1+1,:)=1.0d0	
+	tfss(Gsize+1,:)=1.0d0	
 end subroutine ftr_late
 
 !> sanme ftr_late, for one child families. interpolating vector does not have A2 in it.
 subroutine ftroc_late(tfss,fss,n)
 	implicit none
 	integer,intent(in):: n
-	real(dble), intent(out) :: tfss(Gsize1,n)
+	real(dble), intent(out) :: tfss(Gsize,n)
 	real(dble), intent(in) ::  fss(SSize,n)
 	tfss(1,:)=fss(1,:)
 	tfss(2,:)=fss(3,:)
 	tfss(3:6,:)=fss(6:9,:) 		!< age of the children are constant for a period and delta, so skip those 
  	tfss(7,:)=fss(11,:)
- 	tfss(8:10,:)=fss(1:3,:)**2
- 	tfss(11,:)=fss(1,:)*fss(2,:)
- 	tfss(12,:)=fss(1,:)*fss(3,:)
- 	tfss(13,:)=fss(2,:)*fss(3,:)
+ 	tfss(8,:)=fss(1,:)**2
+ 	tfss(9,:)=fss(3,:)**2
+ 	tfss(10,:)=fss(1,:)*fss(3,:)
 	! NEW: add a ones vector to include the intercept
-	tfss(Gsize1,:)=1.0d0	
+	tfss(Gsizeoc+1,:)=1.0d0	
 end subroutine ftroc_late
 
 !> for the fvhc to convert the big matrix of fss values to interpolating matrix
@@ -2040,7 +2034,7 @@ subroutine ftr_hc(tfss,fss,n,m)
  	tfss(13,:,:)=fss(1,:,:)*fss(3,:,:)
  	tfss(14,:,:)=fss(2,:,:)*fss(3,:,:)
 	! new: add ones for the intercept
-	tfss(Gsize1+1,:,:)=1.0d0
+	tfss(Gsize+1,:,:)=1.0d0
 end subroutine ftr_hc
 
 !> one child version of the ftr_hc: one less dimension due to missing A2
@@ -2057,7 +2051,7 @@ subroutine ftroc_hc(tfss,fss,n,m)
  	tfss(12,:,:)=fss(1,:,:)*fss(3,:,:)
  	tfss(13,:,:)=fss(2,:,:)*fss(3,:,:)
 	! new: add ones for the intercept
-	tfss(Gsize1,:,:)=1.0d0
+	tfss(Gsize,:,:)=1.0d0
 end subroutine ftroc_hc
 
 
