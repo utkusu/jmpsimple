@@ -95,7 +95,7 @@ implicit none
 	laststep=matmul(T,Z)
 	! add the means88
 	do j=1,k
-		laststep(j,:)=laststep(j,:)+mu(j)
+		laststep(j,:)=laststep(j,:) + mu(j)
 	end do
 	! lastly, transpose
 	randmnv=transpose(laststep)
@@ -172,17 +172,25 @@ function bprob(choice, variables, parameters)
 	implicit none
 	integer choice 				!< the choice of contraception, 1: use it, 0: no use
 	real(dble) variables(Bsize) 	!< whatever determines the birth probability other than contraception SIZE=Bsize
-	real(dble) parameters(Bsize+2) 	!< parameters of the birth SIZE=Bsize+2 
+	real(dble) parameters(Bsize+2) 	!< parameters of the birth SIZE=Bsize + 2 
 	real(dble) bprob
 	! the first two parameters are the ones for the intercept.
-
 	real(dble) indeks
-
-	indeks=sum(variables*parameters(3:Bsize+2))+parameters(1)+parameters(2)*choice
+	indeks=sum(variables*parameters(3:Bsize + 2)) + parameters(1) + parameters(2)*choice
 	bprob=cdf_normal(indeks,0.0d0,1.0d0)
 end function bprob
 
-
+!> Exogenous birth probability calculator, for the simplified model.
+function bprobexo(variables,parameters)
+	implicit none
+	real(dble) variables(Bsizeexo) 		! variables of the birth prob.
+	real(dble) parameters(Bsizexo + 1) 	! parameters of the model, intercept is the last item
+	real(dble) bprobexo
+	real(dble) indeks
+	indeks = sum(variables*parameters(1:Bsizexo)) + parameters(Bsizexo + 1)
+	bprobexo = cdf_normal(indeks,0.0d0,1.0d0)
+end function bprobexo
+ 
 
 
 

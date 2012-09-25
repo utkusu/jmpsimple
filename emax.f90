@@ -407,8 +407,9 @@ subroutine fvhcx(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA)
 ! FIXME the whole interpolation update
 end subroutine fvhcx
 
-
-subroutine fvhcxalt(fv,omega1, omega2, omega3, omega4, fvpar, parA,rho, wage, wageh)
+!> this subroutines tries to improve upon the othe fvhcx routine, by calculating the components of the fv one at a time and summing
+!>them up instead of dealing with big matrices.
+subroutine fvhcxalt(fv,omega1, omega2, omega3, omega4,wage,wageh,fvpar, parA,rho)
 	implicit none
 	real(dble), intent(out)::fv(Nmc,cxgridsize*3)	!< output, fv for each h,c and mc
 	real(dble), intent(in):: omega1(:) 				!< omega1: endogenous dynamic
@@ -418,7 +419,56 @@ subroutine fvhcxalt(fv,omega1, omega2, omega3, omega4, fvpar, parA,rho, wage, wa
 	real(dble), intent(in):: fvpar(:) 				!< interpolating parameters	
 	real(dble), intent(in):: parA(:) 				!< parameters of the production function
 	real(dble), intent(in):: wage(:),wageh(:) 		!< wages of parents, Nmcx1 each
+	real(dble), intent(in):: rho 					!< depreciation of skills
 
+	real(dble) omegaind(5)
+	integer i,j,k,l
+	real(dble) inputs(5), constants(3), ages(2), parameters(7), A(2)
+
+
+	! omegaind: the part of the future value that does not depend on the shocks or the choice. This is just one number, that enters
+	! the entire fv matrix additively
+	! omegaind=(agem, llms, schm,afqtm,omegaf)
+	omegaind=(/omega2(3,4),omega3(1:2),omega3(4)/)
+	! increase the ages by one
+	! kid's ages can't be in the interpolation because emax is calculated at a specific time and delta, hence these are constant
+	! across observations of the regression.
+	omegaind(1)=omegaind(1)+1 			! update mom's ag
+	! NOTE: not updating llms => myobic expectations, might change this later	
+	! now calculate the XB related omegaind, by adding it to intercept of the fvpar
+	fv=fvpar(Gsize+1)+sum(omegaind*fvpar(4:7))
+
+	! then we will add the parts which only depend on the experience level, that is, to the choice of h.
+	fv(:,1:cxgridsize)=fvbig(:,1:cxgridsize)+fvpar(3,i)*omega1(3)+fvpar(11)*omega1(3)**2
+	fv(:,cxgridsize+1:2*cxgridsize)=fv(:,cxgridsize+1:2*cxgridsize)+fvpar(3)*(omega1(3)+0.50d0)+fvpar(11)*(omega1(3)+0.5d0)**2
+	fv(:,2*cxgridsize+1:3*cxgridsize)=fv(:,2*cxgridsize+1:3*cxgridsize)+fvpar(3)*(omega1(3)+1.0d0)+fvpar(11)*(omega1(3)+1.0d0)**2
+
+	! Now, we have to deal with the parts related to both wage shock and choices. These are going to affect wages and both
+	! achievement levels. This requires a big loop over the entire fv
+	! matrix.
+	
+	! before the loop: create the inputs to the child pf.
+	inputs=(/omega1(1),omega1(2),0.0d0,0.0d0,0.0d0)
+	constants=omega3(1:3)
+	age=(/omega2(1),omega2(2)/)
+	parameters=parA(4:12)
+
+	do i=1,Nmc
+		do j=1,3
+			do k=1,cgridsize
+				l=1,xgridsize
+				inputs(3)=(1.0d0-0.5d0*((j-1.0d0)*0.5d0)*xgrid(l)
+				inputs(4)=(1.0d0-0.5d0*((j-1.0d0)*0.5d0)*(1-xgrid(l))
+				inputs(5)=(wage(i)*(j-1.0d0)*0.5d0+wageh(i))*(1-cgrid(k))
+				A=pftwo(inputs, constants,ages,parameters,rho)
+				! now we can add the parts of the fv that are related to these.
+				fv(i,(j-1)*cxgridsize+(k-1)*xgridsize+l)=fv(i,(j-1)*cxgridsize+(k-1)*xgridsize+l) + &
+					& A(1)*fvpar(1)+A(2)*fvpar
+			end do
+		end do
+	end do
+
+	
 
 end subroutine fvhcxalt
 
@@ -576,23 +626,20 @@ end subroutine fvochcb
 !> choice of the interpolating function
 
 
-! FIXME this has the model faster interpolation, but need to get rid of the the choice of b. Too complicated. also c, ss and param
-! corrections are still needed.
-subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,parB,typevec,typeprob,rho)
+subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,fvparv,parA,parB,typevec,typeprob,rho)
 	implicit none
 	real(dble), intent(out):: fv(Nmc,cgridsize*3)	!< output, fv for each h,c and b IF NO BIRTH DECISION *3
 	real(dble), intent(in):: omega1(:) 				!< omega1: endogenous dynamic
 	real(dble), intent(in):: omega2(:) 				!< omega2: exogenous dynamic
 	real(dble), intent(in):: omega3(:) 				!< omega3: static
 	real(dble), intent(in):: omega4(:) 				!< omega4: type
-	real(dble), intent(in):: fvpar(:,:) 			!< interpolating parameters, now in a matrix form
-													! first one for the one child regime and the remainder, size(typevec)+1 is for
-													! two.
+	real(dble), intent(in):: fvpar(:,:) 			!< interpolating parameters, now in a matrix form, size (Gsize,nctype), 
+	real(dble), intent(in) :: fvparv(:) 			!< interpolating parameters for one child regime.
 	real(dble), intent(in):: parA(:) 				!< parameters of the production function
 	real(dble), intent(in):: wage(:),wageh(:) 		!< wages of parents, Nmcx1 each
 	real(dble), intent(in) :: typevec(:)			!< the array of values type of the second child can take, =nctype
 	real(dble), intent(in) :: typeprob(:) 			!< conditional(on mom's type) probability of each type for second child
-	real(dble), intent(in) :: parB(Bsize+2) 		!< parameters of the birth probability function
+	real(dble), intent(in) :: parB(Bsizeexo+1) 		!< parameters of the birth probability function
 	real(dble), intent(in) :: rho 					!< skill depreciation parameter
 	! locals
 	
@@ -602,32 +649,29 @@ subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,par
 
 	real(dble) omegaind(5)  ! size of shock-decision independent part of the state space	 	
 	! new locals
-	real(dble) fvbig(Nmc,cgridsize*6,nctype+1)
+	real(dble) fvbig(Nmc,cgridsize*4,nctype+1) ! first element of the third dimension is for staying with one child.
 	real(dble) As, Ainit
-	real(dble) p0,p1, omegaB(Bsize)
+	real(dble) p0,p1, omegaB(Bsizeexo)
 
-	! this is a rewrite of my fv code, if successful, it will also be used in other fv routines
 	! The idea is to calculate the fv in parts. fvpar coincides with the layout of the transformed state space, which also covers
 	! the same omegas in the same way in omega1, omega2, omega3, omega4
 	! first calculate the future state space points that does not depend on the choices
-
-
-
 
 	! update: I will kick out age1, age2, age0m from the interpolating function. interpolating function described in jmpsimple.pdf
 	
 	! 1: insert the omegaind part=(agem, llms, schm,afqtm,omegaf)
 	omegaind=(/omega2(3,4),omega3(1:2),omega3(4)/)
 	
-	! increase the ages by one, second kid is not there yet so he is 0 years old so i will have to subtract that later if there is
-	! not child.
+	! kid's ages can't be in the interpolation because emax is calculated at a specific time and delta, hence these are constant
+	! across observations of the regression.
 	omegaind(1)=omegaind(1)+1 			! update mom's age
 	! NOTE: not updating llms => myobic expectations, might change this later	
 
 	! 2: extract the relevant part from the fvpar vector and multiply with the transformed omegaind to fill in the first part
-	! of the FV. 
-	do i=1,nctype+1
-		fvbig(:,:,i)=sum(omegaind*(fvpar(4:7,i))
+	! of the FV.  Add these to the intercept to iniatialize fvbig.
+	fvbig(:,:,1)=sum(omegaind*(fvparoc(4:7)))+fvparv(Gsizeoc+1)
+	do i=2,nctype+1
+		fvbig(:,:,i)=sum(omegaind*(fvpar(4:7,i))+fvpar(Gsize+1,i)
 	end do 
 
 	! now subtract the 1*fvpar(6,1) from the one child family. NO need to do this anymore, age 2 is not in the interpolation.
@@ -636,10 +680,17 @@ subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,par
 
 	! then add h_t-1 component+and the experience derived component NO MORE h_t-1 component for jmpsimple, but we have experience
 	! squared. (cgridsize*2 if with b choice) (see jmpext september 2012 commits)
-	do i=1,nctype+1
-		fvbig(:,1:cgridsize,i)=fvbig(:,1:cgridsize,i)+fvpar(3,i)*omega1(3)+fvpar(9,i)*omega1(3)**2
-		fvbig(:,cgridsize+1:2*cgridsize,i)=fvbig(:,cgridsize+1:2*cgridsize,i)+fvpar(3,i)*(omega1(3)+0.5d0)+fvpar(9,i)*(omega1(3)+0.5d0)**2
-		fvbig(:,2*cgridsize+1:4*cgridsize,i)=fvbig(:,2*cgridsize+1:4*cgridsize,i)+fvpar(3,i)*(omega1(3)+1.0d0)+fvpar(9,i)*(omega1(3)+1.0d0)**2
+
+	! first staying in one child regime
+	fvbig(:,1:cgridsize,1)=fvbig(:,1:cgridsize,1)+fvparv(2)*omega1(3)+fvparv(9)*omega1(3)**2
+	fvbig(:,cgridsize+1:2*cgridsize,1)=fvbig(:,cgridsize+1:2*cgridsize,1)+fvparv(2)*(omega1(3)+0.5d0)+fvparv(9)*(omega1(3)+0.5d0)**2
+	fvbig(:,2*cgridsize+1:4*cgridsize,1)=fvbig(:,2*cgridsize+1:4*cgridsize,1)+fvparv(2)*(omega1(3)+1.0d0)+fvparv(9)*(omega1(3)+1.0d0)**2
+
+	! then two children, with the possible different types
+	do i=1,nctype
+		fvbig(:,1:cgridsize,i+1)=fvbig(:,1:cgridsize,i+1)+fvpar(3,i)*omega1(3)+fvpar(11,i)*omega1(3)**2
+		fvbig(:,cgridsize+1:2*cgridsize,i+1)=fvbig(:,cgridsize+1:2*cgridsize,i+1)+fvpar(3,i)*(omega1(3)+0.5d0)+fvpar(11,i)*(omega1(3)+0.5d0)**2
+		fvbig(:,2*cgridsize+1:4*cgridsize,i+1)=fvbig(:,2*cgridsize+1:4*cgridsize,i+1)+fvpar(3,i)*(omega1(3)+1.0d0)+fvpar(11,i)*(omega1(3)+1.0d0)**2
 	end do	
 	! lastly add the component of FV that is derived from A's
 
@@ -649,61 +700,44 @@ subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,par
 	parameters=parA(4:12)
 	
 	! first: if the family stayed one child, A2 will stay zero.
-	do i=1,nctype+1
-		do j=1,Nmc
-			do k=1,3
-				do l=1,cgridsize
-					!do m=1,2
-						inputs(2)=1.0d0-0.5d0*((k-1.0d0)/2.0d0)
-						inputs(3)=(wage(j)*(k-1.0d0)/2+wageh(j))*(1-cgrid(l))
-						As=pfone(inputs, constants,age,parameters)
-						! new add on: added interaction terms with A and E
-						fvbig(j,(k-1)*cgridsize*2+(l-1)*2+m,i)=fvbig(j,(k-1)*cgridsize*2+(l-1)*2+m,1)+As*fvpar(1,i)+As*(omega1(3)+(k-1.0d0)*0.5d0)*fvpar(10,i)
-					!end do
-				end do
+	do j=1,Nmc
+		do k=1,3
+			do l=1,cgridsize
+				!do m=1,1
+					inputs(2)=1.0d0-0.5d0*((k-1.0d0)/2.0d0)
+					inputs(3)=(wage(j)*(k-1.0d0)/2+wageh(j))*(1-cgrid(l))
+					As=pfone(inputs, constants,age,parameters,rho)
+					! first staying one child
+					fvbig(j,(k-1)*cgridsize+l,1)=fvbig(j,(k-1)*cgridsize+l,1)+As*fvpar(1)+As*(omega1(3)+(k-1.0d0)*0.5d0)*fvpar(10,i)
+					! then becoming two child family
+					do i=1,nctype ! don't have types for jmpsimple, but keep the compatible for the future.
+						! how is my kid gonna be? depends on her type. with no UH, typevec is just the intercept of pf.
+						Ainit=typevec(i)+parA(1)*omega3(1)+parA(2)*omega3(2)+parA(3)*omega3(3) 
+						! then add the parts with As (and interactions with E)
+						fvbig(j,(k-1)*cgridsize+l,i+1)=fvbig(j,(k-1)*cgridsize+l,i+1) + As*fvpar(1,i) + Ainit*fvpar(2,i) + As*Ainit*fvpar(12,i) &
+							& + As*(omega1(3)+(k-1.0d0)*0.5d0)*fvpar(13,i) + Ainit*(omega1(3)+(k-1.0d0)*0.5d0)*fvpar(14,i) 
+					end do
+				!end do
 			end do
 		end do
 	end do
-	
-	! If the family ended up with two kids, they will get the same stuff as above, so I will copy the fv matrix to them,
-	! but depending on the type of the second child, they will also receive an additional term multiplied by fvpar(2,i)
+	! calculate the birth probability. With p1, we gonna have a second child and move to fvbig(:,:,2) , and with prob (1-p1) we are
+	! going to get the fvbig(:,:,1), so we need to weigh those in and then sum them up(along the third dimension) to calculate the
+	! expected future value.
+	omegaB=(/omega3(3),omega3(3)*omega3(3),omega3(1),omega3(2)/)
+	p1=bprobexo(omegaB,parB)
 
-	do i=1,nctype
-		! calculate the initial A for the second child.
-		Ainit=typevec(i)+parA(1)*omega3(1)+parA(2)*omega3(2)+parA(3)*omega3(3)
-		fvbig(:,:,i+1)=fvbig(:,:,i+1)+Ainit*fvpar(2,i+1) 		
-	end do
+	! NOTE: I am still retaining type code here but without unobserved heterogeneity I will just pass the intercept as the typevec
+	! and typeprob=1 as intercept
 
-	! because we now know the FV associated all the situations that could happen in the next period, we need to calculate
-	! the expected value of them.
-	! With probability p, there will be a birth, and with probability 1-p there won't be. If a birth were to happen, the expected
-	! future value of the family will depend on the type of the child. these probabilities are conditional on mother's type and
-	! needed to be provided as a vector argument for this routine: typeprob  
-
-	! calculating the birth probability: p1 with contraception and p0 without contraception
-	omegaB=(/omega3(3),omega3(3)*omega3(3)/)
-	p1=bprob(1,omegaB,parB)
-	p0=bprob(0,omegaB, parB)
-
-	! now weigh the fvbig matrices relevant dimension with these probabilities. It is so that p0 will be multiplied with every odd
-	! column, and p1 will be multiplied with every even column.
-	! of course, this is for the EW_{t+1}. EV_t+1 needs weighting with (1-p)'s,
-	do i=2,6*cgridsize,2
-		fvbig(:,i,1)=fvbig(:,i,1)*(1-p1)
-		fvbig(:,i-1,1)=fvbig(:,i,1)*(1-p0)
-		fvbig(:,i,2:nctype)=fvbig(:,i,2:nctype)*p1
-		fvbig(:,i-1,2:nctype)=fvbig(:,i-1,2:nctype)*p1
-	end do
-
-	! Different types of second children happen with probabilities described by typeprob vector. So fvbig's W related parts need to
-	! be reweigted with relevant typeprob element. Then finallly we can sum everything up (along the 3rd dimension of fvbig)
+	!first: one child
+	fvbig(:,:,1)=(1-p1)*fvbig(:,:,1)
 
 	do i=2,nctype+1
-		fvbig(:,:,i)=fvbig(:,:,i)*typeprob(i-1)
+		fvbig(:,:,i)=fvbig(:,:,i)*typeprob(i-1)*p1
 	end do
 	! AND FINALLY
 	fv=sum(fvbig,3)
-
 end subroutine fvochcbalt
 !--------------------------------------------EMAX CALCULATION----------------------------------------------------------
 
