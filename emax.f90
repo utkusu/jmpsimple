@@ -1,4 +1,4 @@
-! this module holds the emax calculating routines. 
+!  module holds the emax calculating routines. 
 
 module emax
 	use global 
@@ -462,13 +462,14 @@ subroutine fvhcxalt(fv,omega1, omega2, omega3, omega4,wage,wageh,fvpar, parA,rho
 				inputs(5)=(wage(i)*(j-1.0d0)*0.5d0+wageh(i))*(1-cgrid(k))
 				A=pftwo(inputs, constants,ages,parameters,rho)
 				! now we can add the parts of the fv that are related to these.
-				fv(i,(j-1)*cxgridsize+(k-1)*xgridsize+l)=fv(i,(j-1)*cxgridsize+(k-1)*xgridsize+l) + &
-					& A(1)*fvpar(1)+A(2)*fvpar
+				fv(i,(j-1)*cxgridsize+(k-1)*xgridsize+l)=fv(i,(j-1)*cxgridsize+(k-1)*xgridsize+l) &
+					& + fvpar(1)*A(1) + fvpar(2)*A(2) + fvpar(9)*A(1)**2 + fvpar(10)*A(2)**2 + fvpar(12)*A(1)*A(2) &
+					& + fvpar(13)*A(1)*(omega1(3)+(j-1)*0.5d0)+ fvpar(14)*A(1)*(omega1(3)+(j-1)*0.5d0)
 			end do
 		end do
 	end do
 
-	
+	! the end	
 
 end subroutine fvhcxalt
 
@@ -764,8 +765,6 @@ function emaxfinal(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta)
 	real(dble), dimension(Nmc)::uh0,uhp,uhf
 	real(dble), dimension(Nmc,3):: TV, umat
 
-
-	! FIXME: after changing utility and production functions this needs cleaning
 	! calculate utilities
 	! uc is shock independent
 	uc=uctwo(omega1(1),omega1(2),parU(1))
@@ -778,7 +777,7 @@ function emaxfinal(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta)
 	uhp=uh(0.5d0,(wage+wageh),omega2(1:2),parU(3:7))
 	uhf=uh(1.0d0,(wage+wageh),omega2(1:2),parU(3:7))
 	! terminal values calcuted, for now using a very simple thing
-	call termvaltemp(TV,uc,uh0,uhp,uhf,beta,omega2(3))
+	call termvaltemp(TV,uc,uh0,uhp,uhf,beta,omega2(3)) ! TODO TEMP TERM VALUES
 	! distribute choice specific current returns to a Nmcx3 matrix
 	umat(:,1)=uc+uh0+eps(:,1)
 	umat(:,2)=uc+uhp+eps(:,2)
@@ -817,7 +816,7 @@ function emaxlate(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV
 	! uh is shock dependent and need to calculate wage income for each mc draw, which will equal to consumption because there is no child anymore.
 	wage=wagef(omega1(3),omega2(1), omega2(4), omega3(1), omega3(2), omega3(3),eps(:,4),omega4(3),parW(5:7),parW(1:4))  
 	! same with husband income
-	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) ! TODO figure out: parH, what is it? just b4 and b5?
+	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) 
 	! uh's for each h choice 
 	uh0=uh(0.0d0,(wage+wageh),omega2(1:2),parU(3:7))
 	uhp=uh(0.5d0,(wage+wageh),omega2(1:2),parU(3:7))
