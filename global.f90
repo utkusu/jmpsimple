@@ -55,7 +55,6 @@ real(dble), parameter::onescgridwithbirth(cgridsize*2)=1.0d0
 ! emax interpolation parameters
 integer, parameter:: Nmc=100		!<monte carlo integration draw size
 
-! FIXME vector for father stuff. also in the coefX subroutines 
 ! following are the fixed vectors of observed types for the emax approximations
 integer, parameter::svecage0m=2
 integer, parameter::svecsch0m=2

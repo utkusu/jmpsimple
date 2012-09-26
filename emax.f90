@@ -3,6 +3,7 @@ module emax
 ! TODO: remove the omega4 for the interpolation stuff, so that tr and ftr routines don't get that part of those mss and tss
 ! matrices, they don't use them anyway. This will require the change of the dimensions in tr routines and removing omega4 from
 ! filler and mutype from mss matrices.
+!TODO: Two child coefficients are wild. One is not, why?
 
 	use global 
 	use randomgen
@@ -213,8 +214,6 @@ end subroutine termvaltemp
 !> to calculate fv, we need to first update the state space for
 !> all the choices and monte carlo draw and then use the interpolating
 !> coefficients (whatever they are) and do the interpolation.
-! FIXME this will require some changes when I play with the state space vectors and parameter space. I will mark the obvious ones
-! below 
 subroutine fvlate(fv,omega1, omega2,omega3, omega4,fvpar)
 	implicit none
 	real(dble), intent(out):: fv(3) 			!< output, fv for each h 
@@ -308,7 +307,7 @@ subroutine fvhc(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,rho)
 				inputs(4)=1.0d0-0.5d0*((i-1.0d0)/2.0d0)
 				inputs(5)=(wage(k)*(i-1.0d0)/2+wageh(k))*(1-cgrid(j))
 				As=pftwo(inputs, constants, ages, parameters,rho)
-				fss(2,(i-1)*5+j,k)=As(2)
+				fss(2,(i-1)*cgridsize+j,k)=As(2)
 			end do
 		end do
 		! here we can project the state space matrix (for each h and c) 
@@ -577,7 +576,7 @@ subroutine fvochc(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,rho)
 				inputs(2)=1.0d0-0.5d0*((i-1.0d0)/2.0d0)
 				inputs(3)=(wage(k)*(i-1.0d0)/2+wageh(k))*(1-cgrid(j))
 				As=pfone(inputs, constants,age,parameters,rho)
-				fss(2,(i-1)*5+j,k)=As
+				fss(2,(i-1)*cgridsize+j,k)=As
 			end do
 		end do
 		! here we can project the state space matrix (for each h and c) 
@@ -588,7 +587,6 @@ subroutine fvochc(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,rho)
 		
 	!	fv(k,:)=matmul(fvpar,fss(:,:,k))
 	end do
-	    ! FIXME REMINDER ftr_hc needs fixing
 		call ftroc_hc(tfss,fss,3*cgridsize,Nmc)
 		do k=1,Nmc
 			fv(k,:)=matmul(fvpar,tfss(:,:,k))
@@ -685,13 +683,13 @@ subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,fvparv,p
 	! first staying in one child regime
 	fvbig(:,1:cgridsize,1)=fvbig(:,1:cgridsize,1)+fvparv(2)*omega1(3)+fvparv(9)*omega1(3)**2
 	fvbig(:,cgridsize+1:2*cgridsize,1)=fvbig(:,cgridsize+1:2*cgridsize,1)+fvparv(2)*(omega1(3)+0.5d0)+fvparv(9)*(omega1(3)+0.5d0)**2
-	fvbig(:,2*cgridsize+1:4*cgridsize,1)=fvbig(:,2*cgridsize+1:4*cgridsize,1)+fvparv(2)*(omega1(3)+1.0d0)+fvparv(9)*(omega1(3)+1.0d0)**2
+	fvbig(:,2*cgridsize+1:3*cgridsize,1)=fvbig(:,2*cgridsize+1:3*cgridsize,1)+fvparv(2)*(omega1(3)+1.0d0)+fvparv(9)*(omega1(3)+1.0d0)**2
 
 	! then two children, with the possible different types
 	do i=1,nctype
 		fvbig(:,1:cgridsize,i+1)=fvbig(:,1:cgridsize,i+1)+fvpar(3,i)*omega1(3)+fvpar(11,i)*omega1(3)**2
 		fvbig(:,cgridsize+1:2*cgridsize,i+1)=fvbig(:,cgridsize+1:2*cgridsize,i+1)+fvpar(3,i)*(omega1(3)+0.5d0)+fvpar(11,i)*(omega1(3)+0.5d0)**2
-		fvbig(:,2*cgridsize+1:4*cgridsize,i+1)=fvbig(:,2*cgridsize+1:4*cgridsize,i+1)+fvpar(3,i)*(omega1(3)+1.0d0)+fvpar(11,i)*(omega1(3)+1.0d0)**2
+		fvbig(:,2*cgridsize+1:3*cgridsize,i+1)=fvbig(:,2*cgridsize+1:3*cgridsize,i+1)+fvpar(3,i)*(omega1(3)+1.0d0)+fvpar(11,i)*(omega1(3)+1.0d0)**2
 	end do	
 	! lastly add the component of FV that is derived from A's
 
@@ -771,7 +769,7 @@ function emaxfinal(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta)
 	! uh is shock dependent and need to calculate wage income for each mc draw, which will equal to consumption because there is no child anymore.
 	wage=wagef(omega1(3),omega2(1), omega2(4), omega3(1), omega3(2), omega3(3),eps(:,4),omega4(3),parW(5:7),parW(1:4))  
 	! same with husband income
-	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) ! TODO figure out: parH, what is it? just b4 and b5?
+	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH)  
 	! uh's for each h choice 
 	uh0=uh(0.0d0,(wage+wageh),omega2(1:2),parU(3:7))
 	uhp=uh(0.5d0,(wage+wageh),omega2(1:2),parU(3:7))
@@ -1080,7 +1078,7 @@ function emaxochc(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV
 	! uh is shock dependent and need to calculate wage income for each mc draw, which will equal to consumption because there is no child anymore.
 	wage=wagef(omega1(3),omega2(1), omega2(4), omega3(1), omega3(2), omega3(3),eps(:,4),omega4(3),parW(5:7),parW(1:4))  
 	! same with husband income
-	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) ! TODO figure out: parH, what is it? just b4 and b5?      
+	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) 
 
 	! calculate utility levels associated with each of the h,c bundles.
 	do i=1,cgridsize
@@ -1118,7 +1116,7 @@ function emaxochcb(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parF
 	real(dble), intent(in):: omega2(:) 						!< omega2: exogenous dynamic
 	real(dble), intent(in):: omega3(:) 						!< omega3: static
 	real(dble), intent(in):: omega4(:) 						!< omega4: types
-	real(dble), intent(in):: eps(Nmc,shocksize3) 			!< random draw for MC integration for h and b
+	real(dble), intent(in):: eps(Nmc,shocksize1) 			!< random draw for MC integration for h and b (NOTE: NO B FOR THE jmpsimple)
 															!< shocks for contraception decision.
 	real(dble),intent(in)::parA(:), parU(:),parW(:),parH(:) 	!< parameter vectors except for Sigma and beta
 	real(dble),intent(in)::parFV(:,:) 						!< interpolating function parameter, second dimension for child types
@@ -1128,7 +1126,6 @@ function emaxochcb(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parF
 	real(dble),intent(in)::typeprob(:) 			!< conditional(on mom's type) probability of each type for second child
 	real(dble),intent(in)::parB(Bsizeexo+1) 		!< parameters of the birth probability function 
 	real(dble), intent(in) :: rho
-	! TODO parB dimensions check
 	!locals
 
 	real(dble) uc
@@ -1145,7 +1142,7 @@ function emaxochcb(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parF
 	! uh is shock dependent and need to calculate wage income for each mc draw, which will equal to consumption because there is no child anymore.
 	wage=wagef(omega1(3),omega2(1), omega2(4), omega3(1), omega3(2), omega3(3),eps(:,4),omega4(3),parW(5:7),parW(1:4))  
 	! same with husband income
-	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) ! TODO figure out: parH, what is it? just b4 and b5?  
+	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) ! 
  	
  	! CAREFUL WITH THE SHOCKS	
 	! calculate the utility levels associated with each of h,c and b bundles. For each h, create a Nmc x cgridsize x 2 matrix
@@ -1184,7 +1181,6 @@ function emaxochcb(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parF
 end function emaxochcb
 
 
-! FIXME DID YOU CORRECT THE ONE CHILD EMAXS???
 
 !                                          END OF EMAX  FUNCTIONS!
 ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1295,7 +1291,7 @@ subroutine coeffinal(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma)
 	! get a set of llms, which are fixed
 	call random_seed(put=(/int(1000*period+delta),1/))
 	call random_number(llmsvec)
-	llmsvec=llmsvec*0.1d0 			!< adjust llms to have 0-10% unemployment rate FIXME: did you do this for all?
+	llmsvec=llmsvec*0.1d0 			!< adjust llms to have 0-10% unemployment rate 
 
 	mu=0.0d0
 	counter=1
@@ -1325,7 +1321,7 @@ subroutine coeffinal(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma)
 		end do
 	end do
 
-	call tr_late(tmss,mss,nintp) 			! transform the state space FIXME tr_late routine
+	call tr_late(tmss,mss,nintp) 			! transform the state space 
 	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
 	coef=vemax(1:Gsize+1)
 end subroutine coeffinal
@@ -1391,7 +1387,7 @@ subroutine coeflate(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,par
 		end do
 	end do
 
-	call tr_late(tmss,mss,nintp) 			! transform the state space FIXME tr_late
+	call tr_late(tmss,mss,nintp) 			! transform the state space 
 	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
 	coef=vemax(1:Gsize+1)
 
@@ -1470,7 +1466,7 @@ subroutine coefhc(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV
 		end do
 	end do
 
-	call tr_late(tmss,mss,nintp) 			! transform the state space FIXME update tr_late
+	call tr_late(tmss,mss,nintp) 			! transform the state space 
 	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
 	coef=vemax(1:Gsize+1)
 
@@ -1538,7 +1534,7 @@ subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parF
 		end do
 	end do
 
-	call tr_late(tmss,mss,nintp) 			! transform the state space FIXME tr_late
+	call tr_late(tmss,mss,nintp) 			! transform the state space 
 	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
 	coef=vemax(1:Gsize+1)
 
@@ -1613,7 +1609,7 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 		!end do
 	end do
 
-	call troc_late(tmss,mss,nintpoc) 			! transform the state space FIXME troc_late
+	call troc_late(tmss,mss,nintpoc) 			! transform the state space 
 	call DGELS('N',nintpoc,Gsizeoc,1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
 	coef=vemax(1:Gsizeoc+1)
 end subroutine coefocfinal
@@ -1747,7 +1743,7 @@ subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,rho
 		!end do
 	end do
 
-	call troc_late(tmss,mss,nintpoc) 			! transform the state space FIXME troc_late
+	call troc_late(tmss,mss,nintpoc) 			! transform the state space 
 	call DGELS('N',nintpoc,Gsizeoc,1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
 	coef=vemax(1:Gsizeoc+1)
 end subroutine coefochc
@@ -1763,7 +1759,7 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:), parFV(:,:),parFVv(:)	!< parameter vectors except for Sigma and beta, parFV is
 																			!< of size (Gsizeoc,
 	real(dble), intent(in):: beta 										!< discount factor 
-	real(dble), intent(in) :: sigma(shocksize3,shocksize3)
+	real(dble), intent(in) :: sigma(shocksize1,shocksize1)
 	real(dble), intent(in)::period 										!< what period we are in, or age of the first born
 	real(dble), intent(in) :: typevec(nctype),typeprob(nctype),parB(Bsizeexo+1)
 	real(dble), intent(in) :: rho
@@ -1775,8 +1771,8 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 	real(dble) vecE(5)
 	real(dble) omega1(o1size) ,omega2(o2size), omega3(o3size)
 	integer counter
-	real(dble) mu(shocksize3)
-	real(dble) eps(Nmc,shocksize3)
+	real(dble) mu(shocksize1)
+	real(dble) eps(Nmc,shocksize1)
 	real(dble) tmss(nintpoc,Gsizeoc)
 
 	! lapack stuff
@@ -1804,7 +1800,7 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 										omega1=(/veca1(p),0.0d0,vecE(r)/)	
 										omega2=(/period,0.0d0,period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
-										eps=randmnv(Nmc,shocksize3,mu,sigma, 3,1,(/int(period*10+1),counter/))
+										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/int(period*10+1),counter/))
 										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
 										vemax(counter)=emaxochcb(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,parFVv,parB,typevec,typeprob,rho)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
