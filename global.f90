@@ -22,21 +22,22 @@ integer, parameter:: Gsize=14			!< the number of regressors in the intrapolating
 integer, parameter:: Gsizeoc=10			!< the number of regressors in the intrapolating function g. for ONE CHILD FAMILIES, intercept sold separately.
 integer, parameter:: Ssize=16			!< the number of elements in state space
 integer, parameter:: Bsize=2			!< the number of regressors in the birth probability function other than the contraception
+integer, parameter:: Bsizeexo=4			!< the number of regressors in the birth probability function other than the contraception
 
 integer, parameter::o1size=3 			!< size of omega1
 integer, parameter::o2size=4	!< size of omega1
 integer, parameter::o3size=4 			!< size of omega1
 
 
-real(dble), parameter::emaxscale=100000.0d0 !< scale emaxs down  !!! CAN YOU DO THIS??? MAYBE ONLY IF USE THE SAME SCALE for U, too.
+real(dble), parameter::emaxscale=1.0d0 !< scale emaxs down  !!! CAN YOU DO THIS??? MAYBE ONLY IF USE THE SAME SCALE for U, too.
 
 ! number of types
-integer, parameter::nctype=2 			!< number of unobserved types for children
-integer, parameter::nmtype=2 			!< number of unobserved types for mom (ability)
-integer, parameter::natype=2 			!< number of unobserve alpha types
+integer, parameter::nctype=1 			!< number of unobserved types for children
+integer, parameter::nmtype=1 			!< number of unobserved types for mom (ability)
+integer, parameter::natype=1 			!< number of unobserve alpha types
 integer, parameter::na1type=2 			!< number of unobserve alpha1 types
-integer, parameter::nttypes=32 			!< number of total types for two child families
-integer, parameter::nttypesoc=16 		!< number of total types for two child families
+integer, parameter::nttypes=2 			!< number of total types for two child families
+integer, parameter::nttypesoc=2 		!< number of total types for two child families
 
 
 ! x and c grids and related utilities
@@ -45,14 +46,14 @@ integer,parameter::cgridsize=1
 integer,parameter::cxgridsize=11
 
 real(dble), parameter::xgrid(xgridsize)=(/0.01d0,0.1d0,0.2d0,0.3d0,0.4d0,0.5d0,0.6d0,0.7d0,0.8d0,0.9d0,0.99d0/)
-real(dble), parameter::cgrid(cgridsize)=0.5d0
+real(dble), parameter::cgrid(cgridsize)=0.5d0  ! fixing the consumption choice at 0.5 for now.
 real(dble), parameter::onescgrid(cgridsize)=1.0d0
 real(dble), parameter::onesxgrid(xgridsize)=1.0d0
 real(dble), parameter::onescxgrid(cxgridsize)=1.0d0
 real(dble), parameter::onescgridwithbirth(cgridsize*2)=1.0d0
 
 ! emax interpolation parameters
-integer, parameter:: Nmc=10		!<monte carlo integration draw size
+integer, parameter:: Nmc=100		!<monte carlo integration draw size
 
 ! FIXME vector for father stuff. also in the coefX subroutines 
 ! following are the fixed vectors of observed types for the emax approximations
@@ -74,17 +75,14 @@ real(dble) , parameter:: vecaqft(svecaqft)=(/.1d0,.3d0/)
 ! temp A values for interpolation: TODO this will need to change every year, depending on the test scores.
 real(dble), parameter::veca1(sveca1)=(/1.0d0,2.0d0/)
 real(dble), parameter::veca2(sveca2)=(/1.0d0,2.0d0/)
-!real(dble) , parameter::veclagh(sveclagh)=(/0.0d0,0.5d0,1.0d0/)  FIXME  you don't really need for jmpsimple
 
 ! temp A values for interpolation
 
 !real(dble), parameter:: vecdelta(3)=(/2.0d0,4.0d0,6.0d0/)
 !integer, parameter:: nintpfinal=432*375*3 			!< # of interpolating points: above 5 each for E and As and 3 for delta
 ! # of interpolating points: above 5 each for E and As 
-  
-integer, parameter:: nintpoc=svecage0m*svecsch0m*svecomegaf*svecaqft*sveca1*svecE*sveclagh
-
-
+integer, parameter::nintp= svecage0m*svecsch0m*svecomegaf*svecaqft*sveca1*sveca2*svecE
+integer, parameter:: nintpoc=svecage0m*svecsch0m*svecomegaf*svecaqft*sveca1*svecE
 
 ! auxillary
 real(dble), parameter :: nr_small = 1.0d-300

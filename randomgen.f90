@@ -184,10 +184,10 @@ end function bprob
 function bprobexo(variables,parameters)
 	implicit none
 	real(dble) variables(Bsizeexo) 		! variables of the birth prob.
-	real(dble) parameters(Bsizexo + 1) 	! parameters of the model, intercept is the last item
+	real(dble) parameters(Bsizeexo + 1) 	! parameters of the model, intercept is the last item
 	real(dble) bprobexo
 	real(dble) indeks
-	indeks = sum(variables*parameters(1:Bsizexo)) + parameters(Bsizexo + 1)
+	indeks = sum(variables*parameters(1:Bsizeexo)) + parameters(Bsizeexo + 1)
 	bprobexo = cdf_normal(indeks,0.0d0,1.0d0)
 end function bprobexo
  

@@ -1,6 +1,9 @@
-!  module holds the emax calculating routines. 
-
 module emax
+!  module holds the emax calculating routines. 
+! TODO: remove the omega4 for the interpolation stuff, so that tr and ftr routines don't get that part of those mss and tss
+! matrices, they don't use them anyway. This will require the change of the dimensions in tr routines and removing omega4 from
+! filler and mutype from mss matrices.
+
 	use global 
 	use randomgen
 	USE IFPORT
@@ -137,13 +140,10 @@ function wagef(E,time,llms,schooling,afqt,age0m,eps,typem,par,par0)
 	real(dble) typem 							!< mother's type KEEP THIS FOR NOW + IT IS THE INTERCEPT PARAMETERS
 	real(dble) wagef(size(eps)) 				!< output, wage income for the mother, size=Nmc
 
-	real(dble) logw0, logw, didnotwork
-
-	didnotwork=0
-	if (lagh==0) didnotwork=1
+	real(dble) logw0, logw
 	
 	logw0=typem+par0(1)*schooling+par0(2)*afqt+par0(3)*age0m+par0(4)*age0m*age0m
-	logw=logw0+par(1)*E+par(2)*didnotwork+par(3)*llms
+	logw=logw0+par(1)*E+par(2)*time+par(3)*llms
 	wagef=exp(logw+eps)
 end function wagef
 !> husband wage income
@@ -332,80 +332,79 @@ end subroutine fvhc
 
 
 ! WARNING  THIS IS WRONG, writing an alt version for this
-subroutine fvhcx(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA)
-	implicit none
-	real(dble), intent(out)::fv(Nmc,cxgridsize*3)	!< output, fv for each h,c and mc
-	real(dble), intent(in):: omega1(:) 				!< omega1: endogenous dynamic
-	real(dble), intent(in):: omega2(:) 				!< omega2: exogenous dynamic
-	real(dble), intent(in):: omega3(:) 				!< omega3: static
-	real(dble), intent(in):: omega4(:) 				!< omega4: type
-	real(dble), intent(in):: fvpar(:) 				!< interpolating parameters	
-	real(dble), intent(in):: parA(:) 				!< parameters of the production function
-	real(dble), intent(in):: wage(:),wageh(:) 		!< wages of parents, Nmcx1 each
+!subroutine fvhcx(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA)
+	!implicit none
+	!real(dble), intent(out)::fv(Nmc,cxgridsize*3)	!< output, fv for each h,c and mc
+	!real(dble), intent(in):: omega1(:) 				!< omega1: endogenous dynamic
+	!real(dble), intent(in):: omega2(:) 				!< omega2: exogenous dynamic
+	!real(dble), intent(in):: omega3(:) 				!< omega3: static
+	!real(dble), intent(in):: omega4(:) 				!< omega4: type
+	!real(dble), intent(in):: fvpar(:) 				!< interpolating parameters	
+	!real(dble), intent(in):: parA(:) 				!< parameters of the production function
+	!real(dble), intent(in):: wage(:),wageh(:) 		!< wages of parents, Nmcx1 each
 
-	!locals
+	!!locals
 	
-	real(dble) fss((size(omega1)+size(omega2)+size(omega3)+size(omega4)),3*cxgridsize,Nmc) 	!future state space for each h,c,MCdraw
-	real(dble) filler((size(omega1)+size(omega2)+size(omega3)+size(omega4)),3*cxgridsize) 	! filler matrix
-	real(dble) tfss(Gsize+1,3*cxgridsize,Nmc) 										!transformed future state space for each h,c,MCdraw
-	real(dble) omegaall(size(omega1)+size(omega2)+size(omega3)+size(omega4)) 	!combined state space
-	integer i,j,k,l
-	real(dble) :: inputs(5),constants(3), ages(2), parameters(7),As(2)
-	real(dble) logw0 					! initial logwage of the mother
+	!real(dble) fss((size(omega1)+size(omega2)+size(omega3)+size(omega4)),3*cxgridsize,Nmc) 	!future state space for each h,c,MCdraw
+	!real(dble) filler((size(omega1)+size(omega2)+size(omega3)+size(omega4)),3*cxgridsize) 	! filler matrix
+	!real(dble) tfss(Gsize+1,3*cxgridsize,Nmc) 										!transformed future state space for each h,c,MCdraw
+	!real(dble) omegaall(size(omega1)+size(omega2)+size(omega3)+size(omega4)) 	!combined state space
+	!integer i,j,k,l
+	!real(dble) :: inputs(5),constants(3), ages(2), parameters(7),As(2)
+	!real(dble) logw0 					! initial logwage of the mother
 	
-	omegaall=(/omega1,omega2,omega3,omega4/)
+	!omegaall=(/omega1,omega2,omega3,omega4/)
 		
-	! fill up the filler matrix with the current space
-	do i=1,3*cxgridsize
-		filler(:,i)=omegaall
-	end do
- 	! update the filler matrix with exogenous changes to it.
-	filler(4:6,:)=filler(4:6,:)+1   ! kids and mom age
-	filler(9,:)=filler(9,:)+1 	! father's age.
-	! update last experience
-	filler(7,:)=(/0.0d0*onescxgrid,0.50d0*onescxgrid,1.0d0*onescxgrid/)
+	!! fill up the filler matrix with the current space
+	!do i=1,3*cxgridsize
+		!filler(:,i)=omegaall
+	!end do
+     !! update the filler matrix with exogenous changes to it.
+	!filler(4:6,:)=filler(4:6,:)+1   ! kids and mom age
+	!filler(9,:)=filler(9,:)+1 	! father's age.
+	!! update last experience
+	!filler(7,:)=(/0.0d0*onescxgrid,0.50d0*onescxgrid,1.0d0*onescxgrid/)
 
-	! update experience level
-	filler(3,6:10)=(omega1(3)+0.5d0)*onescgrid
-	filler(3,11:15)=(omega1(3)+1.0d0)*onescgrid
+	!! update experience level
+	!filler(3,6:10)=(omega1(3)+0.5d0)*onescgrid
+	!filler(3,11:15)=(omega1(3)+1.0d0)*onescgrid
 		
-	inputs=(/omega1(1),omega1(2),0.d0,0.d0,0.d0/)
-	constants=(/omega4(1),omega4(2),logw0/)
-	ages=(/omega2(1),omega2(2)/)
-	parameters=parA(4:10)
+	!inputs=(/omega1(1),omega1(2),0.d0,0.d0,0.d0/)
+	!constants=(/omega4(1),omega4(2),logw0/)
+	!ages=(/omega2(1),omega2(2)/)
+	!parameters=parA(4:10)
 	
-	logw0=omega4(3)+parA(1)*omega3(1)+parA(2)*omega3(2)+parA(3)*omega3(3)
-	do k=1,Nmc
-		!use the filler matrix to populate fss 3d matrix
-		fss(:,:,k)=filler
-		do j=1,cgridsize
-			do l=1,xgridsize
-				do i=1,3
-					! inputs to first child, i1=(1-0.5*h)*x
-					inputs(3)=(1-0.5d0*((i-1.0d0)/2.0d0))*xgrid(l)			
-					! inputs to second kid
-					inputs(4)=(1-0.5d0*((i-1.0d0)/2.0d0))*(1-xgrid(l))
-					! goods inputs
-					inputs(5)=(wage(k)*(i-1.0d0)/2+wageh(k))*(1-cgrid(j))
-					As=pftwo(inputs, constants, ages, parameters)
-					fss(1,(i-1)*cgridsize+(j-1)*xgridsize+l,k)=As(1)
-					fss(2,(i-1)*cgridsize+(j-1)*xgridsize+l,k)=As(2)
-				end do
-			end do
-		end do
-		! here we can project the state space matrix (for each h and c) 
-		! for a given MC draw to the space of interpolating coefficients.
-		! But for now I will just use the state space vectors as they are to calculate 
-		! FVs. Replace fss with tfss (transformed future state space when you decide on the 
-		! interpolating matrix
-	end do
-		! ftr_hc works for this one, too.	
-		call ftr_hc(tfss,fss,3*cxgridsize,Nmc)
-		do k=1,Nmc
-			fv(k,:)=matmul(fvpar,tfss(:,:,k))
-		end do
-! FIXME the whole interpolation update
-end subroutine fvhcx
+	!logw0=omega4(3)+parA(1)*omega3(1)+parA(2)*omega3(2)+parA(3)*omega3(3)
+	!do k=1,Nmc
+		!!use the filler matrix to populate fss 3d matrix
+		!fss(:,:,k)=filler
+		!do j=1,cgridsize
+			!do l=1,xgridsize
+				!do i=1,3
+					!! inputs to first child, i1=(1-0.5*h)*x
+					!inputs(3)=(1-0.5d0*((i-1.0d0)/2.0d0))*xgrid(l)			
+					!! inputs to second kid
+					!inputs(4)=(1-0.5d0*((i-1.0d0)/2.0d0))*(1-xgrid(l))
+					!! goods inputs
+					!inputs(5)=(wage(k)*(i-1.0d0)/2+wageh(k))*(1-cgrid(j))
+					!As=pftwo(inputs, constants, ages, parameters)
+					!fss(1,(i-1)*cgridsize+(j-1)*xgridsize+l,k)=As(1)
+					!fss(2,(i-1)*cgridsize+(j-1)*xgridsize+l,k)=As(2)
+				!end do
+			!end do
+		!end do
+		!! here we can project the state space matrix (for each h and c) 
+		!! for a given MC draw to the space of interpolating coefficients.
+		!! But for now I will just use the state space vectors as they are to calculate 
+		!! FVs. Replace fss with tfss (transformed future state space when you decide on the 
+		!! interpolating matrix
+	!end do
+		!! ftr_hc works for this one, too.	
+		!call ftr_hc(tfss,fss,3*cxgridsize,Nmc)
+		!do k=1,Nmc
+			!fv(k,:)=matmul(fvpar,tfss(:,:,k))
+		!end do
+!end subroutine fvhcx
 
 !> this subroutines tries to improve upon the othe fvhcx routine, by calculating the components of the fv one at a time and summing
 !>them up instead of dealing with big matrices.
@@ -423,23 +422,23 @@ subroutine fvhcxalt(fv,omega1, omega2, omega3, omega4,wage,wageh,fvpar, parA,rho
 
 	real(dble) omegaind(5)
 	integer i,j,k,l
-	real(dble) inputs(5), constants(3), ages(2), parameters(7), A(2)
+	real(dble) inputs(5), constants(3), age(2), parameters(9), A(2)
 
 
 	! omegaind: the part of the future value that does not depend on the shocks or the choice. This is just one number, that enters
 	! the entire fv matrix additively
 	! omegaind=(agem, llms, schm,afqtm,omegaf)
-	omegaind=(/omega2(3,4),omega3(1:2),omega3(4)/)
+	omegaind=(/omega2(3:4),omega3(1:2),omega3(4)/)
 	! increase the ages by one
 	! kid's ages can't be in the interpolation because emax is calculated at a specific time and delta, hence these are constant
 	! across observations of the regression.
 	omegaind(1)=omegaind(1)+1 			! update mom's ag
 	! NOTE: not updating llms => myobic expectations, might change this later	
 	! now calculate the XB related omegaind, by adding it to intercept of the fvpar
-	fv=fvpar(Gsize+1)+sum(omegaind*fvpar(4:7))
+	fv=fvpar(Gsize+1)+sum(omegaind*fvpar(4:8))
 
 	! then we will add the parts which only depend on the experience level, that is, to the choice of h.
-	fv(:,1:cxgridsize)=fvbig(:,1:cxgridsize)+fvpar(3,i)*omega1(3)+fvpar(11)*omega1(3)**2
+	fv(:,1:cxgridsize)=fv(:,1:cxgridsize)+fvpar(3)*omega1(3)+fvpar(11)*omega1(3)**2
 	fv(:,cxgridsize+1:2*cxgridsize)=fv(:,cxgridsize+1:2*cxgridsize)+fvpar(3)*(omega1(3)+0.50d0)+fvpar(11)*(omega1(3)+0.5d0)**2
 	fv(:,2*cxgridsize+1:3*cxgridsize)=fv(:,2*cxgridsize+1:3*cxgridsize)+fvpar(3)*(omega1(3)+1.0d0)+fvpar(11)*(omega1(3)+1.0d0)**2
 
@@ -448,7 +447,7 @@ subroutine fvhcxalt(fv,omega1, omega2, omega3, omega4,wage,wageh,fvpar, parA,rho
 	! matrix.
 	
 	! before the loop: create the inputs to the child pf.
-	inputs=(/omega1(1),omega1(2),0.0d0,0.0d0,0.0d0)
+	inputs=(/omega1(1),omega1(2),0.0d0,0.0d0,0.0d0/)
 	constants=omega3(1:3)
 	age=(/omega2(1),omega2(2)/)
 	parameters=parA(4:12)
@@ -456,15 +455,16 @@ subroutine fvhcxalt(fv,omega1, omega2, omega3, omega4,wage,wageh,fvpar, parA,rho
 	do i=1,Nmc
 		do j=1,3
 			do k=1,cgridsize
-				l=1,xgridsize
-				inputs(3)=(1.0d0-0.5d0*((j-1.0d0)*0.5d0)*xgrid(l)
-				inputs(4)=(1.0d0-0.5d0*((j-1.0d0)*0.5d0)*(1-xgrid(l))
-				inputs(5)=(wage(i)*(j-1.0d0)*0.5d0+wageh(i))*(1-cgrid(k))
-				A=pftwo(inputs, constants,ages,parameters,rho)
-				! now we can add the parts of the fv that are related to these.
-				fv(i,(j-1)*cxgridsize+(k-1)*xgridsize+l)=fv(i,(j-1)*cxgridsize+(k-1)*xgridsize+l) &
-					& + fvpar(1)*A(1) + fvpar(2)*A(2) + fvpar(9)*A(1)**2 + fvpar(10)*A(2)**2 + fvpar(12)*A(1)*A(2) &
-					& + fvpar(13)*A(1)*(omega1(3)+(j-1)*0.5d0)+ fvpar(14)*A(1)*(omega1(3)+(j-1)*0.5d0)
+				do l=1,xgridsize
+					inputs(3)=(1.0d0-0.5d0*((j-1.0d0)*0.5d0))*xgrid(l)
+					inputs(4)=(1.0d0-0.5d0*((j-1.0d0)*0.5d0))*(1-xgrid(l))
+					inputs(5)=(wage(i)*(j-1.0d0)*0.5d0+wageh(i))*(1-cgrid(k))
+					A=pftwo(inputs, constants,age,parameters,rho)
+					! now we can add the parts of the fv that are related to these.
+					fv(i,(j-1)*cxgridsize+(k-1)*xgridsize+l)=fv(i,(j-1)*cxgridsize+(k-1)*xgridsize+l) &
+						& + fvpar(1)*A(1) + fvpar(2)*A(2) + fvpar(9)*A(1)**2 + fvpar(10)*A(2)**2 + fvpar(12)*A(1)*A(2) &
+						& + fvpar(13)*A(1)*(omega1(3)+(j-1)*0.5d0)+ fvpar(14)*A(1)*(omega1(3)+(j-1)*0.5d0)
+				end do
 			end do
 		end do
 	end do
@@ -518,7 +518,7 @@ subroutine fvoclate(fv,omega1, omega2,omega3, omega4,fvpar)
 	! at this point, I need to take ths fss matrix, and transform for predictions
 	! for now, just use the state space as it is.
 	! two child transformer will work for now.
-	call ftr_late(tfss,fss,3)	
+	call ftroc_late(tfss,fss,3)	
 	fv=matmul(fvpar,tfss)
 end subroutine fvoclate
 
@@ -544,7 +544,7 @@ subroutine fvochc(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,rho)
 	real(dble) omegaall(size(omega1)+size(omega2)+size(omega3)+size(omega4)) 	!combined state space
 	real(dble) tfss(Gsizeoc+1,3*cgridsize,Nmc) 										!transformed future state space for each h,c,MCdraw
 	integer i,j,k
-	real(dble) :: inputs(3),constants(2), age, parameters(7),As
+	real(dble) :: inputs(3),constants(3), age, parameters(9),As
 	
 	omegaall=(/omega1,omega2,omega3,omega4/)
 		
@@ -645,12 +645,12 @@ subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,fvparv,p
 	! locals
 	
 	integer i,j,k,l,m
-	real(dble) :: inputs(3),constants(2), age, parameters(7),A(2)
+	real(dble) :: inputs(3),constants(3), age, parameters(9)
 	real(dble) logw0 					! initial logwage of the mother
 
 	real(dble) omegaind(5)  ! size of shock-decision independent part of the state space	 	
 	! new locals
-	real(dble) fvbig(Nmc,cgridsize*4,nctype+1) ! first element of the third dimension is for staying with one child.
+	real(dble) fvbig(Nmc,cgridsize*3,nctype+1) ! first element of the third dimension is for staying with one child.
 	real(dble) As, Ainit
 	real(dble) p0,p1, omegaB(Bsizeexo)
 
@@ -661,7 +661,7 @@ subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,fvparv,p
 	! update: I will kick out age1, age2, age0m from the interpolating function. interpolating function described in jmpsimple.pdf
 	
 	! 1: insert the omegaind part=(agem, llms, schm,afqtm,omegaf)
-	omegaind=(/omega2(3,4),omega3(1:2),omega3(4)/)
+	omegaind=(/omega2(3:4),omega3(1:2),omega3(4)/)
 	
 	! kid's ages can't be in the interpolation because emax is calculated at a specific time and delta, hence these are constant
 	! across observations of the regression.
@@ -670,9 +670,9 @@ subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,fvparv,p
 
 	! 2: extract the relevant part from the fvpar vector and multiply with the transformed omegaind to fill in the first part
 	! of the FV.  Add these to the intercept to iniatialize fvbig.
-	fvbig(:,:,1)=sum(omegaind*(fvparoc(4:7)))+fvparv(Gsizeoc+1)
+	fvbig(:,:,1)=sum(omegaind*(fvparv(4:8)))+fvparv(Gsizeoc+1)
 	do i=2,nctype+1
-		fvbig(:,:,i)=sum(omegaind*(fvpar(4:7,i))+fvpar(Gsize+1,i)
+		fvbig(:,:,i)=sum(omegaind*(fvpar(4:8,i)))+fvpar(Gsize+1,i)
 	end do 
 
 	! now subtract the 1*fvpar(6,1) from the one child family. NO need to do this anymore, age 2 is not in the interpolation.
@@ -709,7 +709,7 @@ subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,fvparv,p
 					inputs(3)=(wage(j)*(k-1.0d0)/2+wageh(j))*(1-cgrid(l))
 					As=pfone(inputs, constants,age,parameters,rho)
 					! first staying one child
-					fvbig(j,(k-1)*cgridsize+l,1)=fvbig(j,(k-1)*cgridsize+l,1)+As*fvpar(1)+As*(omega1(3)+(k-1.0d0)*0.5d0)*fvpar(10,i)
+					fvbig(j,(k-1)*cgridsize+l,1)=fvbig(j,(k-1)*cgridsize+l,1)+As*fvpar(1,i)+As*(omega1(3)+(k-1.0d0)*0.5d0)*fvpar(10,i)
 					! then becoming two child family
 					do i=1,nctype ! don't have types for jmpsimple, but keep the compatible for the future.
 						! how is my kid gonna be? depends on her type. with no UH, typevec is just the intercept of pf.
@@ -818,6 +818,7 @@ function emaxlate(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV
 	! same with husband income
 	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) 
 	! uh's for each h choice 
+	! income=consumption
 	uh0=uh(0.0d0,(wage+wageh),omega2(1:2),parU(3:7))
 	uhp=uh(0.5d0,(wage+wageh),omega2(1:2),parU(3:7))
 	uhf=uh(1.0d0,(wage+wageh),omega2(1:2),parU(3:7))
@@ -869,7 +870,7 @@ function emaxhc(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV,r
 	! uh is shock dependent and need to calculate wage income for each mc draw, which will equal to consumption because there is no child anymore.
 	wage=wagef(omega1(3),omega2(1), omega2(4), omega3(1), omega3(2), omega3(3),eps(:,4),omega4(3),parW(5:7),parW(1:4))  
 	! same with husband income
-	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) ! TODO figure out: parH, what is it? just b4 and b5?
+	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) 
 
 	! calculate utility levels associated with each of the h,c bundles.
 	do i=1,cgridsize
@@ -907,7 +908,6 @@ function emaxhcx(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV,
 	
 	!locals
 
-	! FIXME changing functions and ss and parameter space, cxgrid=xgrid might be ok
 	real(dble) uc
 	real(dble) wage(Nmc), wageh(Nmc)
 	real(dble), dimension(Nmc,cxgridsize)::uh0,uhp,uhf
@@ -923,11 +923,11 @@ function emaxhcx(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV,
 	! uh is shock dependent and need to calculate wage income for each mc draw, which will equal to consumption because there is no child anymore.
 	wage=wagef(omega1(3),omega2(1), omega2(4), omega3(1), omega3(2), omega3(3),eps(:,4),omega4(3),parW(5:7),parW(1:4))  
 	! same with husband income
-	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) ! TODO figure out: parH, what is it? just b4 and b5?
+	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH)  
 
 
 	! calculate utility levels associated with each of the h,c,x bundles. And fill Nmc x cgridsize*xgridsize matrices
-	do i=1,cgridsize   ! FIXME: watch out for this. probably need to get rid of the loop
+	do i=1,cgridsize  
 		do j=1,xgridsize
 			uh0(:,(i-1)*xgridsize+j)=uh(0.0d0,(wageh)*cgrid(i),omega2(1:2),parU(3:7))
 			uhp(:,(i-1)*xgridsize+j)=uh(0.50d0,(wage*0.50d0+wageh)*cgrid(i),omega2(1:2),parU(3:7))
@@ -937,7 +937,7 @@ function emaxhcx(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV,
 	
 	! get the future values associated with each h,c
 	! first calculate logw0
-	call fvhcx(fv,omega1, omega2,omega3, omega4,wage,wageh,parFV,parA)
+	call fvhcxalt(fv,omega1, omega2,omega3, omega4,wage,wageh,parFV,parA,rho)
 	
 	! now collect everything together
 	! So build the ingridients for a Nmcx cxgridsize (*3 matrix), including the shocks!!! 	
@@ -981,7 +981,7 @@ function emaxocfinal(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta)
 	! uh is shock dependent and need to calculate wage income for each mc draw, which will equal to consumption because there is no child anymore.
 	wage=wagef(omega1(3),omega2(1), omega2(4), omega3(1), omega3(2), omega3(3),eps(:,4),omega4(3),parW(5:7),parW(1:4))  
 	! same with husband income
-	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) ! TODO figure out: parH, what is it? just b4 and b5?      
+	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) 
 
 	
 	! uh's for each h choice 
@@ -1028,13 +1028,13 @@ function emaxoclate(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,par
 	! uh is shock dependent and need to calculate wage income for each mc draw, which will equal to consumption because there is no child anymore.
 	wage=wagef(omega1(3),omega2(1), omega2(4), omega3(1), omega3(2), omega3(3),eps(:,4),omega4(3),parW(5:7),parW(1:4))  
 	! same with husband income
-	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) ! TODO figure out: parH, what is it? just b4 and b5?      
+	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) 
 
 	! uh's for each h choice 
 	uh0=uhoc(0.0d0,(wageh),omega2(1),parU(3:7))
 	uhp=uhoc(0.5d0,(wage*0.5d0+wageh),omega2(1),parU(3:7))
 	uhf=uhoc(1.0d0,(wage+wageh),omega2(1),parU(3:7))
-	! terminal values calcuted, for now using a very simple thing
+	! future values calcuted and added.
 	call fvoclate(FV,omega1, omega2,omega3,omega4,parFV)
 	! distribute choice specific current returns to a Nmcx3 matrix
 	umat(:,1)=uc+uh0+eps(:,1)
@@ -1110,7 +1110,7 @@ end function emaxochc
 !> a possibility. So the mother chooses not only h and c but also b, her contraceptive
 !> choice. 
 
-function emaxochcb(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV,parB,typevec,typeprob)
+function emaxochcb(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV,parFVv,parB,typevec,typeprob,rho)
 	implicit none
 	
 	real(dble) emaxochcb 									!< output
@@ -1120,12 +1120,14 @@ function emaxochcb(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parF
 	real(dble), intent(in):: omega4(:) 						!< omega4: types
 	real(dble), intent(in):: eps(Nmc,shocksize3) 			!< random draw for MC integration for h and b
 															!< shocks for contraception decision.
-	real(dble),intent(in)::parA(:), parU(:),parW(:),parH(:) 			!< parameter vectors except for Sigma and beta
-	real(dble),intent(in)::parFV(:,:) 									!< interpolating function parameters	
-	real(dble),intent(in)::beta 										!< discount factor
+	real(dble),intent(in)::parA(:), parU(:),parW(:),parH(:) 	!< parameter vectors except for Sigma and beta
+	real(dble),intent(in)::parFV(:,:) 						!< interpolating function parameter, second dimension for child types
+	real(dble), intent(in) :: parFVv(:) 					!< interpolating function parameters for one child regime.
+	real(dble),intent(in)::beta 							!< discount factor
 	real(dble),intent(in)::typevec(:)			!< the array of values type of the second child can take
 	real(dble),intent(in)::typeprob(:) 			!< conditional(on mom's type) probability of each type for second child
-	real(dble),intent(in)::parB(Bsize+2) 		!< parameters of the birth probability function 
+	real(dble),intent(in)::parB(Bsizeexo+1) 		!< parameters of the birth probability function 
+	real(dble), intent(in) :: rho
 	! TODO parB dimensions check
 	!locals
 
@@ -1171,7 +1173,7 @@ function emaxochcb(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parF
 	umat(:,2*cgridsize+1:3*cgridsize)=uhf+uc+sidestack(eps(:,3),cgridsize)
 
 	! get the future values
-	call fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,parFV,parA,parB,typevec,typeprob)
+	call fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,parFV,parFVv,parA,parB,typevec,typeprob,rho)
 
 	
 	! add the fv
@@ -1406,7 +1408,7 @@ subroutine coeflate(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,par
 end subroutine coeflate
 
 
-subroutine coefhc(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV)
+subroutine coefhc(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV,rho)
 	implicit none
 	real(dble), intent(out) :: coef(Gsize+1)
 	real(dble), intent(in) :: mutype(:)
@@ -1415,6 +1417,7 @@ subroutine coefhc(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV
 	real(dble), intent(in):: sigma(shocksize1,shocksize1) 				!< variance covariance matrix
 	real(dble), intent(in)::period 										!< what period we are in, or age of the first born
 	real(dble), intent(in)::delta 										!< delta type of the family
+	real(dble), intent(in) :: rho
 	! locals
 	real(dble) vemax(nintp)            ! to collect emaxs, vector emax
 	real(dble) mss(nintp,Ssize) 		! to collect SS elements, matrix state space
@@ -1436,7 +1439,7 @@ subroutine coefhc(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV
 	! get a set of llms, which are fixed
 	call random_seed(put=(/int(1000*period+delta),1/))
 	call random_number(llmsvec)
-	llmvec=llmsvec*0.1d0    ! 10% unemployment rate max.
+	llmsvec=llmsvec*0.1d0    ! 10% unemployment rate max.
 	mu=0.0d0
 	counter=1
 	do p=1,sveca1 											! A1
@@ -1473,7 +1476,7 @@ subroutine coefhc(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV
 
 end subroutine coefhc
 
-subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV)
+subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV,rho)
 	implicit none
 	real(dble), intent(out) :: coef(Gsize+1)
 	real(dble), intent(in) :: mutype(:)
@@ -1482,6 +1485,7 @@ subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parF
 	real(dble), intent(in):: sigma(shocksize1,shocksize1) 				!< variance covariance matrix
 	real(dble), intent(in)::period 										!< what period we are in, or age of the first born
 	real(dble), intent(in)::delta 										!< delta type of the family
+	real(dble), intent(in) :: rho
 	! locals
 	real(dble) vemax(nintp)            ! to collect emaxs, vector emax
 	real(dble) mss(nintp,Ssize) 		! to collect SS elements, matrix state space
@@ -1503,7 +1507,7 @@ subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parF
 	! get a set of llms, which are fixed
 	call random_seed(put=(/int(1000*period+delta),1/))
 	call random_number(llmsvec)
-	llmvec=llmsvec*0.1d0    ! 10% unemployment rate max.
+	llmsvec=llmsvec*0.1d0    ! 10% unemployment rate max.
 	mu=0.0d0
 	counter=1
 	do p=1,sveca1 											! A1
@@ -1520,7 +1524,7 @@ subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parF
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
 										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/int(period*10+delta),counter/))
 										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
-										vemax(counter)=emaxhcx(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV)
+										vemax(counter)=emaxhcx(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,rho)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
 										!print *, 'counter at', counter, 'calculated', vemax(counter)
 										counter=counter+1
@@ -1550,7 +1554,7 @@ end subroutine coefhcx
 !> one child version of coefoc
 subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 	implicit none
-	real(dble), intent(out) :: coef(Gsize+1)
+	real(dble), intent(out) :: coef(Gsizeoc+1)
 	real(dble), intent(in) :: mutype(:) 								!< mu1,0.0d0,mum
 	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:) 			!< parameter vectors except for Sigma and beta
 	real(dble), intent(in):: beta 										!< discount factor
@@ -1566,10 +1570,10 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 	integer counter
 	real(dble) mu(shocksize1)
 	real(dble) eps(Nmc,shocksize1)
-	real(dble) tmss(nintpoc,Gsize+1)
+	real(dble) tmss(nintpoc,Gsizeoc+1)
 
 	! lapack stuff
- 	real(dble) work(Gsize+Gsize*blocksize)
+ 	real(dble) work(Gsizeoc+Gsizeoc*blocksize)
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
@@ -1577,7 +1581,7 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 	! get a set of llms, which are fixed
 	call random_seed(put=(/int(1000*period+1),1/))
 	call random_number(llmsvec)
-	llmvec=llmsvec*0.1d0    ! 10% unemployment rate max.
+	llmsvec=llmsvec*0.1d0    ! 10% unemployment rate max.
 	mu=0.0d0
 	counter=1
 
@@ -1610,13 +1614,13 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 	end do
 
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space FIXME troc_late
-	call DGELS('N',nintpoc,Gsize,1,tmss, nintpoc, vemax, nintpoc,work, Gsize+(Gsize)*blocksize,info)
-	coef=(/vemax(1),0.0d0,vemax(2:Gsize)/)
+	call DGELS('N',nintpoc,Gsizeoc,1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
+	coef=vemax(1:Gsizeoc+1)
 end subroutine coefocfinal
 
 subroutine coefoclate(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	implicit none
-	real(dble), intent(out) :: coef(Gsize+1)
+	real(dble), intent(out) :: coef(Gsizeoc+1)
 	real(dble), intent(in) :: mutype(:)
 	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:), parFV(:)	!< parameter vectors except for Sigma and beta
 	real(dble), intent(in):: beta 										!< discount factor
@@ -1632,10 +1636,10 @@ subroutine coefoclate(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	integer counter
 	real(dble) mu(shocksize1)
 	real(dble) eps(Nmc,shocksize1)
-	real(dble) tmss(nintpoc,Gsize)
+	real(dble) tmss(nintpoc,Gsizeoc)
 
 	! lapack stuff
- 	real(dble) work(Gsize+Gsize*blocksize)
+ 	real(dble) work(Gsizeoc+Gsizeoc*blocksize)
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
@@ -1643,7 +1647,7 @@ subroutine coefoclate(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	! get a set of llms, which are fixed
 	call random_seed(put=(/int(1000*period+1),1/))
 	call random_number(llmsvec)
-	llmvec=llmsvec*0.1d0    ! 10% unemployment rate max.
+	llmsvec=llmsvec*0.1d0    ! 10% unemployment rate max.
 	mu=0.0d0
 	counter=1
 	do p=1,sveca1 											! A1
@@ -1675,20 +1679,21 @@ subroutine coefoclate(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	end do
 
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space FIXME
-	call DGELS('N',nintpoc,Gsize,1,tmss, nintpoc, vemax, nintpoc,work, Gsize+(Gsize)*blocksize,info)
+	call DGELS('N',nintpoc,Gsizeoc,1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
 	! add a zero for the second child A2
-	coef=(/vemax(1),0.0d0,vemax(2:Gsize)/)
+	coef=vemax(1:Gsizeoc+1)
 end subroutine coefoclate
 
 
-subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
+subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,rho)
 	implicit none
-	real(dble), intent(out) :: coef(Gsize+1)
+	real(dble), intent(out) :: coef(Gsizeoc+1)
 	real(dble), intent(in) :: mutype(:)
 	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:), parFV(:)	!< parameter vectors except for Sigma and beta
 	real(dble), intent(in):: beta 										!< discount factor
 	real(dble), intent(in):: sigma(shocksize1,shocksize1) 				!< variance covariance matrix
 	real(dble), intent(in)::period 										!< what period we are in, or age of the first born
+	real(dble), intent(in) :: rho
 	! locals
 	real(dble) vemax(nintpoc)            ! to collect emaxs, vector emax
 	real(dble) mss(nintpoc,Ssize) 		! to collect SS elements, matrix state space
@@ -1699,10 +1704,10 @@ subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	integer counter
 	real(dble) mu(shocksize1)
 	real(dble) eps(Nmc,shocksize1)
-	real(dble) tmss(nintpoc,Gsize)
+	real(dble) tmss(nintpoc,Gsizeoc)
 
 	! lapack stuff
- 	real(dble) work(Gsize+Gsize*blocksize)
+ 	real(dble) work(Gsizeoc+Gsizeoc*blocksize)
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
@@ -1710,7 +1715,7 @@ subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	! get a set of llms, which are fixed
 	call random_seed(put=(/int(1000*period+1),1/))
 	call random_number(llmsvec)
-	llmvec=llmsvec*0.1d0    ! 10% unemployment rate max.
+	llmsvec=llmsvec*0.1d0    ! 10% unemployment rate max.
 	
 	mu=0.0d0
 	counter=1
@@ -1722,7 +1727,7 @@ subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 						!do j=1,svecage0f 					! age0f
 							do k=1,svecsch0m 				! schoolingm
 								do l=1,svecaqft 			! afqt
-									do m=1,svecsch0f		! schooligf
+									do m=1,svecomegaf		! schooligf
 										omega1=(/veca1(p),0.0d0,vecE(r)/)	
 										omega2=(/period,0.0d0,period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
@@ -1743,25 +1748,25 @@ subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	end do
 
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space FIXME troc_late
-	call DGELS('N',nintpoc,Gsize,1,tmss, nintpoc, vemax, nintpoc,work, Gsize+(Gsize)*blocksize,info)
-	! add a zero for the second child A2
-	coef=(/vemax(1),0.0d0,vemax(2:Gsize)/)
+	call DGELS('N',nintpoc,Gsizeoc,1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
+	coef=vemax(1:Gsizeoc+1)
 end subroutine coefochc
 
 
 
 
 !> subroutine to pick some ss points and calculate emaxs and get regression coefficients for one child families fertile period
-subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,parB,typevec,typeprob)
+subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,parFVv,parB,typevec,typeprob,rho)
 	implicit none
-	real(dble), intent(out) :: coef(Gsize+1)
+	real(dble), intent(out) :: coef(Gsizeoc+1)
 	real(dble), intent(in) :: mutype(:)
-	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:), parFV(:,:)	!< parameter vectors except for Sigma and beta, parFV is
-																			!< of size (Gsize,
+	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:), parFV(:,:),parFVv(:)	!< parameter vectors except for Sigma and beta, parFV is
+																			!< of size (Gsizeoc,
 	real(dble), intent(in):: beta 										!< discount factor 
 	real(dble), intent(in) :: sigma(shocksize3,shocksize3)
 	real(dble), intent(in)::period 										!< what period we are in, or age of the first born
-	real(dble), intent(in) :: typevec(nctype),typeprob(nctype),parB(Bsize+2)
+	real(dble), intent(in) :: typevec(nctype),typeprob(nctype),parB(Bsizeexo+1)
+	real(dble), intent(in) :: rho
 	! locals
 	real(dble) vemax(nintpoc)            ! to collect emaxs, vector emax
 	real(dble) mss(nintpoc,Ssize) 		! to collect SS elements, matrix state space
@@ -1772,10 +1777,10 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 	integer counter
 	real(dble) mu(shocksize3)
 	real(dble) eps(Nmc,shocksize3)
-	real(dble) tmss(nintpoc,Gsize)
+	real(dble) tmss(nintpoc,Gsizeoc)
 
 	! lapack stuff
- 	real(dble) work(Gsize+Gsize*blocksize)
+ 	real(dble) work(Gsizeoc+Gsizeoc*blocksize)
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
@@ -1783,7 +1788,7 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 	! get a set of llms, which are fixed
 	call random_seed(put=(/int(1000*period+1),1/))
 	call random_number(llmsvec)
-	llmvec=llmsvec*0.1d0    ! 10% unemployment rate max.
+	llmsvec=llmsvec*0.1d0    ! 10% unemployment rate max.
 	
 	mu=0.0d0
 	counter=1
@@ -1795,13 +1800,13 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 						!do j=1,svecage0f 					! age0f
 							do k=1,svecsch0m 				! schoolingm
 								do l=1,svecaqft 			! afqt
-									do m=1,svecsch0f		! schooligf
-										omega1=(/veca1(p),0.0d0,vecE(r))	
+									do m=1,svecomegaf		! schooligf
+										omega1=(/veca1(p),0.0d0,vecE(r)/)	
 										omega2=(/period,0.0d0,period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
 										eps=randmnv(Nmc,shocksize3,mu,sigma, 3,1,(/int(period*10+1),counter/))
 										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
-										vemax(counter)=emaxochcb(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,parB,typevec,typeprob)
+										vemax(counter)=emaxochcb(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,parFVv,parB,typevec,typeprob,rho)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
 										!print *, 'counter at', counter, 'calculated', vemax(counter)
 										counter=counter+1
@@ -1816,140 +1821,138 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 	end do
 
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space troc_late
-	call DGELS('N',nintpoc,Gsize,1,tmss, nintpoc, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
-	! PUT A ZERO for the coefficient of A2
-	coef=(/vemax(1),0.0d0,vemax(2:Gsize)/)
-
+	call DGELS('N',nintpoc,Gsizeoc,1,tmss, nintpoc, vemax, nintp,work, Gsizeoc+(Gsizeoc)*blocksize,info)
+	coef=vemax(1:Gsizeoc+1)
 end subroutine coefochcb
 ! ####################################END OF COEF_ ROUTINES##############################################
 
 !>Main subroutine that solves the model for an unobserved type of a two child family. It produces a set of interpolating
 !>coefficients for each time period for each type of delta.
-subroutine wsolver(solw,ftype,parA,parW,parH,parU,beta,Sigma)
-	implicit none
-	real(dble), intent(out):: solw(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2) !< collects solution coef.
-																				 !empty elements are marked -10000000
-    real(dble), intent(in) ::  ftype(5) 				!< family unobserved type. mu1,mu2,mu_m,alpha,alpha1
-	real(dble), intent(in) :: parA(:),parW(:),parH(:),parU(:),beta,Sigma(:,:)
+!subroutine wsolver(solw,ftype,parA,parW,parH,parU,beta,Sigma)
+	!implicit none
+	!real(dble), intent(out):: solw(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2) !< collects solution coef.
+																				 !!empty elements are marked -10000000
+    !real(dble), intent(in) ::  ftype(5) 				!< family unobserved type. mu1,mu2,mu_m,alpha,alpha1
+	!real(dble), intent(in) :: parA(:),parW(:),parH(:),parU(:),beta,Sigma(:,:)
 
-	! locals
-	integer period, delta
-	real(dble) coef(Gsize+1)
-	real(dble) coefnew(Gsize+1)
-	real(dble) paractualU(size(parU))
-	! -------------------------ACTION-----------------------------------
-	! 
-	! fill up the sol with -10^7
-	solw=-10000000.0d0
-	period=22
-	! insert the heterogenous parameters to their places
-	paractualU=parU	
-	paractualU(2:3)=ftype(4:5)
+	!! locals
+	!integer period, delta
+	!real(dble) coef(Gsize+1)
+	!real(dble) coefnew(Gsize+1)
+	!real(dble) paractualU(size(parU))
+	!! -------------------------ACTION-----------------------------------
+	!! 
+	!! fill up the sol with -10^7
+	!solw=-10000000.0d0
+	!period=22
+	!! insert the heterogenous parameters to their places
+	!paractualU=parU	
+	!paractualU(2:3)=ftype(4:5)
 	
-	! the big loop to get all the coefficients
-	do delta=7,2,-1
-		! first get the final period solution for all delta 	
-		call coeffinal(coef,22.0d0,delta*1.0d0,ftype(1:3),parA,paractualU,parW,parH,beta,sigma)
- 		! store these guys
- 		solw(:,22,delta)=coef
-		do period=21, delta, -1
-			! here we have to use the correct coef function depending on the period and delta
+	!! the big loop to get all the coefficients
+	!do delta=7,2,-1
+		!! first get the final period solution for all delta 	
+		!call coeffinal(coef,22.0d0,delta*1.0d0,ftype(1:3),parA,paractualU,parW,parH,beta,sigma)
+         !! store these guys
+         !solw(:,22,delta)=coef
+		!do period=21, delta, -1
+			!! here we have to use the correct coef function depending on the period and delta
 			
-			! if the second kid is also out of the zone of mother's influence, use coeflate
-			if (period>astar+delta-1) then 			
-				call coeflate(coefnew,period*1.0d0,delta*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,coef)
-			!print*, '------------------ delta= ', delta, ' --------------------'
-			!print*, 'Calculated coef for late period'
-			!print*, 'period is ', period
-			!print*, 'coef is ', coefnew
-			! second kid is influenced by the mother but not the first one.
-			else if ((period<=astar+delta-1).AND.(astar<=period)) then
-				call coefhc(coefnew, period*1.0d0, delta*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma, coef)
-			!print*, '------------------ delta= ', delta, ' --------------------'
-			!print*, 'Calculated coef for hc period'
-			!print*, 'period is ', period
-			!print*, 'coef is ', coefnew
-			! period less than 15 but >=delta, so mom also chooses x
-			else
-				call coefhcx(coefnew, period*1.0d0, delta*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma, coef)
-			!print*, '------------------ delta= ', delta, ' --------------------'
-			!print*, 'Calculated coef for hcx period'
-			!print*, 'period is ', period
-			!print*, 'coef is ', coefnew
-			end if
+			!! if the second kid is also out of the zone of mother's influence, use coeflate
+			!if (period>astar+delta-1) then 			
+				!call coeflate(coefnew,period*1.0d0,delta*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,coef)
+			!!print*, '------------------ delta= ', delta, ' --------------------'
+			!!print*, 'Calculated coef for late period'
+			!!print*, 'period is ', period
+			!!print*, 'coef is ', coefnew
+			!! second kid is influenced by the mother but not the first one.
+			!else if ((period<=astar+delta-1).AND.(astar<=period)) then
+				!call coefhc(coefnew, period*1.0d0, delta*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma, coef,rho)
+			!!print*, '------------------ delta= ', delta, ' --------------------'
+			!!print*, 'Calculated coef for hc period'
+			!!print*, 'period is ', period
+			!!print*, 'coef is ', coefnew
+			!! period less than 15 but >=delta, so mom also chooses x
+			!else
+				!call coefhcx(coefnew, period*1.0d0, delta*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma, coef,rho)
+			!!print*, '------------------ delta= ', delta, ' --------------------'
+			!!print*, 'Calculated coef for hcx period'
+			!!print*, 'period is ', period
+			!!print*, 'coef is ', coefnew
+			!end if
 			
-			! now store these coefficients properly
-			solw(:,period,delta)=coefnew
-			! and update the coef vector for use in the previous period
-			coef=coefnew
-		end do
-	end do
-end subroutine wsolver
+			!! now store these coefficients properly
+			!solw(:,period,delta)=coefnew
+			!! and update the coef vector for use in the previous period
+			!coef=coefnew
+		!end do
+	!end do
+!end subroutine wsolver
 
-!> Main routine that will get the interpolating coefficients for one child families. Main difference of it from wsolver is the fact
-!> that it needs the output from the wsolver for each type of second child.
-subroutine vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoef,typevec,typeprob)
-	implicit none
-	real(dble), intent(out):: solv(Gsize+1, nperiods) !< collects solution coef.
-    real(dble), intent(in) ::  ftype(5) 				!< family unobserved type. mu1,mu2,mu_m,alpha,alpha1
-	real(dble), intent(in) :: parA(:),parW(:),parH(:),parU(:),beta,Sigma(:,:),parB(:),typevec(:), typeprob(:)
-	real(dble), intent(in) :: wcoef(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2,nctype)
+!!> Main routine that will get the interpolating coefficients for one child families. Main difference of it from wsolver is the fact
+!!> that it needs the output from the wsolver for each type of second child.
+!subroutine vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoef,typevec,typeprob,rho)
+	!implicit none
+	!real(dble), intent(out):: solv(Gsize+1, nperiods) !< collects solution coef.
+    !real(dble), intent(in) ::  ftype(5) 				!< family unobserved type. mu1,mu2,mu_m,alpha,alpha1
+	!real(dble), intent(in) :: parA(:),parW(:),parH(:),parU(:),beta,Sigma(:,:),parB(:),typevec(:), typeprob(:),rho
+	!real(dble), intent(in) :: wcoef(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2,nctype)
 
-	! THE DIFFERENCE: ftype has zero for the second child's A. It is as (mu1,0.0d0, mum, alpha, alpha1)
-	! locals
-	integer period, delta
-	real(dble) coef(Gsize+1)
-	real(dble) coefnew(Gsize+1)
-	real(dble) paractualU(size(parU))
-	real(dble) parFV(Gsize+1, nctype+1)
-	! 
-	! fill up the sol with -10^7
-	solv=-10000000.0d0
-	period=22
-	! insert the heterogenous parameters to their places
-	paractualU=parU	
-	paractualU(2:3)=ftype(4:5)
-	! first get the final coefficient.
-	call coefocfinal(coef,22.0d0,ftype(1:3),parA,paractualU,parW,parH,beta,sigma)
-	! store these guys
-	solv(:,22)=coef
-	do period=21,1, -1
-		! if the kid is  out of the zone of mother's influence, use coefoclate
-		if (period>=astar) then 			
-			call coefoclate(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,coef)
-			!print*, 'Calculated coef for late period'
-			!print*, 'period is ', period
-			!print*, 'late period=',period,'coef is ', coefnew
-		! first kid is affected by the mom, but mom is out of the fecund period. 
-		else if ((period<astar).AND.(deltamax<=period)) then
-			call coefochc(coefnew, period*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma, coef)
-			!print*, 'Calculated coef for hc  period'
-			!print*, 'period is ', period
-			!print*, 'coef is ', coefnew
-		else
-		! period less than astar, and mother still decides on contraception so a second baby is still in cards.
-		! this one is complicated because it has to properly take not only the coefficients estimated in the earlier iterations in
-		! the loop but also coefficients estimated by the wsolver, because mothers can switch to a two child regime. And this
-		! requires the knowledge w coefficients for all possible types of second child.
+	!! THE DIFFERENCE: ftype has zero for the second child's A. It is as (mu1,0.0d0, mum, alpha, alpha1)
+	!! locals
+	!integer period, delta
+	!real(dble) coef(Gsize+1)
+	!real(dble) coefnew(Gsize+1)
+	!real(dble) paractualU(size(parU))
+	!real(dble) parFV(Gsize+1, nctype+1)
+	!! 
+	!! fill up the sol with -10^7
+	!solv=-10000000.0d0
+	!period=22
+	!! insert the heterogenous parameters to their places
+	!paractualU=parU	
+	!paractualU(2:3)=ftype(4:5)
+	!! first get the final coefficient.
+	!call coefocfinal(coef,22.0d0,ftype(1:3),parA,paractualU,parW,parH,beta,sigma)
+	!! store these guys
+	!solv(:,22)=coef
+	!do period=21,1, -1
+		!! if the kid is  out of the zone of mother's influence, use coefoclate
+		!if (period>=astar) then 			
+			!call coefoclate(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,coef)
+			!!print*, 'Calculated coef for late period'
+			!!print*, 'period is ', period
+			!!print*, 'late period=',period,'coef is ', coefnew
+		!! first kid is affected by the mom, but mom is out of the fecund period. 
+		!else if ((period<astar).AND.(deltamax<=period)) then
+			!call coefochc(coefnew, period*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma,coef,rho)
+			!!print*, 'Calculated coef for hc  period'
+			!!print*, 'period is ', period
+			!!print*, 'coef is ', coefnew
+		!else
+		!! period less than astar, and mother still decides on contraception so a second baby is still in cards.
+		!! this one is complicated because it has to properly take not only the coefficients estimated in the earlier iterations in
+		!! the loop but also coefficients estimated by the wsolver, because mothers can switch to a two child regime. And this
+		!! requires the knowledge w coefficients for all possible types of second child.
 	
-		! one child regime fv parameters
-		parFV(:,1)=coef
-		! and parameters of fv for two child regime, with all possible child types for the second one.
-		parFV(:,2:nctype+1)=wcoef(:,period+1,period+1,:)
-			call coefochcb(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,parFV,parB,typevec,typeprob)
+		!! one child regime fv parameters
+		!parFV(:,1)=coef
+		!! and parameters of fv for two child regime, with all possible child types for the second one.
+		!parFV(:,2:nctype+1)=wcoef(:,period+1,period+1,:)
+			!call coefochcb(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,parFV,parB,typevec,typeprob,rho)
 			
-			!print*, 'Calculated coef for hcB  period'
-			!print*, 'period is ', period
-			!print*, 'coef is ', coefnew
-		end if
+			!!print*, 'Calculated coef for hcB  period'
+			!!print*, 'period is ', period
+			!!print*, 'coef is ', coefnew
+		!end if
 		
-		! now store these coefficients properly
-		solv(:,period)=coefnew
-		! and update the coef vector for use in the previous period
-		coef=coefnew
-	end do
-	!if (sum(ftype)-999==2)	print*,'inside the vsolver, ftype=',ftype,'final coef=',solv
-end subroutine vsolver 
+		!! now store these coefficients properly
+		!solv(:,period)=coefnew
+		!! and update the coef vector for use in the previous period
+		!coef=coefnew
+	!end do
+	!!if (sum(ftype)-999==2)	print*,'inside the vsolver, ftype=',ftype,'final coef=',solv
+!end subroutine vsolver 
 
 
 ! ##############      END OF SOLVERS     #########################
@@ -2003,7 +2006,7 @@ subroutine troc_late(tmss, mss,n)
 	implicit none
 	integer, intent(in):: n 				!< the number of rows in the matrix to be transformed
 	real(dble), intent(in) :: mss(n,Ssize) 	!< matrix holding a subset of ss in its rows
-	real(dble), intent(out) :: tmss(n,Gsizeoc) !<regression matrix 
+	real(dble), intent(out) :: tmss(n,Gsizeoc+1) !<regression matrix 
 
 	tmss(:,1)=mss(:,1) 				! A1
 	tmss(:,2)=mss(:,3) 				! E
@@ -2024,8 +2027,8 @@ subroutine ftr_late(tfss,fss,n)
 	real(dble), intent(out) :: tfss(Gsize+1,n)
 	real(dble), intent(in) ::  fss(SSize,n)
 	tfss(1:3,:)=fss(1:3,:)
-	tfss(4:7,:)=fss(6:9,:) 		!< age of the children are constant for a period and delta, so skip those 
- 	tfss(8,:)=fss(11,:)
+	tfss(4:7,:)=fss(6:9,:) 		! age of the children are constant for a period and delta, so skip those 
+ 	tfss(8,:)=fss(11,:) 		!age0m is perfectly correlated with mother's current age for a given t and delta, so skip it.
  	tfss(9:11,:)=fss(1:3,:)**2
  	tfss(12,:)=fss(1,:)*fss(2,:)
  	tfss(13,:)=fss(1,:)*fss(3,:)
@@ -2038,7 +2041,7 @@ end subroutine ftr_late
 subroutine ftroc_late(tfss,fss,n)
 	implicit none
 	integer,intent(in):: n
-	real(dble), intent(out) :: tfss(Gsize,n)
+	real(dble), intent(out) :: tfss(Gsizeoc+1,n)
 	real(dble), intent(in) ::  fss(SSize,n)
 	tfss(1,:)=fss(1,:)
 	tfss(2,:)=fss(3,:)
@@ -2058,10 +2061,10 @@ end subroutine ftroc_late
 subroutine ftr_hc(tfss,fss,n,m)
 	integer,intent(in):: n,m
 	real(dble), intent(in) :: fss(SSize,n,m)
-	real(dble), intent(out) :: tfss(GSize1+1,n,m)
+	real(dble), intent(out) :: tfss(GSize+1,n,m)
 	tfss(1:3,:,:)=fss(1:3,:,:)
 	tfss(4:7,:,:)=fss(6:9,:,:) 		!< age of the children are constant for a period and delta, so skip those 
- 	tfss(8,:)=fss(11,:)
+ 	tfss(8,:,:)=fss(11,:,:)
  	tfss(9:11,:,:)=fss(1:3,:,:)**2
  	tfss(12,:,:)=fss(1,:,:)*fss(2,:,:)
  	tfss(13,:,:)=fss(1,:,:)*fss(3,:,:)
@@ -2074,17 +2077,16 @@ end subroutine ftr_hc
 subroutine ftroc_hc(tfss,fss,n,m)
 	integer,intent(in):: n,m
 	real(dble), intent(in) :: fss(SSize,n,m)
-	real(dble), intent(out) :: tfss(GSize1+1,n,m)
+	real(dble), intent(out) :: tfss(GSizeoc+1,n,m)
 	tfss(1,:,:)=fss(1,:,:)
 	tfss(2,:,:)=fss(3,:,:)
 	tfss(3:6,:,:)=fss(6:9,:,:) 		!< age of the children are constant for a period and delta, so skip those 
- 	tfss(7,:)=fss(11,:)
- 	tfss(8:10,:,:)=fss(1:3,:,:)**2
- 	tfss(11,:,:)=fss(1,:,:)*fss(2,:,:)
- 	tfss(12,:,:)=fss(1,:,:)*fss(3,:,:)
- 	tfss(13,:,:)=fss(2,:,:)*fss(3,:,:)
+ 	tfss(7,:,:)=fss(11,:,:)
+ 	tfss(8,:,:)=fss(1,:,:)**2
+ 	tfss(9,:,:)=fss(3,:,:)**2
+ 	tfss(10,:,:)=fss(1,:,:)*fss(3,:,:)
 	! new: add ones for the intercept
-	tfss(Gsize,:,:)=1.0d0
+	tfss(Gsizeoc+1,:,:)=1.0d0
 end subroutine ftroc_hc
 
 
