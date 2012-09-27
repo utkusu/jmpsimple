@@ -15,7 +15,7 @@ real(dble) omega1(3),omega2(4),omega3(4),eps(Nmc,shocksize1)
 real(dble) ftype(5)
 real(dble) solw(Gsize,nperiods-deltamin+2)
 real(dble) sollw(Gsize+1,nperiods-deltamin+2)
-real(dble) wcoef(Gsize+1,nperiods-deltamin+2,deltamax-deltamin+2,2)
+real(dble) wcoeff(Gsize+1,nperiods-deltamin+2,deltamax-deltamin+2,nctype)
 real(dble) solv(Gsizeoc+1,nperiods)
 real(dble) parB(Bsizeexo+1)
 real(dble) typevec(1)
@@ -40,52 +40,52 @@ eps=0.0d0
 ftype=(/0.d0,999.999d0, 0.0d0,1.5d0,1.0d0/)
 typevec=0.5d0
 typeprob=1.0d0
-wcoef=1.0d0
+wcoeff=1.0d0
 ! try the coefochcb
 parB=0.8d0
-print*, emaxlate(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV)
-print*, emaxhc(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,1.0d0)
-print*, emaxhcx(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,1.0d0)
-print*, emaxoclate(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFVv)
-print*, emaxochc(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFVv,1.0d0)
-print*, emaxochcb(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFVmat,parFVv,parB,typevec,typeprob,1.0d0)
+!print*, emaxlate(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV)
+!print*, emaxhc(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,1.0d0)
+!print*, emaxhcx(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,1.0d0)
+!print*, emaxoclate(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFVv)
+!print*, emaxochc(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFVv,1.0d0)
+!print*, emaxochcb(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFVmat,parFVv,parB,typevec,typeprob,1.0d0)
 
-call coeffinal(coef, 3.0d0, 2.0d0, mutype, parA, parU,parW,parH,beta,sigma)
+!call coeffinal(coef, 3.0d0, 2.0d0, mutype, parA, parU,parW,parH,beta,sigma)
 
 
-print*, coef
-print*, '--------------------------------------------'
-call coeflate(coef, 3.0d0, 2.0d0, mutype, parA, parU,parW,parH,beta,sigma,parFV)
-print*, coef
-print*, '--------------------------------------------'
+!print*, coef
+!print*, '--------------------------------------------'
+!call coeflate(coef, 3.0d0, 2.0d0, mutype, parA, parU,parW,parH,beta,sigma,parFV)
+!print*, coef
+!print*, '--------------------------------------------'
 
-call coefhc(coef, 3.0d0, 2.0d0, mutype, parA, parU,parW,parH,beta,sigma,parFV,1.0d0)
+!call coefhc(coef, 3.0d0, 2.0d0, mutype, parA, parU,parW,parH,beta,sigma,parFV,1.0d0)
 
-call coefhcx(coef, 3.0d0, 2.0d0, mutype, parA, parU,parW,parH,beta,sigma,parFV,1.0d0)
-print*, coef
-print*, '--------------------------------------------'
+!call coefhcx(coef, 3.0d0, 2.0d0, mutype, parA, parU,parW,parH,beta,sigma,parFV,1.0d0)
+!print*, coef
+!print*, '--------------------------------------------'
 
-call coefocfinal(coefoc, 3.0d0, mutype, parA, parU,parW,parH,beta,sigma)
+!call coefocfinal(coefoc, 3.0d0, mutype, parA, parU,parW,parH,beta,sigma)
 
-print*, coefoc
-print*, '--------------------------------------------'
+!print*, coefoc
+!print*, '--------------------------------------------'
 
-call coefoclate(coefoc, 3.0d0, mutype, parA, parU,parW,parH,beta,sigma,parFVv)
-print*, coefoc
-print*, '--------------------------------------------'
-call coefochc(coefoc, 3.0d0, mutype, parA, parU,parW,parH,beta,sigma,parFVv,1.0d0)
-print*, coefoc
-print*, '--------------------------------------------'
+!call coefoclate(coefoc, 3.0d0, mutype, parA, parU,parW,parH,beta,sigma,parFVv)
+!print*, coefoc
+!print*, '--------------------------------------------'
+!call coefochc(coefoc, 3.0d0, mutype, parA, parU,parW,parH,beta,sigma,parFVv,1.0d0)
+!print*, coefoc
+!print*, '--------------------------------------------'
 
-call coefochcb(coefoc, 3.0d0, mutype, parA, parU,parW,parH,beta,sigma,parFVmat,parFVv,parB,typevec,typeprob,1.0d0)
-print*, coefoc
-print*, '--------------------------------------------'
+!call coefochcb(coefoc, 3.0d0, mutype, parA, parU,parW,parH,beta,sigma,parFVmat,parFVv,parB,typevec,typeprob,1.0d0)
+!print*, coefoc
+!print*, '--------------------------------------------'
 !call wsolver(solw,ftype,parA,parW,parH,parU,beta,Sigma)
 !call vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoefficients,typevec,typeprob)
 
 !call wsolver(sollw,3.0d0,ftype,parA,parW,parH,parU,beta,Sigma,1.0d0)
 
 !print *,sollw(:,4)
-call vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoef,typevec,typeprob,1.0d0)
+call vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoeff,typevec,typeprob,1.0d0)
 print*, solv(:,3)
 end program try

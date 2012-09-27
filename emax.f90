@@ -632,8 +632,8 @@ subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,fvparv,p
 	real(dble), intent(in):: omega2(:) 				!< omega2: exogenous dynamic
 	real(dble), intent(in):: omega3(:) 				!< omega3: static
 	real(dble), intent(in):: omega4(:) 				!< omega4: type
-	real(dble), intent(in):: fvpar(:,:) 			!< interpolating parameters, now in a matrix form, size (Gsize,nctype), 
-	real(dble), intent(in) :: fvparv(:) 			!< interpolating parameters for one child regime.
+	real(dble), intent(in):: fvpar(Gsize+1,nctype) 	!< interpolating parameters, now in a matrix form, size (Gsize,nctype), 
+	real(dble), intent(in) :: fvparv(Gsizeoc+1) 	!< interpolating parameters for one child regime.
 	real(dble), intent(in):: parA(:) 				!< parameters of the production function
 	real(dble), intent(in):: wage(:),wageh(:) 		!< wages of parents, Nmcx1 each
 	real(dble), intent(in) :: typevec(:)			!< the array of values type of the second child can take, =nctype
@@ -669,8 +669,8 @@ subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,fvparv,p
 	! 2: extract the relevant part from the fvpar vector and multiply with the transformed omegaind to fill in the first part
 	! of the FV.  Add these to the intercept to iniatialize fvbig.
 	fvbig(:,:,1)=sum(omegaind*(fvparv(4:8)))+fvparv(Gsizeoc+1)
-	do i=2,nctype+1
-		fvbig(:,:,i)=sum(omegaind*(fvpar(4:8,i)))+fvpar(Gsize+1,i)
+	do i=1,nctype
+		fvbig(:,:,i+1)=sum(omegaind*(fvpar(4:8,i)))+fvpar(Gsize+1,i)
 	end do 
 
 	! now subtract the 1*fvpar(6,1) from the one child family. NO need to do this anymore, age 2 is not in the interpolation.
@@ -1119,9 +1119,9 @@ function emaxochcb(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parF
 	real(dble), intent(in):: eps(Nmc,shocksize1) 			!< random draw for MC integration for h and b (NOTE: NO B FOR THE jmpsimple)
 															!< shocks for contraception decision.
 	real(dble),intent(in)::parA(:), parU(:),parW(:),parH(:) 	!< parameter vectors except for Sigma and beta
-	real(dble),intent(in)::parFV(:,:) 						!< interpolating function parameter, second dimension for child types
-	real(dble), intent(in) :: parFVv(:) 					!< interpolating function parameters for one child regime.
-	real(dble),intent(in)::beta 							!< discount factor
+	real(dble),intent(in)::parFV(Gsize+1,nctype) 						!< interpolating function parameter, second dimension for child types
+	real(dble), intent(in) :: parFVv(Gsizeoc+1) 					!< interpolating function parameters for one child regime.
+	real(dble),intent(in)::beta 				!< discount factor
 	real(dble),intent(in)::typevec(:)			!< the array of values type of the second child can take
 	real(dble),intent(in)::typeprob(:) 			!< conditional(on mom's type) probability of each type for second child
 	real(dble),intent(in)::parB(Bsizeexo+1) 		!< parameters of the birth probability function 
@@ -1756,8 +1756,7 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 	implicit none
 	real(dble), intent(out) :: coef(Gsizeoc+1)
 	real(dble), intent(in) :: mutype(:)
-	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:), parFV(:,:),parFVv(:)	!< parameter vectors except for Sigma and beta, parFV is
-																			!< of size (Gsizeoc,
+	real(dble), intent(in):: parA(:), parU(:),parW(:),parH(:), parFV(Gsize+1,nctype),parFVv(Gsizeoc+1)	!< parameter vectors except for Sigma and beta																	 
 	real(dble), intent(in):: beta 										!< discount factor 
 	real(dble), intent(in) :: sigma(shocksize1,shocksize1)
 	real(dble), intent(in)::period 										!< what period we are in, or age of the first born
@@ -1928,11 +1927,11 @@ subroutine vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoef,typevec
 	
 		! one child regime fv parameters
 		! and parameters of fv for two child regime, with all possible child types for the second one.
-			call coefochcb(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,wcoef(:,period+1,delta,:),coef,parB,typevec,typeprob,rho)
+			call coefochcb(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,wcoef(:,period+1,period+1,:),coef,parB,typevec,typeprob,rho)
 			
-			!print*, 'Calculated coef for hcB  period'
-			!print*, 'period is ', period
-			!print*, 'coef is ', coefnew
+			print*, 'Calculated coef for hcB  period'
+			print*, 'period is ', period
+			print*, 'coef is ', coefnew
 		end if
 		
 		! now store these coefficients properly
