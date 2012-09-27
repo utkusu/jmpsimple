@@ -8,4 +8,3 @@ exec
 *.png
 :w
 *tags*
-*.sh
