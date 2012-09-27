@@ -1,5 +1,6 @@
-# learning to makefiles
-
+#-----------------------------------
+#          MPI MAKEFILE
+# ----------------------------------
 #FORTRAN_COMPILER=mpif90
 objects= global.o randomgen.o emax.o opt.o act.o
 

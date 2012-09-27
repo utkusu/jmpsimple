@@ -1820,135 +1820,127 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 	call DGELS('N',nintpoc,Gsizeoc,1,tmss, nintpoc, vemax, nintp,work, Gsizeoc+(Gsizeoc)*blocksize,info)
 	coef=vemax(1:Gsizeoc+1)
 end subroutine coefochcb
+
 ! ####################################END OF COEF_ ROUTINES##############################################
-
-!>Main subroutine that solves the model for an unobserved type of a two child family. It produces a set of interpolating
-!>coefficients for each time period for each type of delta.
-!subroutine wsolver(solw,ftype,parA,parW,parH,parU,beta,Sigma)
-	!implicit none
-	!real(dble), intent(out):: solw(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2) !< collects solution coef.
-																				 !!empty elements are marked -10000000
-    !real(dble), intent(in) ::  ftype(5) 				!< family unobserved type. mu1,mu2,mu_m,alpha,alpha1
-	!real(dble), intent(in) :: parA(:),parW(:),parH(:),parU(:),beta,Sigma(:,:)
-
-	!! locals
-	!integer period, delta
-	!real(dble) coef(Gsize+1)
-	!real(dble) coefnew(Gsize+1)
-	!real(dble) paractualU(size(parU))
-	!! -------------------------ACTION-----------------------------------
-	!! 
-	!! fill up the sol with -10^7
-	!solw=-10000000.0d0
-	!period=22
-	!! insert the heterogenous parameters to their places
-	!paractualU=parU	
-	!paractualU(2:3)=ftype(4:5)
+!>Main subroutine that solves the model for an unobserved type of a two child family for a given delta. It produces a set of interpolating
+!>coefficients for each time period for each type of delta. Difference between the old one and this is that this is for only one
+!>delta.
+subroutine wsolver(solw,delta,ftype,parA,parW,parH,parU,beta,Sigma,rho)
+	implicit none
+	real(dble), intent(out):: solw(Gsize+1, nperiods-deltamin+2) !< collects solution coef.
+	real(dble), intent(in) ::  ftype(5) 				!< family unobserved type. mu1,mu2,mu_m,alpha,alpha1
+	real(dble), intent(in) :: parA(:),parW(:),parH(:),parU(:),beta,Sigma(:,:), rho
+	real(dble), intent(in) :: delta 
+	! locals
+	integer period
+	real(dble) coef(Gsize+1)
+	real(dble) coefnew(Gsize+1)
+	real(dble) paractualU(size(parU))
+	! -------------------------ACTION-----------------------------------
+	! 
+	! fill up the sol with -10^7
+	solw=-10000000.0d0
+	period=22
+	! insert the heterogenous parameters to their places
+	paractualU=parU	
+	paractualU(2:3)=ftype(4:5)
 	
-	!! the big loop to get all the coefficients
-	!do delta=7,2,-1
-		!! first get the final period solution for all delta 	
-		!call coeffinal(coef,22.0d0,delta*1.0d0,ftype(1:3),parA,paractualU,parW,parH,beta,sigma)
-         !! store these guys
-         !solw(:,22,delta)=coef
-		!do period=21, delta, -1
-			!! here we have to use the correct coef function depending on the period and delta
-			
-			!! if the second kid is also out of the zone of mother's influence, use coeflate
-			!if (period>astar+delta-1) then 			
-				!call coeflate(coefnew,period*1.0d0,delta*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,coef)
-			!!print*, '------------------ delta= ', delta, ' --------------------'
-			!!print*, 'Calculated coef for late period'
-			!!print*, 'period is ', period
-			!!print*, 'coef is ', coefnew
-			!! second kid is influenced by the mother but not the first one.
-			!else if ((period<=astar+delta-1).AND.(astar<=period)) then
-				!call coefhc(coefnew, period*1.0d0, delta*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma, coef,rho)
-			!!print*, '------------------ delta= ', delta, ' --------------------'
-			!!print*, 'Calculated coef for hc period'
-			!!print*, 'period is ', period
-			!!print*, 'coef is ', coefnew
-			!! period less than 15 but >=delta, so mom also chooses x
-			!else
-				!call coefhcx(coefnew, period*1.0d0, delta*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma, coef,rho)
-			!!print*, '------------------ delta= ', delta, ' --------------------'
-			!!print*, 'Calculated coef for hcx period'
-			!!print*, 'period is ', period
-			!!print*, 'coef is ', coefnew
-			!end if
-			
-			!! now store these coefficients properly
-			!solw(:,period,delta)=coefnew
-			!! and update the coef vector for use in the previous period
-			!coef=coefnew
-		!end do
-	!end do
-!end subroutine wsolver
-
-!!> Main routine that will get the interpolating coefficients for one child families. Main difference of it from wsolver is the fact
-!!> that it needs the output from the wsolver for each type of second child.
-!subroutine vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoef,typevec,typeprob,rho)
-	!implicit none
-	!real(dble), intent(out):: solv(Gsize+1, nperiods) !< collects solution coef.
-    !real(dble), intent(in) ::  ftype(5) 				!< family unobserved type. mu1,mu2,mu_m,alpha,alpha1
-	!real(dble), intent(in) :: parA(:),parW(:),parH(:),parU(:),beta,Sigma(:,:),parB(:),typevec(:), typeprob(:),rho
-	!real(dble), intent(in) :: wcoef(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2,nctype)
-
-	!! THE DIFFERENCE: ftype has zero for the second child's A. It is as (mu1,0.0d0, mum, alpha, alpha1)
-	!! locals
-	!integer period, delta
-	!real(dble) coef(Gsize+1)
-	!real(dble) coefnew(Gsize+1)
-	!real(dble) paractualU(size(parU))
-	!real(dble) parFV(Gsize+1, nctype+1)
-	!! 
-	!! fill up the sol with -10^7
-	!solv=-10000000.0d0
-	!period=22
-	!! insert the heterogenous parameters to their places
-	!paractualU=parU	
-	!paractualU(2:3)=ftype(4:5)
-	!! first get the final coefficient.
-	!call coefocfinal(coef,22.0d0,ftype(1:3),parA,paractualU,parW,parH,beta,sigma)
-	!! store these guys
-	!solv(:,22)=coef
-	!do period=21,1, -1
-		!! if the kid is  out of the zone of mother's influence, use coefoclate
-		!if (period>=astar) then 			
-			!call coefoclate(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,coef)
-			!!print*, 'Calculated coef for late period'
-			!!print*, 'period is ', period
-			!!print*, 'late period=',period,'coef is ', coefnew
-		!! first kid is affected by the mom, but mom is out of the fecund period. 
-		!else if ((period<astar).AND.(deltamax<=period)) then
-			!call coefochc(coefnew, period*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma,coef,rho)
-			!!print*, 'Calculated coef for hc  period'
-			!!print*, 'period is ', period
-			!!print*, 'coef is ', coefnew
-		!else
-		!! period less than astar, and mother still decides on contraception so a second baby is still in cards.
-		!! this one is complicated because it has to properly take not only the coefficients estimated in the earlier iterations in
-		!! the loop but also coefficients estimated by the wsolver, because mothers can switch to a two child regime. And this
-		!! requires the knowledge w coefficients for all possible types of second child.
-	
-		!! one child regime fv parameters
-		!parFV(:,1)=coef
-		!! and parameters of fv for two child regime, with all possible child types for the second one.
-		!parFV(:,2:nctype+1)=wcoef(:,period+1,period+1,:)
-			!call coefochcb(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,parFV,parB,typevec,typeprob,rho)
-			
-			!!print*, 'Calculated coef for hcB  period'
-			!!print*, 'period is ', period
-			!!print*, 'coef is ', coefnew
-		!end if
+	! the big loop to get all the coefficients
+	call coeffinal(coef,22.0d0,delta*1.0d0,ftype(1:3),parA,paractualU,parW,parH,beta,sigma)
+	 ! store these guys
+	 solw(:,22)=coef
+	do period=21, delta, -1
+		! if the second kid is also out of the zone of mother's influence, use coeflate
+		if (period>astar+delta-1) then 			
+			call coeflate(coefnew,period*1.0d0,delta*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,coef)
+		print*, '------------------ delta= ', delta, ' --------------------'
+		print*, 'Calculated coef for late period'
+		print*, 'period is ', period
+		print*, 'coef is ', coefnew
+!		 second kid is influenced by the mother but not the first one.
+		else if ((period<=astar+delta-1).AND.(astar<=period)) then
+			call coefhc(coefnew, period*1.0d0, delta*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma, coef,rho)
+		print*, '------------------ delta= ', delta, ' --------------------'
+		print*, 'Calculated coef for hc period'
+		print*, 'period is ', period
+		print*, 'coef is ', coefnew
+		! period less than 15 but >=delta, so mom also chooses x
+		else
+			call coefhcx(coefnew, period*1.0d0, delta*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma, coef,rho)
+		print*, '------------------ delta= ', delta, ' --------------------'
+		print*, 'Calculated coef for hcx period'
+		print*, 'period is ', period
+		print*, 'coef is ', coefnew
+		end if
 		
-		!! now store these coefficients properly
-		!solv(:,period)=coefnew
-		!! and update the coef vector for use in the previous period
-		!coef=coefnew
-	!end do
-	!!if (sum(ftype)-999==2)	print*,'inside the vsolver, ftype=',ftype,'final coef=',solv
-!end subroutine vsolver 
+		! now store these coefficients properly
+		solw(:,period)=coefnew
+		! and update the coef vector for use in the previous period
+		coef=coefnew
+	end do
+end subroutine wsolver
+
+!> Main routine that will get the interpolating coefficients for one child families. Main difference of it from wsolver is the fact
+!> that it needs the output from the wsolver for each type of second child.
+subroutine vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoef,typevec,typeprob,rho)
+	implicit none
+	real(dble), intent(out):: solv(Gsizeoc+1, nperiods) !< collects solution coef.
+	real(dble), intent(in) ::  ftype(5) 				!< family unobserved type. mu1,mu2,mu_m,alpha,alpha1
+	real(dble), intent(in) :: parA(:),parW(:),parH(:),parU(:),beta,Sigma(:,:),parB(:),typevec(:), typeprob(:),rho
+	real(dble), intent(in) :: wcoef(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2,nctype)
+
+	! THE DIFFERENCE: ftype has zero for the second child's A. It is as (mu1,0.0d0, mum, alpha, alpha1)
+	! locals
+	integer period, delta
+	real(dble) coef(Gsizeoc+1)
+	real(dble) coefnew(Gsizeoc+1)
+	real(dble) paractualU(size(parU))
+	real(dble) parFV(Gsize+1, nctype+1)
+	! 
+	! fill up the sol with -10^7
+	solv=-10000000.0d0
+	period=22
+	! insert the heterogenous parameters to their places
+	paractualU=parU	
+	paractualU(2:3)=ftype(4:5)
+	! first get the final coefficient.
+	call coefocfinal(coef,22.0d0,ftype(1:3),parA,paractualU,parW,parH,beta,sigma)
+	! store these guys
+	solv(:,22)=coef
+	do period=21,1, -1
+		! if the kid is  out of the zone of mother's influence, use coefoclate
+		if (period>=astar) then 			
+			call coefoclate(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,coef)
+			!print*, 'Calculated coef for late period'
+			!print*, 'period is ', period
+			!print*, 'late period=',period,'coef is ', coefnew
+		! first kid is affected by the mom, but mom is out of the fecund period. 
+		else if ((period<astar).AND.(deltamax<=period)) then
+			call coefochc(coefnew, period*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma,coef,rho)
+			!print*, 'Calculated coef for hc  period'
+			!print*, 'period is ', period
+			!print*, 'coef is ', coefnew
+		else
+		! period less than astar, and mother still decides on contraception so a second baby is still in cards.
+		! this one is complicated because it has to properly take not only the coefficients estimated in the earlier iterations in
+		! the loop but also coefficients estimated by the wsolver, because mothers can switch to a two child regime. And this
+		! requires the knowledge w coefficients for all possible types of second child.
+	
+		! one child regime fv parameters
+		! and parameters of fv for two child regime, with all possible child types for the second one.
+			call coefochcb(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,wcoef(:,period+1,delta,:),coef,parB,typevec,typeprob,rho)
+			
+			!print*, 'Calculated coef for hcB  period'
+			!print*, 'period is ', period
+			!print*, 'coef is ', coefnew
+		end if
+		
+		! now store these coefficients properly
+		solv(:,period)=coefnew
+		! and update the coef vector for use in the previous period
+		coef=coefnew
+	end do
+end subroutine vsolver 
 
 
 ! ##############      END OF SOLVERS     #########################

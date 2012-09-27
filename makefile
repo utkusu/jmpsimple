@@ -1,5 +1,6 @@
-# learning to makefiles
-
+# ---------------------------------------
+#           SERIAL MAKEFILE
+#----------------------------------------
 #FORTRAN_COMPILER=mpif90
 objects= global.o randomgen.o emax.o opt.o try.o
 FORTRAN_COMPILER=ifort
