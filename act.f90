@@ -17,12 +17,12 @@ integer nproc, rank, ier, status(MPI_STATUS_SIZE),i, sender, position, number_se
 real(dble) buffer(1000)
 
 ! parameters of the model
-real(dble) parA(10),parU(7),parW(7),parH(4),beta,sigma1(shocksize1,shocksize1),sigma2(shocksize3,shocksize3),parB(Bsize+2)
+real(dble) parA(12),parU(7),parW(7),parH(6),beta,sigma1(shocksize1,shocksize1),parB(Bsizeexo+1)
 real(dble) ctype(nctype), mtype(nmtype), atype(natype), a1type(na1type)
 !real(dble) pctype(nctype),pmtype(nmtype),patype(natype),pa1type(na1type)
-real(dble) condprob(nctype,nmtype)
-real(dble) packed(10+7+7+4+1+(shocksize1+shocksize1*(shocksize1-1)/2)+(shocksize3+shocksize3*(shocksize3-1)/2))
-integer npack,nocpack
+real(dble) condprob
+real(dble) packed(parAsize+parWsize+parUsize+parHsize+1+(shocksize1+shocksize1*(shocksize1-1)/2)+Bsizeexo+1+4)
+integer npack
 real(dble) ftypemat(5,nttypes)
 real(dble) ftypematoc(5,nttypesoc)
 real(dble) ocp(nctype+Bsize+2+nctype*nmtype)
@@ -40,12 +40,12 @@ real(dble) start,endtime, vtime
 !real(dble) solw(Gsize,nperiods-deltamin+2,deltamax-deltamin+2)
 !real(dble) wcoefficients(Gsize+1,nperiods-deltamin+2,deltamax-deltamin+2,2)
 !real(dble) solv(Gsize+1,nperiods)
-!real(dble) parB(4)
 !real(dble) typevec(2)
 !real(dble) typeprob(2)
 
 ! initialize parameters
-npack=10+7+7+4+1+(shocksize1+shocksize1*(shocksize1-1)/2)+(shocksize3+shocksize3*(shocksize3-1)/2)
+npack=parAsize+parWsize+parUsize+parHsize+1+(shocksize1+shocksize1*(shocksize1-1)/2)+Bsizeexo+1+4
+
 nocpack=nctype+Bsize+2+nctype*nmtype
 
 
@@ -56,16 +56,15 @@ call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ier)
 if (rank==0) then
 	!------------------------------ MASTER ------------------------------------
 	start=MPI_Wtime()
-	call initparam(parA,parU,parW, parH, parB, beta, sigma1, sigma2, ctype, mtype, atype, a1type,condprob)
-	call utku_pack(packed,npack,parA,parU,parW, parH, beta, sigma1, sigma2)
+	call initparam(parA,parU,parW, parH, parB, beta, sigma1, sigma2,parB,ctype, mtype, atype, a1type,condprob)
+	call utku_pack(packed,npack,parA,parU,parW, parH, beta, sigma1,ctype,mtype, atype)
 	call MPI_BCAST(packed, npack, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 	! pack unobserved types in to matrices
-  	call type_pack(ftypemat,ctype,mtype,atype,a1type)
-	call type_pack_oc(ftypematoc,ctype,mtype,atype,a1type)
-  	call MPI_BCAST(ftypemat, 5*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
-  	call MPI_BCAST(ftypematoc, 5*nttypesoc, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
-	call ocpack(ocp,nocpack,ctype,parB,condprob)
-  	call MPI_BCAST(ocp, nocpack, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+      !call type_pack(ftypemat,ctype,mtype,atype,a1type)
+	!call type_pack_oc(ftypematoc,ctype,mtype,atype,a1type)
+      !call MPI_BCAST(ftypemat, 5*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+      !call MPI_BCAST(ftypematoc, 5*nttypesoc, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+      !call MPI_BCAST(ocp, nocpack, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
  		print*, 'MASTER: broadcasted everything, starting stuff'
  	! send everyone one index for which to calculate the wmatrix
  	number_sent=0
@@ -158,12 +157,9 @@ print*,'------------------------------------------------------------------------
 else
 	!--------------------------- WORKERS -------------------------------------------
 	call MPI_BCAST(packed, npack, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
-	call utku_unpack(packed,npack,(/10,7,7,4,1,15,36/),parA,parU,parW, parH, beta, sigma1, sigma2)
+	call utku_unpack(packed,npack,(/12,7,7,6,1,15,(Bsizeexo+1),1,1,1,1/),parA,parU,parW, parH, beta, sigma1,parB,ctype,mtype,atype,condprob)
   	call MPI_BCAST(ftypemat, 5*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
   	call MPI_BCAST(ftypematoc, 5*nttypesoc, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
-	
-	! get the additional parameters for v solution	
-  	call MPI_BCAST(ocp, nocpack, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 	
 	! --------SOLVING FOR W COEFFICIENTS-------------------
 	do

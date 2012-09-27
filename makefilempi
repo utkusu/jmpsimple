@@ -42,3 +42,4 @@ act.o: global.mod randomgen.mod emax.mod opt.mod act.f90
 clean:
 	rm *.mod *.o
 
+

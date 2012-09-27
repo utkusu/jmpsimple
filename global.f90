@@ -28,6 +28,12 @@ integer, parameter::o1size=3 			!< size of omega1
 integer, parameter::o2size=4	!< size of omega1
 integer, parameter::o3size=4 			!< size of omega1
 
+! parameter vector sizes
+
+integer, parameter::parAsize=12 	!< size of parA
+integer, parameter::parWsize=7 		!< size of parW
+integer, parameter::parHsize=6 		!< size of parH
+integer, parameter::parUsize=7 		!< size of parU
 
 real(dble), parameter::emaxscale=1.0d0 !< scale emaxs down  !!! CAN YOU DO THIS??? MAYBE ONLY IF USE THE SAME SCALE for U, too.
 
