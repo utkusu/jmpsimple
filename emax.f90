@@ -1826,7 +1826,7 @@ end subroutine coefochcb
 !>delta.
 subroutine wsolver(solw,delta,ftype,parA,parW,parH,parU,beta,Sigma,rho)
 	implicit none
-	real(dble), intent(out):: solw(Gsize+1, nperiods-deltamin+2) !< collects solution coef.
+	real(dble), intent(out):: solw(Gsize+1, nperiods-deltamin+1) !< collects solution coef.
 	real(dble), intent(in) ::  ftype(5) 				!< family unobserved type. mu1,mu2,mu_m,alpha,alpha1
 	real(dble), intent(in) :: parA(:),parW(:),parH(:),parU(:),beta,Sigma(:,:), rho
 	real(dble), intent(in) :: delta 

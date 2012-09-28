@@ -145,7 +145,7 @@ contains
 		real(dble), intent(out) :: parA(ppart(1)),parU(ppart(2)),parW(ppart(3)), parH(ppart(4)), beta, sigma1(shocksize1,shocksize1)  
 		real(dble), intent(out):: parB(Bsizeexo+1),ctype, mtype, atype,condprob
 		
-		real(dble) svec1(shocksize1+shocksize1*(shocksize1-1)/2))
+		real(dble) svec1(shocksize1+shocksize1*(shocksize1-1)/2)
 		! first basic stuff, don't touch the order of these. notice this would
 		! still work if you added or subtracted parameters from this.
 		parA=packed(1:ppart(1))
@@ -195,13 +195,13 @@ contains
 	!> needs to be calculated. This is for the simple model where the only unobserved heterogeneity is in a1.  
 	subroutine type_packsimple(typemat, a1type)
 	implicit none
-	real(dble), intent(in) :: a1type
+	real(dble), intent(in) :: a1type(:)
 	real(dble), intent(out) :: typemat(2,na1type*(deltamax-deltamin+1)) 
 	integer i, j, counter
 	counter=1
 	do j=1,2
 		do i=deltamax,2,-1
-			typemat(:,counter)=(/a1type(j),i/)  ! first row type values, second row delta's.
+			typemat(:,counter)=(/a1type(j),i*.1d0/)  ! first row type values, second row delta's.
 			counter=counter+1
 		end do
 	end do
@@ -270,11 +270,11 @@ end subroutine  type_packsimple
 	!----------------------OPTIMIZATION RELATED STUFF--------------------------
 
 	!> initialize parameters
-	subroutine initparam(parA,parU,parW, parH,parB, beta,sigma1, ctype, mtype, atype, a1type, condprob) 
+	subroutine initparam(parA,parU,parW, parH, beta,sigma1, parB, ctype, mtype, atype, a1type, condprob) 
 	implicit none
 		real(dble), intent(out) ::  parA(12),parU(7),parW(7),parH(6),beta,sigma1(shocksize1,shocksize2),parB(Bsizeexo+1)
-		real(dble), intent(out):: ctype(nctype), mtype(nmtype), atype(natype), a1type(na1type)
-		real(dble), intent(out):: condprob(nctype,nmtype) 	! prob of second child of being a certain type, conditional on mother type 
+		real(dble), intent(out):: ctype, mtype, atype, a1type(na1type)
+		real(dble), intent(out):: condprob ! prob of second child of being a certain type, conditional on mother type 
 		! locals
 		real(dble) var0,varp,varf,varw, varwh, var00, var01, varp0,varp1,varf0,varf1
 		real(dble) cov0p, cov0f, covpf, covwwh, cov0w,cov0wh,covpw, covpwh,covfw,covfwh
@@ -291,7 +291,7 @@ end subroutine  type_packsimple
 
 		beta=0.95
 		condprob=1
-		
+		parB=0.10d0	
 		! ------------SHOCK STUFF-----------------------
 		! ----   VARIANCES
 		
@@ -353,8 +353,6 @@ end subroutine  type_packsimple
 		! fill in sigma => might fill this in properly later
 		sigma1=0.1d0
 		
-		! get parB
-		parB=0.3d0
 		
 		ctype=1.0d0
 		mtype=1.0d0
