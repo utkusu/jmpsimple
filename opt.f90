@@ -191,6 +191,22 @@ contains
 	end do
 	end subroutine type_pack
 	
+	!> creates typematrix of size 2 x na1type*(deltamax-deltamin+1) matrix that contains the family types for which coefficients
+	!> needs to be calculated. This is for the simple model where the only unobserved heterogeneity is in a1.  
+	subroutine type_packsimple(typemat, a1type)
+	implicit none
+	real(dble), intent(in) :: a1type
+	real(dble), intent(out) :: typemat(2,na1type*(deltamax-deltamin+1)) 
+	integer i, j, counter
+	counter=1
+	do j=1,2
+		do i=deltamax,2,-1
+			typemat(:,counter)=(/a1type(j),i/)  ! first row type values, second row delta's.
+			counter=counter+1
+		end do
+	end do
+end subroutine  type_packsimple
+
 	!> creates the family type combinations matrix for one child families. This is going to be 5x16 matrix for the case with
 	!unobserved type can take two values. this is the case even though ftype has 4 elements. We are gonna filling the second child
 	!type with 999.0d0. this silliness to keep the mutype(=omega4) used in the emaxoc routines working.
@@ -343,7 +359,7 @@ contains
 		ctype=1.0d0
 		mtype=1.0d0
 		atype=1.0d0
-		a1type=1.0d0
+		a1type=(/0.0d0,1.0d0/)
 		!ctype=(/0.0d0,1.0d0/)
 		!mtype=(/0.d0,1.0d0/)
 		!atype=(/1.0d0,1.5d0/)

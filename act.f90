@@ -27,14 +27,15 @@ real(dble) ftypemat(5,nttypes)
 real(dble) ftypematoc(5,nttypesoc)
 real(dble) ocp(nctype+Bsize+2+nctype*nmtype)
 
-real(dble) solw(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2) !< collects solution coef.
-real(dble) solwall(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2,nttypes) !< collects solution coef for all types
+real(dble) solw(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+1) !< collects solution coef.
+real(dble) solwall(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+1,nttypes) !< collects solution coef for all types
 real(dble) solv(Gsize+1,nperiods)
 real(dble) solvall(Gsize+1,nperiods, nttypesoc)
 integer momorder
 integer k,j,l,m
-real(dble) wcoef(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2,nctype) 		! for the vsolver trial
+real(dble) wcoef(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+1,nctype) 		! for the vsolver trial
 real(dble) start,endtime, vtime
+real(dble) rho
 !real(dble) omega1(4),omega2(5),omega3(4),eps(Nmc,shocksize1)
 !real(dble) ftype(5)
 !real(dble) solw(Gsize,nperiods-deltamin+2,deltamax-deltamin+2)
@@ -42,11 +43,9 @@ real(dble) start,endtime, vtime
 !real(dble) solv(Gsize+1,nperiods)
 !real(dble) typevec(2)
 !real(dble) typeprob(2)
-
-! initialize parameters
+rho=1.0d0
 npack=parAsize+parWsize+parUsize+parHsize+1+(shocksize1+shocksize1*(shocksize1-1)/2)+Bsizeexo+1+4
 
-nocpack=nctype+Bsize+2+nctype*nmtype
 
 
 call MPI_INIT(ier)
@@ -60,11 +59,8 @@ if (rank==0) then
 	call utku_pack(packed,npack,parA,parU,parW, parH, beta, sigma1,ctype,mtype, atype)
 	call MPI_BCAST(packed, npack, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 	! pack unobserved types in to matrices
-      !call type_pack(ftypemat,ctype,mtype,atype,a1type)
-	!call type_pack_oc(ftypematoc,ctype,mtype,atype,a1type)
-      !call MPI_BCAST(ftypemat, 5*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
-      !call MPI_BCAST(ftypematoc, 5*nttypesoc, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
-      !call MPI_BCAST(ocp, nocpack, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+    call type_packsimple(ftypemat,a1type)
+    call MPI_BCAST(ftypemat, 2*na1type*(deltamax-deltamin+1), MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
  		print*, 'MASTER: broadcasted everything, starting stuff'
  	! send everyone one index for which to calculate the wmatrix
  	number_sent=0
@@ -78,7 +74,7 @@ if (rank==0) then
  	do while (number_received<nttypes)
 		call MPI_RECV(rorder, 1, MPI_INTEGER, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, status, ier)
 		sender=status(MPI_SOURCE)	
-		call MPI_RECV(solw,(Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+2),MPI_DOUBLE_PRECISION,sender,MPI_ANY_TAG,MPI_COMM_WORLD,status,ier)
+		call MPI_RECV(solw,(Gsize+1)*(nperiods-deltamin+2),MPI_DOUBLE_PRECISION,sender,MPI_ANY_TAG,MPI_COMM_WORLD,status,ier)
 		solwall(:,:,:,rorder)=solw
 		print*, 'MASTER: received solw for order=',rorder,', total number received=', number_received+1
 		number_received=number_received+1
@@ -158,18 +154,17 @@ else
 	!--------------------------- WORKERS -------------------------------------------
 	call MPI_BCAST(packed, npack, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 	call utku_unpack(packed,npack,(/12,7,7,6,1,15,(Bsizeexo+1),1,1,1,1/),parA,parU,parW, parH, beta, sigma1,parB,ctype,mtype,atype,condprob)
-  	call MPI_BCAST(ftypemat, 5*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
-  	call MPI_BCAST(ftypematoc, 5*nttypesoc, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+    call MPI_BCAST(ftypemat, 2*na1type*(deltamax-deltamin+1), MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 	
 	! --------SOLVING FOR W COEFFICIENTS-------------------
 	do
 		call MPI_RECV(order, 1, MPI_INTEGER, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, ier)
 		tag=status(MPI_TAG)
 		if (tag>0) then
-			call wsolver(solw,ftypemat(:,order), parA,parW,parH,parU, beta,sigma1)
+			call wsolver(solw,ftypemat(2,order),ftypemat(1,order),parA,parW,parH,parU, beta,sigma1,rho)
 			rorder=order
 			call MPI_SEND(rorder, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, ier)
-			call MPI_SEND(solw,(Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+2),MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
+			call MPI_SEND(solw,(Gsize+1)*(nperiods-deltamin+2),MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
 			print*, 'worker',rank,'sent solw with order',order
 		else
 			EXIT
