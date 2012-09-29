@@ -128,7 +128,7 @@ contains
 		real(dble) vecs1(shocksize1+shocksize1*(shocksize1-1)/2)
 		! first undo the sigma1 and sigma2
 		call smat2vec(sigma1,vecs1,shocksize1)
-		packed=(/parA,parU,parW,parH,beta,vecs1,Bsizeexo,ctype,mtype, atype, condprob/)
+		packed=(/parA,parU,parW,parH,beta,vecs1,parB,ctype,mtype, atype, condprob/)
 
 	end subroutine utku_pack
 
@@ -141,7 +141,7 @@ contains
 		!<ppart=array partiotining packed array containing the sizes of the
 		!<subcomponents. for beta, it should have a "1" in the correct spot.
 		
-		real(dble), intent(in) :: packed(:)
+		real(dble), intent(in) :: packed(npack)
 		real(dble), intent(out) :: parA(ppart(1)),parU(ppart(2)),parW(ppart(3)), parH(ppart(4)), beta, sigma1(shocksize1,shocksize1)  
 		real(dble), intent(out):: parB(Bsizeexo+1),ctype, mtype, atype,condprob
 		
@@ -149,7 +149,7 @@ contains
 		! first basic stuff, don't touch the order of these. notice this would
 		! still work if you added or subtracted parameters from this.
 		parA=packed(1:ppart(1))
-		parU=packed(ppart(1):sum(ppart(1:2)))
+		parU=packed(ppart(1)+1:sum(ppart(1:2)))
 		parW=packed(sum(ppart(1:2))+1:sum(ppart(1:3)))
 		parH=packed(sum(ppart(1:3))+1:sum(ppart(1:4)))
 		beta=packed(sum(ppart(1:4))+1)
@@ -159,10 +159,10 @@ contains
 		svec1=packed(sum(ppart(1:5))+1:sum(ppart(1:6)))
 		call vec2smat(svec1,sigma1, shocksize1)
 		parB=packed(sum(ppart(1:6))+1:sum(ppart(1:7)))
-		ctype=packed(sum(ppart(1:7)+1))
-		mtype=packed(sum(ppart(1:7)+2))
-		atype=packed(sum(ppart(1:7)+3))
-	    condprob=packed(sum(ppart(1:7)+4))	
+		ctype=packed(sum(ppart(1:7))+1)
+		mtype=packed(sum(ppart(1:7))+2)
+		atype=packed(sum(ppart(1:7))+3)
+	    condprob=packed(sum(ppart(1:7))+4)	
 	end subroutine utku_unpack
 		
 
@@ -201,7 +201,7 @@ contains
 	counter=1
 	do j=1,2
 		do i=deltamax,2,-1
-			typemat(:,counter)=(/a1type(j),i*.1d0/)  ! first row type values, second row delta's.
+			typemat(:,counter)=(/a1type(j),i*1.0d0/)  ! first row type values, second row delta's.
 			counter=counter+1
 		end do
 	end do

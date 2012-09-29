@@ -1826,7 +1826,7 @@ end subroutine coefochcb
 !>delta.
 subroutine wsolver(solw,delta,ftype,parA,parW,parH,parU,beta,Sigma,rho)
 	implicit none
-	real(dble), intent(out):: solw(Gsize+1, nperiods-deltamin+1) !< collects solution coef.
+	real(dble), intent(out):: solw(Gsize+1, nperiods-deltamin+2) !< collects solution coef.
 	real(dble), intent(in) ::  ftype(5) 				!< family unobserved type. mu1,mu2,mu_m,alpha,alpha1
 	real(dble), intent(in) :: parA(:),parW(:),parH(:),parU(:),beta,Sigma(:,:), rho
 	real(dble), intent(in) :: delta 
@@ -1852,24 +1852,24 @@ subroutine wsolver(solw,delta,ftype,parA,parW,parH,parU,beta,Sigma,rho)
 		! if the second kid is also out of the zone of mother's influence, use coeflate
 		if (period>astar+delta-1) then 			
 			call coeflate(coefnew,period*1.0d0,delta*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,coef)
-		print*, '------------------ delta= ', delta, ' --------------------'
-		print*, 'Calculated coef for late period'
-		print*, 'period is ', period
-		print*, 'coef is ', coefnew
+		!print*, '------------------ delta= ', delta, ' --------------------'
+		!print*, 'Calculated coef for late period'
+		!print*, 'period is ', period
+		!print*, 'coef is ', coefnew
 !		 second kid is influenced by the mother but not the first one.
 		else if ((period<=astar+delta-1).AND.(astar<=period)) then
 			call coefhc(coefnew, period*1.0d0, delta*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma, coef,rho)
-		print*, '------------------ delta= ', delta, ' --------------------'
-		print*, 'Calculated coef for hc period'
-		print*, 'period is ', period
-		print*, 'coef is ', coefnew
+		!print*, '------------------ delta= ', delta, ' --------------------'
+		!print*, 'Calculated coef for hc period'
+		!print*, 'period is ', period
+		!print*, 'coef is ', coefnew
 		! period less than 15 but >=delta, so mom also chooses x
 		else
 			call coefhcx(coefnew, period*1.0d0, delta*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma, coef,rho)
-		print*, '------------------ delta= ', delta, ' --------------------'
-		print*, 'Calculated coef for hcx period'
-		print*, 'period is ', period
-		print*, 'coef is ', coefnew
+		!print*, '------------------ delta= ', delta, ' --------------------'
+		!print*, 'Calculated coef for hcx period'
+		!print*, 'period is ', period
+		!print*, 'coef is ', coefnew
 		end if
 		
 		! now store these coefficients properly

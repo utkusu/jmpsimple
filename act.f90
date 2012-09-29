@@ -23,12 +23,12 @@ real(dble) ctype, mtype, atype, a1type(na1type)
 real(dble) condprob
 real(dble) packed(parAsize+parWsize+parUsize+parHsize+1+(shocksize1+shocksize1*(shocksize1-1)/2)+Bsizeexo+1+4)
 integer npack
-real(dble) ftypemat(2,na1type*(deltamax-deltamin+1))
+real(dble) ftypemat(2,na1type*(deltamax-deltamin+2))
 real(dble) ftypematoc(5,nttypesoc)
 real(dble) ocp(nctype+Bsize+2+nctype*nmtype)
 
-real(dble) solw(Gsize+1, nperiods-deltamin+1) !< collects solution coef.
-real(dble) solwall(Gsize+1, nperiods-deltamin+1, deltamax-deltamin+1,nttypes) !< collects solution coef for all types
+real(dble) solw(Gsize+1, nperiods-deltamin+2) !< collects solution coef.
+real(dble) solwall(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+1,nttypes) !< collects solution coef for all types
 real(dble) solv(Gsize+1,nperiods)
 real(dble) solvall(Gsize+1,nperiods, nttypesoc)
 integer momorder
@@ -37,6 +37,7 @@ real(dble) wcoef(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+1,nctype) 		! f
 real(dble) start,endtime, vtime
 real(dble) rho
 integer nftype
+integer order3,order4
 !real(dble) omega1(4),omega2(5),omega3(4),eps(Nmc,shocksize1)
 !real(dble) ftype(5)
 !real(dble) solw(Gsize,nperiods-deltamin+2,deltamax-deltamin+2)
@@ -46,7 +47,7 @@ integer nftype
 !real(dble) typeprob(2)
 rho=1.0d0
 npack=parAsize+parWsize+parUsize+parHsize+1+(shocksize1+shocksize1*(shocksize1-1)/2)+Bsizeexo+1+4
-nftype=2*na1type*(deltamax-deltamin+1)
+nftype=na1type*(deltamax-deltamin+1)
 
 
 call MPI_INIT(ier)
@@ -77,14 +78,17 @@ if (rank==0) then
  	do while (number_received<nftype)
 		call MPI_RECV(rorder, 1, MPI_INTEGER, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, status, ier)
 		sender=status(MPI_SOURCE)	
-		call MPI_RECV(solw,(Gsize+1)*(nperiods-deltamin+1),MPI_DOUBLE_PRECISION,sender,MPI_ANY_TAG,MPI_COMM_WORLD,status,ier)
-		solwall(:,:,mod(order,6),order/6)=solw
-		print*, 'MASTER: received solw for order=',rorder,', total number received=', number_received+1
+		call MPI_RECV(solw,(Gsize+1)*(nperiods-deltamin+2),MPI_DOUBLE_PRECISION,sender,MPI_ANY_TAG,MPI_COMM_WORLD,status,ier)
+		order3=mod(rorder,6)
+		if (mod(rorder,6)==0) order3=6*rorder/6
+		order4=((rorder-1)/6)+1
+		solwall(:,:,order3,order4)=solw
+		print*, 'MASTER: received solw for order=',rorder,', total number received=', number_received+1, solw(:,10)
 		number_received=number_received+1
-			
 		if (number_sent<nftype) then
 			order=number_sent+1
 			call MPI_SEND(order, 1, MPI_INTEGER,sender,2, MPI_COMM_WORLD, ier)
+			print*, 'MASTER sent order', order,'to',sender
 			number_sent=number_sent+1
 		else 
 			call MPI_SEND(order, 1, MPI_INTEGER,sender ,0, MPI_COMM_WORLD, ier)
@@ -97,7 +101,7 @@ print*, '----MASTER: FINISHED THE SOLUTION OF THE WCOEF, NOW SWITCHING TO THE V-
 print*,'--------------------------------------------------------------------------------'
 	 !first things first: workers need to the results of the last round
 	!vtime=MPI_Wtime()
-	!call MPI_BCAST(solwall, (Gsize+1)*(nperiods-deltamin+1)*(deltamax-deltamin+1)*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+	!call MPI_BCAST(solwall, (Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+1)*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 	!print*, 'master broadcasted last stage results to workers successfully'
 	 !sending the first group
 	!number_sent=0
@@ -167,8 +171,7 @@ else
 			call wsolver(solw,ftypemat(2,order),ftypemat(1,order),parA,parW,parH,parU, beta,sigma1,rho)
 			rorder=order
 			call MPI_SEND(rorder, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, ier)
-			call MPI_SEND(solw,(Gsize+1)*(nperiods-deltamin+1),MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
-			print*, 'worker',rank,'sent solw with order',order
+			call MPI_SEND(solw,(Gsize+1)*(nperiods-deltamin+2),MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
 		else
 			EXIT
 		end if
