@@ -59,27 +59,28 @@ real(dble), parameter::onescxgrid(cxgridsize)=1.0d0
 real(dble), parameter::onescgridwithbirth(cgridsize*2)=1.0d0
 
 ! emax interpolation parameters
-integer, parameter:: Nmc=100		!<monte carlo integration draw size
+integer, parameter:: Nmc=10		!<monte carlo integration draw size
 
 ! following are the fixed vectors of observed types for the emax approximations
-integer, parameter::svecage0m=2
-integer, parameter::svecsch0m=2
-integer, parameter::svecaqft=2
-integer, parameter::svecomegaf=2
+integer, parameter::svecage0m=4
+integer, parameter::svecsch0m=4
+integer, parameter::svecaqft=4
+integer, parameter::svecomegaf=4
 
-integer, parameter::sveca1=2
-integer, parameter::sveca2=2
+integer, parameter::sveca1=4
+integer, parameter::sveca2=4
 integer, parameter::svecE=5
 !integer, parameter::sveclagh=3 ! you don't really need this for the simple one
 
-real(dble), parameter:: vecage0m(svecage0m)=(/20.0d0,24.0d0/)
-real(dble), parameter:: vecsch0m(svecsch0m)=(/9.0d0,16.0d0/)
-real(dble), parameter:: vecomegaf(svecomegaf)=(/9.0d0,16.0d0/)
-real(dble) , parameter:: vecaqft(svecaqft)=(/.1d0,.3d0/)
+real(dble), parameter:: vecage0m(svecage0m)=(/20.0d0,24.0d0,28.0d0,30.0d0/)
+real(dble), parameter:: vecsch0m(svecsch0m)=(/9.0d0,16.0d0,18.0d0,20.0d0/)
+real(dble), parameter:: vecomegaf(svecomegaf)=(/0.090d0,0.10d0, 0.130d0,0.15d0/)
+real(dble) , parameter:: vecaqft(svecaqft)=(/.1d0,.3d0,0.6d0,0.8d0/)
 
 ! temp A values for interpolation: TODO this will need to change every year, depending on the test scores.
-real(dble), parameter::veca1(sveca1)=(/1.0d0,2.0d0/)
-real(dble), parameter::veca2(sveca2)=(/1.0d0,2.0d0/)
+real(dble), parameter::veca1(sveca1)=(/1.0d0,1.20d0,1.3d0,1.4d0/)
+real(dble), parameter::veca2(sveca2)=(/1.0d0,1.20d0,1.3d0,1.4d0/)
+!real(dble), parameter::veca2(sveca2)=(/1.0d0,2.0d0/)
 
 ! temp A values for interpolation
 

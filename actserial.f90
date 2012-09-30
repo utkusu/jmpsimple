@@ -24,7 +24,7 @@
 !real(dble) ftypematoc(5,nttypesoc)
 !real(dble) ocp(nctype+Bsize+2+nctype*nmtype)
 
-!real(dble) solw(Gsize+1, nperiods-deltamin+1) !< collects solution coef.
+!real(dble) solw(Gsize+1, nperiods-deltamin+2) !< collects solution coef.
 !real(dble) solwall(Gsize+1, nperiods-deltamin+1, deltamax-deltamin+1,nttypes) !< collects solution coef for all types
 !real(dble) solv(Gsize+1,nperiods)
 !real(dble) solvall(Gsize+1,nperiods, nttypesoc)
@@ -41,6 +41,7 @@
 !!real(dble) solv(Gsize+1,nperiods)
 !!real(dble) typevec(2)
 !!real(dble) typeprob(2)
+!integer rorder,order3, order4,order
 !rho=1.0d0
 !npack=parAsize+parWsize+parUsize+parHsize+1+(shocksize1+shocksize1*(shocksize1-1)/2)+Bsizeexo+1+4
 !nftype=2*na1type*(deltamax-deltamin+1)
@@ -50,7 +51,13 @@
 	!call initparam(parA,parU,parW, parH, beta, sigma1,parB,ctype, mtype, atype, a1type,condprob)
 	!call utku_pack(packed,npack,parA,parU,parW, parH, beta, sigma1,parB,ctype,mtype, atype, condprob)
 	!call utku_unpack(packed,npack,(/12,7,7,6,1,15,(Bsizeexo+1),1,1,1,1/),parA,parU,parW, parH, beta, sigma1,parB,ctype,mtype,atype,condprob)
-	
+	!call type_packsimple(ftypemat,a1type)	
 
+!order=1
+!print*, ftypemat(2,order), ftypemat(1,order)
+!call wsolver(solw,ftypemat(2,order),(/ctype,ctype,mtype,atype,ftypemat(1,order)/),parA,parW,parH,parU, beta,sigma1,rho)
+!print*, solw(:,8)
+!print*, solw(:,3)
+!print*, huge(1.0d0)
 
 !end program act

@@ -8,3 +8,4 @@ exec
 *.png
 :w
 *tags*
+*octave*

@@ -786,7 +786,6 @@ function emaxfinal(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta)
 
 	! now, take maxval of each row and then take the mean
 	emaxfinal=(sum(maxval(umat,2)))/Nmc
-
 end function emaxfinal
 
 !> emax calculations for families where both kids are out of the nest and 
@@ -1322,9 +1321,22 @@ subroutine coeffinal(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma)
 	end do
 
 	call tr_late(tmss,mss,nintp) 			! transform the state space 
+	open(12, file = 'a.txt')
+	do k=1,nintp
+	write(12, 900)  (tmss(k,j) , j=1,Gsize+1)
+	end do
+	900 format(16f30.10)
+	close(12)
+	open(13, file = 'b.txt')
+	write(13, "(f30.10)")  (vemax(k) , k=1,nintp)
+	close(13)
+
+
+	
 	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
 	coef=vemax(1:Gsize+1)
-end subroutine coeffinal
+	!print*, 'FINAL COEF=',coef
+	end subroutine coeffinal
 
 
 subroutine coeflate(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV)
@@ -1538,6 +1550,7 @@ subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parF
 	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
 	coef=vemax(1:Gsize+1)
 
+	!print*, 'info', info
 end subroutine coefhcx
 !---------------------------------------------------------------------------------------------------
 !---------------------                  ONE CHILD VERSIONS            ------------------------------
@@ -1863,7 +1876,7 @@ subroutine wsolver(solw,delta,ftype,parA,parW,parH,parU,beta,Sigma,rho)
 		!print*, 'Calculated coef for hc period'
 		!print*, 'period is ', period
 		!print*, 'coef is ', coefnew
-		! period less than 15 but >=delta, so mom also chooses x
+		!! period less than 15 but >=delta, so mom also chooses x
 		else
 			call coefhcx(coefnew, period*1.0d0, delta*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma, coef,rho)
 		!print*, '------------------ delta= ', delta, ' --------------------'
@@ -1929,9 +1942,9 @@ subroutine vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoef,typevec
 		! and parameters of fv for two child regime, with all possible child types for the second one.
 			call coefochcb(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,wcoef(:,period+1,period+1,:),coef,parB,typevec,typeprob,rho)
 			
-			print*, 'Calculated coef for hcB  period'
-			print*, 'period is ', period
-			print*, 'coef is ', coefnew
+			!print*, 'Calculated coef for hcB  period'
+			!print*, 'period is ', period
+			!print*, 'coef is ', coefnew
 		end if
 		
 		! now store these coefficients properly

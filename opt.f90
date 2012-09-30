@@ -200,7 +200,7 @@ contains
 	integer i, j, counter
 	counter=1
 	do j=1,2
-		do i=deltamax,2,-1
+		do i=2, deltamax
 			typemat(:,counter)=(/a1type(j),i*1.0d0/)  ! first row type values, second row delta's.
 			counter=counter+1
 		end do
@@ -285,7 +285,7 @@ end subroutine  type_packsimple
 		! gamma, alpha, alpha1,...alpha5	
 		parU=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0, 0.1d0,0.1d0/)
 		! beta0 (4) and beta (3) in wage equation
-		parW=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0, 0.1d0,0.1d0/)*0.00005
+		parW=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0, -0.1d0,0.1d0/)*0.00005
 		! beta_ws (4)
 		parH=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0,0.1d0/)*0.04
 

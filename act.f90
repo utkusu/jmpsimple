@@ -14,24 +14,21 @@ include 'mpif.h'
 
 ! mpi stuff
 integer nproc, rank, ier, status(MPI_STATUS_SIZE),i, sender, position, number_sent, number_received, order,tag, rorder
-real(dble) buffer(1000)
 
 ! parameters of the model
 real(dble) parA(12),parU(7),parW(7),parH(6),beta,sigma1(shocksize1,shocksize1),parB(Bsizeexo+1)
 real(dble) ctype, mtype, atype, a1type(na1type)
-!real(dble) pctype(nctype),pmtype(nmtype),patype(natype),pa1type(na1type)
 real(dble) condprob
 real(dble) packed(parAsize+parWsize+parUsize+parHsize+1+(shocksize1+shocksize1*(shocksize1-1)/2)+Bsizeexo+1+4)
 integer npack
-real(dble) ftypemat(2,na1type*(deltamax-deltamin+2))
-real(dble) ftypematoc(5,nttypesoc)
-real(dble) ocp(nctype+Bsize+2+nctype*nmtype)
+real(dble) ftypemat(2,na1type*(deltamax-deltamin+1))
+!real(dble) ftypematoc(5,nttypesoc)
+!real(dble) ocp(nctype+Bsize+2+nctype*nmtype)
 
 real(dble) solw(Gsize+1, nperiods-deltamin+2) !< collects solution coef.
 real(dble) solwall(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+1,nttypes) !< collects solution coef for all types
-real(dble) solv(Gsize+1,nperiods)
-real(dble) solvall(Gsize+1,nperiods, nttypesoc)
-integer momorder
+!real(dble) solv(Gsize+1,nperiods)
+!real(dble) solvall(Gsize+1,nperiods, nttypesoc)
 integer k,j,l,m
 real(dble) wcoef(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+1,nctype) 		! for the vsolver trial
 real(dble) start,endtime, vtime
@@ -62,7 +59,7 @@ if (rank==0) then
 	call MPI_BCAST(packed, npack, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 	! pack unobserved types in to matrices
     call type_packsimple(ftypemat,a1type)
-    call MPI_BCAST(ftypemat, nftype, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+    call MPI_BCAST(ftypemat, 2*nftype, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
  		print*, 'MASTER: broadcasted everything, starting stuff'
  	! send everyone one index for which to calculate the wmatrix
  	
@@ -83,7 +80,7 @@ if (rank==0) then
 		if (mod(rorder,6)==0) order3=6*rorder/6
 		order4=((rorder-1)/6)+1
 		solwall(:,:,order3,order4)=solw
-		print*, 'MASTER: received solw for order=',rorder,', total number received=', number_received+1, solw(:,10)
+		!print*, 'MASTER: received solw for order=',rorder,', total number received=', number_received+1, solw(:,10)
 		number_received=number_received+1
 		if (number_sent<nftype) then
 			order=number_sent+1
@@ -145,32 +142,34 @@ print*,'------------------------------------------------------------------------
 	!end do
 	!60 format(22F46.9)
 	!close(66)
-	
-	!open(77,file='wcoef.txt')
-	!do l=1,nttypes
-		!write(77,*) "-------------- type order=",l,"------------" 
-		!do m=1,deltamax-deltamin+2
-			!write(77,*) "########   delta type=",m,"------------"
-			!write(77,70) ((solwall(j,k,m,l),k=1,nperiods-deltamin+2),j=1,Gsize+1)
-		!end do
-	!end do
-	!70 format(22F46.9)
-	!close(77)
+	open(77,file='wcoef.txt')
+	do l=1,nttypes
+		write(77,*) "-------------- type order=",l,"------------" 
+		do m=1,deltamax-deltamin+1
+			write(77,*) "########   delta type=",m,"------------"
+			write(77,70) ((solwall(j,k,m,l),k=1,nperiods-deltamin+2),j=1,Gsize+1)
+		end do
+	end do
+	70 format(22F46.9)
+	close(77)
 	
 else
 	!--------------------------- WORKERS -------------------------------------------
 	call MPI_BCAST(packed, npack, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 	call utku_unpack(packed,npack,(/12,7,7,6,1,15,(Bsizeexo+1),1,1,1,1/),parA,parU,parW, parH, beta, sigma1,parB,ctype,mtype,atype,condprob)
-    call MPI_BCAST(ftypemat, 2*na1type*(deltamax-deltamin+1), MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
-	
+    call MPI_BCAST(ftypemat, 2*nftype, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)	
 	! --------SOLVING FOR W COEFFICIENTS-------------------
 	do
 		call MPI_RECV(order, 1, MPI_INTEGER, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, ier)
 		tag=status(MPI_TAG)
 		if (tag>0) then
-			call wsolver(solw,ftypemat(2,order),ftypemat(1,order),parA,parW,parH,parU, beta,sigma1,rho)
+			call wsolver(solw,ftypemat(2,order),(/ctype,ctype,mtype,atype,ftypemat(1,order)/),parA,parW,parH(5:6),parU, beta,sigma1,rho)
+			!print*, ftypemat(1,:)
+			print*,  '___worker',rank,'order=',order, 'calculated for', ftypemat(2,order), ftypemat(1,order)
+			if (order==12) print*, solw(:,8)
 			rorder=order
 			call MPI_SEND(rorder, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, ier)
+			
 			call MPI_SEND(solw,(Gsize+1)*(nperiods-deltamin+2),MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
 		else
 			EXIT
