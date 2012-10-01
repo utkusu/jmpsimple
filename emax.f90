@@ -1899,7 +1899,7 @@ subroutine vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoef,typevec
 	real(dble), intent(out):: solv(Gsizeoc+1, nperiods) !< collects solution coef.
 	real(dble), intent(in) ::  ftype(5) 				!< family unobserved type. mu1,mu2,mu_m,alpha,alpha1
 	real(dble), intent(in) :: parA(:),parW(:),parH(:),parU(:),beta,Sigma(:,:),parB(:),typevec(:), typeprob(:),rho
-	real(dble), intent(in) :: wcoef(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+2,nctype)
+	real(dble), intent(in) :: wcoef(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+1,nctype)
 
 	! THE DIFFERENCE: ftype has zero for the second child's A. It is as (mu1,0.0d0, mum, alpha, alpha1)
 	! locals
@@ -1940,7 +1940,7 @@ subroutine vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoef,typevec
 	
 		! one child regime fv parameters
 		! and parameters of fv for two child regime, with all possible child types for the second one.
-			call coefochcb(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,wcoef(:,period+1,period+1,:),coef,parB,typevec,typeprob,rho)
+			call coefochcb(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,wcoef(:,period+1,period,:),coef,parB,typevec,typeprob,rho)
 			
 			!print*, 'Calculated coef for hcB  period'
 			!print*, 'period is ', period
