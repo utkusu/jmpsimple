@@ -269,28 +269,85 @@ end subroutine  type_packsimple
 
 
 	! -----------------------------SIMULATION ROUTINES-----------------------------------
-	
-	subroutine simhist(simdata,omega3,intercepts,parA,parU,parW,parH,a1type,pa1type,parBmat,id)
+	! --------------------------AUX FUNCTIIONS FOR SIM----------------------
+	function wagefsim(E,time,llms,logw0,par,eps)
+		implicit none
+		real(dble) E(:),time,llms,logw0 				 	!< experience,time, llms,logw0, as they appear in extended
+		real(dble) eps(:) 							!< emax mc integration random draw, size=Nmc
+		real(dble) par(:) 		 					!< parameter vectors, for wage 
+		real(dble) wagefsim(size(eps)) 				!< output, wage income for the mother, size=Nmc
+		logw=logw0+par(1)*E+par(2)*time+par(3)*llms
+		wagef=exp(logw+eps)
+	end function wagefsim
+
+	subroutine simhist(simdata,omega3,intercepts,parA,parU,parW,parH,sigma,a1type,pa1type,parBmat,vcoef,wcoef,llmsvec,id,rho)
 		implicit none
 		real(dble), intent(in) :: omega3(:) 		!< observed family type
 		real(dble), intent(in) :: intercepts(:) 	!< normaly hetero, but for now constant: ctype,mtype,atype
 		real(dble), intent(in) :: parA(:),parU(:),parW(:),parH(:) 	!<model parameters
+		real(dble), intent(in) :: sigma(:,:) 						!< variance covariance matrix of shocks
 		real(dble), intent(in) :: a1type(:),pa1type(:) 				!<a1 distribution, vectors of size 2 each.
-		real(dble), intent(in) :: parBmat(Bsizeexo+1,nfert) 		!<(4+1,6) birth probability parameters.
+		greal(dble), intent(in) :: parBmat(Bsizeexo+1,nfert) 		!<(4+1,6) birth probability parameters.
 		integer, intent(in):: id 							!<unique sample id of the family
+		real(dble), intent(in) :: llmsvec(:) 				!< actual local labor market shocks for the sample object.
+		real(dble), intent(in) :: vcoef(Gsizeoc+1,nperiods),wcoef(Gsize+1,nperiods-deltamin+2)
+		real(dble), intent(in) :: rho 						!<skill depreciation para, added later.
 		real(dble), intent(out) :: simdata(simvecsize,nperiods, Npaths)
 
 		integer period, mainseed(2)
 		real(dble) a1(Npaths)
+		real(dble) Ainit,wage(Npaths),wageh(Npaths)
+		real(dble) mu(shocksize1)
+		real(dble) eps(Npaths,shocksize1)
+		! State space elements to be collected, even if they are not data, I will collect omega1 and omega2, except llms
+		real(dble) SS(6,nperiods+1,Npaths) 		
+		! outcomes: wages of the father and mother.
+		real(dble) outcomes(2,nperiods+1,Npaths)
+		! choices : the choice history of h.
+		real(dble) integer(1,neriods+1,Npaths) 
+		! choice specific utilities within the period
+		real(dble) umat(3,Npaths)
+		mu=0.0d0
+		! first draw Npaths alternative folks to assign a1 values.	
 		mainseed=id
-
-		! first draw Npaths alternative folks to assign a1 values.
 		call random_seed(put=mainseed)
 		call random_number(a1)
-		where (a1<pa1type) a1=a1type(1)
-		where (a1>=pa1type) a1=a1type(2)
+		where (a1<pa1type(1))
+			a1=a1type(1)
+		else 
+			a1=a1type(2)
+		end where
 
+		! initialize A
+		Ainit=intercepts(1)+parA(1)*omega3(1)+parA(2)*omega3(2)+parA(3)*omega3(3) 
+		! initialize wage	
+		logw0=intercepts(2)+parvecW(1)*schooling+parvecW(2)*afqt+parvecW(3)*age0m+parvecW(4)*age0m*age0m
+		
+		
+		! --------------FIRST PERIOD-------------
+		eps= randmnv(Npaths,5,mu,sigma,3,1,(1,id*1))
+		! initialize omegas
+		SS(1,1,:)=Ainit 	!A1
+		SS(2,1,:)=0.0d0 	!A2
+		SS(3,1,:)=0.0d0 	!E
+		SS(4,1,:)=1.0d0 	!age1
+		SS(5,1,:)=0.0d0 	!age2
+		SS(6,1,:)=omega3(3) !agem
+		
+		wage=wagef(0.d0,1.0d0,llmsvec(1),omega3(1),omega3(2),omega3(3),eps(:,4),intercepts(2),parW(5:7),parW(1:4))
+		wageh=wagehfquick(omega3(4),1.0d0,eps(:,5),parH(5:6))	
+		umat(1,:)=parU(2)*SS(1,1,:) 	+     parU(4)*(wageh)**par(5)+par6(6)
+		umat(2,:)=parU(2)*SS(1,1,:)+a1*0.5d0+ parU(4)*(wageh+0.5d0*wage)**parU(5)+parU(6)+parU(7)*0.5d0
+		umat(3,:)=parU(2)*SS(1,1,:)+a1*1.0d0+ parU(4)*(wageh+wage)**parU(5)+parU(6)+parU(7)
+		choices(1,1,:)=maxloc(umat,1)
 
+		! -----------------looooop to the future-----------
+		period=2
+		! form wages
+		wage=wagefsim(SS(3,period-1,:),period-1	
+
+		! draw the period shocks
+		eps= randmnv(Npaths,5,mu,sigma,3,1,(period,id*period))
 	end subroutine simhist
 
 

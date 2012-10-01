@@ -171,7 +171,6 @@ function wagehfquick(omegaf,t,eps,parquick)
 	real(dble) omegaf,t  		! inputs: omegaf is the combined initial value of the father
 	real(dble) eps(:) 					!< emax mc random draw size=Nmc
 	real(dble) wagehfquick(size(eps))
-
 	real(dble) logwh
 	logwh=omegaf+parquick(1)*t+parquick(2)*t*t
 
