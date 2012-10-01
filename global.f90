@@ -14,6 +14,7 @@ integer, parameter:: finalage=65*(1/period)		!< final age of decision making for
 integer, parameter:: fertmaxage=37*(1/period)	!< latest age a mom can give birth.
 integer, parameter:: fertminage=20*(1/period)	!< first age a mom can give birth. Will get rid of teenage moms
 integer, parameter::nperiods=22 				!< number of solution periods
+integer, parameter::nfert=6 					!< number of periods where can the mother can pregnant.
 !-----------------size of of stuff----------------------
 integer, parameter:: shocksize1=5		!< how many shocks in emax calculation, with one child
 integer, parameter:: shocksize2=5		!< how many shocks in emax calculation, with two children
@@ -23,6 +24,9 @@ integer, parameter:: Gsizeoc=10			!< the number of regressors in the intrapolati
 integer, parameter:: Ssize=16			!< the number of elements in state space
 integer, parameter:: Bsize=2			!< the number of regressors in the birth probability function other than the contraception
 integer, parameter:: Bsizeexo=4			!< the number of regressors in the birth probability function other than the contraception
+
+integer,parameter::Npaths=100 			!<number of simulated paths for each family.
+integer,parameter::simvecsize=10 		!<the size of the simulated data vector for each period. obviosly very related to ss.
 
 integer, parameter::o1size=3 			!< size of omega1
 integer, parameter::o2size=4	!< size of omega1

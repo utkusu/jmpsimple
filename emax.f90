@@ -1645,7 +1645,7 @@ subroutine coefoclate(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	integer counter
 	real(dble) mu(shocksize1)
 	real(dble) eps(Nmc,shocksize1)
-	real(dble) tmss(nintpoc,Gsizeoc)
+	real(dble) tmss(nintpoc,Gsizeoc+1)
 
 	! lapack stuff
  	real(dble) work(Gsizeoc+Gsizeoc*blocksize)
@@ -1713,7 +1713,7 @@ subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,rho
 	integer counter
 	real(dble) mu(shocksize1)
 	real(dble) eps(Nmc,shocksize1)
-	real(dble) tmss(nintpoc,Gsizeoc)
+	real(dble) tmss(nintpoc,Gsizeoc+1)
 
 	! lapack stuff
  	real(dble) work(Gsizeoc+Gsizeoc*blocksize)
@@ -1765,7 +1765,7 @@ end subroutine coefochc
 
 
 !> subroutine to pick some ss points and calculate emaxs and get regression coefficients for one child families fertile period
-subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,parFVv,parB,typevec,typeprob,rho)
+subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,parFVv,parBmat,typevec,typeprob,rho)
 	implicit none
 	real(dble), intent(out) :: coef(Gsizeoc+1)
 	real(dble), intent(in) :: mutype(:)
@@ -1773,7 +1773,7 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 	real(dble), intent(in):: beta 										!< discount factor 
 	real(dble), intent(in) :: sigma(shocksize1,shocksize1)
 	real(dble), intent(in)::period 										!< what period we are in, or age of the first born
-	real(dble), intent(in) :: typevec(nctype),typeprob(nctype),parB(Bsizeexo+1)
+	real(dble), intent(in) :: typevec(nctype),typeprob(nctype),parBmat(Bsizeexo+1,nfert)
 	real(dble), intent(in) :: rho
 	! locals
 	real(dble) vemax(nintpoc)            ! to collect emaxs, vector emax
@@ -1785,7 +1785,7 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 	integer counter
 	real(dble) mu(shocksize1)
 	real(dble) eps(Nmc,shocksize1)
-	real(dble) tmss(nintpoc,Gsizeoc)
+	real(dble) tmss(nintpoc,Gsizeoc+1)
 
 	! lapack stuff
  	real(dble) work(Gsizeoc+Gsizeoc*blocksize)
@@ -1814,7 +1814,7 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
 										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/int(period*10+1),counter/))
 										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
-										vemax(counter)=emaxochcb(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,parFVv,parB,typevec,typeprob,rho)
+										vemax(counter)=emaxochcb(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,parFVv,parBmat(:,int(period)),typevec,typeprob,rho)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
 										!print *, 'counter at', counter, 'calculated', vemax(counter)
 										counter=counter+1
@@ -1827,7 +1827,6 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 			end do
 		!end do
 	end do
-
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space troc_late
 	call DGELS('N',nintpoc,Gsizeoc,1,tmss, nintpoc, vemax, nintp,work, Gsizeoc+(Gsizeoc)*blocksize,info)
 	coef=vemax(1:Gsizeoc+1)
@@ -1894,11 +1893,11 @@ end subroutine wsolver
 
 !> Main routine that will get the interpolating coefficients for one child families. Main difference of it from wsolver is the fact
 !> that it needs the output from the wsolver for each type of second child.
-subroutine vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoef,typevec,typeprob,rho)
+subroutine vsolver(solv,ftype,parA,parW,parH,parU,parBmat,beta,Sigma, wcoef,typevec,typeprob,rho)
 	implicit none
 	real(dble), intent(out):: solv(Gsizeoc+1, nperiods) !< collects solution coef.
 	real(dble), intent(in) ::  ftype(5) 				!< family unobserved type. mu1,mu2,mu_m,alpha,alpha1
-	real(dble), intent(in) :: parA(:),parW(:),parH(:),parU(:),beta,Sigma(:,:),parB(:),typevec(:), typeprob(:),rho
+	real(dble), intent(in) :: parA(:),parW(:),parH(:),parU(:),beta,Sigma(:,:),parBmat(Bsizeexo+1,nfert),typevec(:), typeprob(:),rho
 	real(dble), intent(in) :: wcoef(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+1,nctype)
 
 	! THE DIFFERENCE: ftype has zero for the second child's A. It is as (mu1,0.0d0, mum, alpha, alpha1)
@@ -1940,7 +1939,7 @@ subroutine vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoef,typevec
 	
 		! one child regime fv parameters
 		! and parameters of fv for two child regime, with all possible child types for the second one.
-			call coefochcb(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,wcoef(:,period+1,period,:),coef,parB,typevec,typeprob,rho)
+			call coefochcb(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,wcoef(:,period+1,period,:),coef,parBmat,typevec,typeprob,rho)
 			
 			!print*, 'Calculated coef for hcB  period'
 			!print*, 'period is ', period

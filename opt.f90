@@ -267,107 +267,146 @@ end subroutine  type_packsimple
 	
 	end subroutine ocunpack
 
+
+	! -----------------------------SIMULATION ROUTINES-----------------------------------
+	
+	subroutine simhist(simdata,omega3,intercepts,parA,parU,parW,parH,a1type,pa1type,parBmat,id)
+		implicit none
+		real(dble), intent(in) :: omega3(:) 		!< observed family type
+		real(dble), intent(in) :: intercepts(:) 	!< normaly hetero, but for now constant: ctype,mtype,atype
+		real(dble), intent(in) :: parA(:),parU(:),parW(:),parH(:) 	!<model parameters
+		real(dble), intent(in) :: a1type(:),pa1type(:) 				!<a1 distribution, vectors of size 2 each.
+		real(dble), intent(in) :: parBmat(Bsizeexo+1,nfert) 		!<(4+1,6) birth probability parameters.
+		integer, intent(in):: id 							!<unique sample id of the family
+		real(dble), intent(out) :: simdata(simvecsize,nperiods, Npaths)
+
+		integer period, mainseed(2)
+		real(dble) a1(Npaths)
+		mainseed=id
+
+		! first draw Npaths alternative folks to assign a1 values.
+		call random_seed(put=mainseed)
+		call random_number(a1)
+		where (a1<pa1type) a1=a1type(1)
+		where (a1>=pa1type) a1=a1type(2)
+
+
+	end subroutine simhist
+
+
+
+
+
+
+
+
+
+
+
 	!----------------------OPTIMIZATION RELATED STUFF--------------------------
 
-	!> initialize parameters
-	subroutine initparam(parA,parU,parW, parH, beta,sigma1, parB, ctype, mtype, atype, a1type, condprob) 
-	implicit none
-		real(dble), intent(out) ::  parA(12),parU(7),parW(7),parH(6),beta,sigma1(shocksize1,shocksize2),parB(Bsizeexo+1)
-		real(dble), intent(out):: ctype, mtype, atype, a1type(na1type)
-		real(dble), intent(out):: condprob ! prob of second child of being a certain type, conditional on mother type 
-		! locals
-		real(dble) var0,varp,varf,varw, varwh, var00, var01, varp0,varp1,varf0,varf1
-		real(dble) cov0p, cov0f, covpf, covwwh, cov0w,cov0wh,covpw, covpwh,covfw,covfwh
-		real(dble) cov0001,cov00p0,cov00p1,cov00f0,cov00f1,cov01p0,cov01p1,cov01f0,cov01f1,covp0p1,covp0f0,covp0f1,covp1f0,covp1f1,covf0f1			
-		! -----------FUNDAMENTAL PARAMETERS---------------
-		! gamma0's and gamma's: 
-		parA=(/1.0d0,0.1d0,0.1d0,0.1d0,0.1d0, 0.1d0,0.1d0,0.1d0,0.1d0,0.1d0,0.1d0,0.1d0/)
-		! gamma, alpha, alpha1,...alpha5	
-		parU=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0, 0.1d0,0.1d0/)
-		! beta0 (4) and beta (3) in wage equation
-		parW=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0, -0.1d0,0.1d0/)*0.00005
-		! beta_ws (4)
-		parH=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0,0.1d0/)*0.04
+   ! !> initialize parameters
+	!subroutine initparam(parA,parU,parW, parH, beta,sigma1, parB, ctype, mtype, atype, a1type, condprob) 
+	!implicit none
+		!real(dble), intent(out) ::  parA(12),parU(7),parW(7),parH(6),beta,sigma1(shocksize1,shocksize2),parB(Bsizeexo+1)
+		!real(dble), intent(out):: ctype, mtype, atype, a1type(na1type)
+		!real(dble), intent(out):: condprob ! prob of second child of being a certain type, conditional on mother type 
+		!! locals
+		!real(dble) var0,varp,varf,varw, varwh, var00, var01, varp0,varp1,varf0,varf1
+		!real(dble) cov0p, cov0f, covpf, covwwh, cov0w,cov0wh,covpw, covpwh,covfw,covfwh
+		!real(dble) cov0001,cov00p0,cov00p1,cov00f0,cov00f1,cov01p0,cov01p1,cov01f0,cov01f1,covp0p1,covp0f0,covp0f1,covp1f0,covp1f1,covf0f1			
+		!! -----------FUNDAMENTAL PARAMETERS---------------
+		!! gamma0's and gamma's: 
+		!parA=(/1.0d0,0.1d0,0.1d0,0.1d0,0.1d0, 0.1d0,0.1d0,0.1d0,0.1d0,0.1d0,0.1d0,0.1d0/)
+		!! gamma, alpha, alpha1,...alpha5	
+		!parU=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0, 0.1d0,0.1d0/)
+		!! beta0 (4) and beta (3) in wage equation
+		!parW=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0, -0.1d0,0.1d0/)*0.00005
+		!! beta_ws (4)
+		!parH=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0,0.1d0/)*0.04
 
-		beta=0.95
-		condprob=1
-		parB=0.10d0	
-		! ------------SHOCK STUFF-----------------------
-		! ----   VARIANCES
+		!beta=0.95
+		!condprob=1
+		!parB=0.10d0	
+		!! ------------SHOCK STUFF-----------------------
+		!! ----   VARIANCES
 		
-		! hc periods
-		var0=0.1d0 		! variance h=0
-		varp=0.1d0 		! variance h=0.5
-		varf=0.1d0 		! variance h=1
-		varw=0.1d0 		! variance of wage shock
-		varwh=0.1d0 	! variance of father's wage shock
+		!! hc periods
+		!var0=0.1d0 		! variance h=0
+		!varp=0.1d0 		! variance h=0.5
+		!varf=0.1d0 		! variance h=1
+		!varw=0.1d0 		! variance of wage shock
+		!varwh=0.1d0 	! variance of father's wage shock
 		
-		! hcb periods
-		!var00=0.1d0 	! variance of h=0, b=0
-		!var01=0.1d0 	! variance of h=0, b=1
-		!varp0=0.1d0 	! variance of h=0.5, b=0
-		!varp1=0.1d0 	! variance of h=0.5, b=1
-		!varf0=0.1d0 	! variance of h=1, b=0
-		!varf1=0.1d0 	! variance of h=1, b=1
+		!! hcb periods
+		!!var00=0.1d0 	! variance of h=0, b=0
+		!!var01=0.1d0 	! variance of h=0, b=1
+		!!varp0=0.1d0 	! variance of h=0.5, b=0
+		!!varp1=0.1d0 	! variance of h=0.5, b=1
+		!!varf0=0.1d0 	! variance of h=1, b=0
+		!!varf1=0.1d0 	! variance of h=1, b=1
 		
-		! ---  COVARIANCES
-		! hc periods
-		cov0p=0.1d0 	! cov(h=0,h=0.5)
-		cov0f=0.1d0 	! cov(h=0,h=1)
-		covpf=0.1d0 	! cov(h=0.5,h=1)
-		covwwh=0.1d0 	! cov(wages of mom and dad)
-		! cross w and preference shocks- JUST ZERO FOR NOW
-		cov0w=0.0d0 	! cov(wage, h=0)
-		cov0wh=0.0d0 	! cov(wageh, h=0)
-		covpw=0.0d0 	! cov(wage, h=0.5)
-		covpwh=0.0d0 	! cov(wageh, h=0.5)
-		covfw=0.0d0 	! cov(wage, h=1)
-		covfwh=0.0d0 	! cov(wageh, h=1)
+		!! ---  COVARIANCES
+		!! hc periods
+		!cov0p=0.1d0 	! cov(h=0,h=0.5)
+		!cov0f=0.1d0 	! cov(h=0,h=1)
+		!covpf=0.1d0 	! cov(h=0.5,h=1)
+		!covwwh=0.1d0 	! cov(wages of mom and dad)
+		!! cross w and preference shocks- JUST ZERO FOR NOW
+		!cov0w=0.0d0 	! cov(wage, h=0)
+		!cov0wh=0.0d0 	! cov(wageh, h=0)
+		!covpw=0.0d0 	! cov(wage, h=0.5)
+		!covpwh=0.0d0 	! cov(wageh, h=0.5)
+		!covfw=0.0d0 	! cov(wage, h=1)
+		!covfwh=0.0d0 	! cov(wageh, h=1)
 		
-		! hcb periods
+		!! hcb periods
 	
-		!cov0001=0.1d0 	! cov(h=0,b=0 and h=0, b=1)
-		!cov00p0=0.1d0 	! cov(h=0,b=0 and h=0.5, b=0)	
-		!cov00p1=0.1d0 	! cov(h=0,b=0 and h=0.5, b=1)	
-		!cov00f0=0.1d0 	! cov(h=0,b=0 and h=1, b=0)	
-		!cov00f1=0.1d0 	! cov(h=0,b=0 and h=1, b=1)	
+		!!cov0001=0.1d0 	! cov(h=0,b=0 and h=0, b=1)
+		!!cov00p0=0.1d0 	! cov(h=0,b=0 and h=0.5, b=0)	
+		!!cov00p1=0.1d0 	! cov(h=0,b=0 and h=0.5, b=1)	
+		!!cov00f0=0.1d0 	! cov(h=0,b=0 and h=1, b=0)	
+		!!cov00f1=0.1d0 	! cov(h=0,b=0 and h=1, b=1)	
 		
-		!cov01p0=0.1d0 	! cov(h=0,b=1 and h=0.5, b=0)	
-		!cov01p1=0.1d0 	! cov(h=0,b=1 and h=0.5, b=1)	
-		!cov01f0=0.1d0 	! cov(h=0,b=1 and h=1, b=0)	
-		!cov01f1=0.1d0 	! cov(h=0,b=1 and h=1, b=1)	
+		!!cov01p0=0.1d0 	! cov(h=0,b=1 and h=0.5, b=0)	
+		!!cov01p1=0.1d0 	! cov(h=0,b=1 and h=0.5, b=1)	
+		!!cov01f0=0.1d0 	! cov(h=0,b=1 and h=1, b=0)	
+		!!cov01f1=0.1d0 	! cov(h=0,b=1 and h=1, b=1)	
 	
-		!covp0p1=0.1d0 	! cov(h=0.5,b=0 and h=0.5,b=1)
-		!covp0f0=0.1d0
-		!covp0f1=0.1d0
+		!!covp0p1=0.1d0 	! cov(h=0.5,b=0 and h=0.5,b=1)
+		!!covp0f0=0.1d0
+		!!covp0f1=0.1d0
 		
-		!covp1f0=0.1d0
-		!covp1f1=0.1d0
+		!!covp1f0=0.1d0
+		!!covp1f1=0.1d0
 
-		!covf0f1=0.1d0
+		!!covf0f1=0.1d0
 
 		
-		! cross w and preference shocks
-		! fuck, let's just say they are zero.	
-		! TODO: NEED TO PROPERLY HANDLE PARAMETERS. YOU WILL NEED TO UPDATE THESE AT SOME POINT
-		! fill in sigma => might fill this in properly later
-		sigma1=0.1d0
+		!! cross w and preference shocks
+		!! fuck, let's just say they are zero.	
+		!! TODO: NEED TO PROPERLY HANDLE PARAMETERS. YOU WILL NEED TO UPDATE THESE AT SOME POINT
+		!! fill in sigma => might fill this in properly later
+		!sigma1=0.1d0
 		
 		
-		ctype=1.0d0
-		mtype=1.0d0
-		atype=1.0d0
-		a1type=(/0.0d0,1.0d0/)
-		!ctype=(/0.0d0,1.0d0/)
-		!mtype=(/0.d0,1.0d0/)
-		!atype=(/1.0d0,1.5d0/)
-		!a1type=(/1.0d0,2.0d0/)
+		!ctype=1.0d0
+		!mtype=1.0d0
+		!atype=1.0d0
+		!a1type=(/0.0d0,1.0d0/)
+		!!ctype=(/0.0d0,1.0d0/)
+		!!mtype=(/0.d0,1.0d0/)
+		!!atype=(/1.0d0,1.5d0/)
+		!!a1type=(/1.0d0,2.0d0/)
 	
-		! conditional probabilities of child 2 type should be pr(x|y)=pr(ctype=x,mtype=y)/pr(mtype=y)
-		! so I need to specify the joint distribution of ctype and mtype. if this does not go anywhere else I can just use the
-		! conditional probs as a parameter 
+		!! conditional probabilities of child 2 type should be pr(x|y)=pr(ctype=x,mtype=y)/pr(mtype=y)
+		!! so I need to specify the joint distribution of ctype and mtype. if this does not go anywhere else I can just use the
+		!! conditional probs as a parameter 
 			
-	end subroutine initparam	
+	!end subroutine initparam	
+
+
+
 
 end module opt
 

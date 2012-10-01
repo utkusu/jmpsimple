@@ -17,7 +17,7 @@ real(dble) solw(Gsize,nperiods-deltamin+2)
 real(dble) sollw(Gsize+1,nperiods-deltamin+2)
 real(dble) wcoeff(Gsize+1,nperiods-deltamin+2,deltamax-deltamin+1,nctype)
 real(dble) solv(Gsizeoc+1,nperiods)
-real(dble) parB(Bsizeexo+1)
+real(dble) parBmat(Bsizeexo+1,nfert)
 real(dble) typevec(1)
 real(dble) typeprob(1)
 integer k
@@ -43,7 +43,7 @@ typevec=0.5d0
 typeprob=1.0d0
 wcoeff=1.0d0
 ! try the coefochcb
-parB=0.1d0
+parBmat=0.1d0
 !print*, emaxlate(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV)
 !print*, emaxhc(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,1.0d0)
 !print*, emaxhcx(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,1.0d0)
@@ -51,7 +51,7 @@ parB=0.1d0
 !print*, emaxochc(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFVv,1.0d0)
 !print*, emaxochcb(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFVmat,parFVv,parB,typevec,typeprob,1.0d0)
 
-call coeffinal(coef, 22.0d0, 2.0d0, mutype, parA, parU,parW,parH(5:6),beta,sigma)
+!call coeffinal(coef, 22.0d0, 2.0d0, mutype, parA, parU,parW,parH(5:6),beta,sigma)
 
 
 !print*, coef
@@ -84,9 +84,13 @@ call coeffinal(coef, 22.0d0, 2.0d0, mutype, parA, parU,parW,parH(5:6),beta,sigma
 !call wsolver(solw,ftype,parA,parW,parH,parU,beta,Sigma)
 !call vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoefficients,typevec,typeprob)
 
-call wsolver(sollw,3.0d0,ftype,parA,parW,parH(5:6),parU,beta,Sigma,1.0d0)
+!jcall wsolver(sollw,3.0d0,ftype,parA,parW,parH(5:6),parU,beta,Sigma,1.0d0)
 
 !print *,sollw(:,4)
-!call vsolver(solv,ftype,parA,parW,parH,parU,parB,beta,Sigma, wcoeff,typevec,typeprob,1.0d0)
-!print*, solv(:,3)
+call vsolver(solv,ftype,parA,parW,parH,parU,parBmat,beta,Sigma, wcoeff,typevec,typeprob,1.0d0)
+
+
+
 end program try
+
+
