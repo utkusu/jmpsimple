@@ -270,6 +270,8 @@ end subroutine  type_packsimple
 
 	! -----------------------------SIMULATION ROUTINES-----------------------------------
 	! --------------------------AUX FUNCTIIONS FOR SIM----------------------
+	!> same as wagef but accepts E as a vector, so calculated the wages for a bunch of Es and eps. wagef in emax.f90 is designed to
+	!> give you wages for one E with multiple shocks so you can calculate the mc integral.
 	function wagefsim(E,time,llms,logw0,par,eps)
 		implicit none
 		real(dble) E(:),time,llms,logw0 				 	!< experience,time, llms,logw0, as they appear in extended
@@ -280,36 +282,51 @@ end subroutine  type_packsimple
 		wagef=exp(logw+eps)
 	end function wagefsim
 
-	subroutine simhist(simdata,omega3,intercepts,parA,parU,parW,parH,sigma,a1type,pa1type,parBmat,vcoef,wcoef,llmsvec,id,rho)
+	subroutine simhist(simdata,omega3,intercepts,parA,parU,parW,parH,beta,sigma,a1type,pa1type,parBmat,vcoef,wcoef,llmsvec,id,rho)
 		implicit none
 		real(dble), intent(in) :: omega3(:) 		!< observed family type
 		real(dble), intent(in) :: intercepts(:) 	!< normaly hetero, but for now constant: ctype,mtype,atype
 		real(dble), intent(in) :: parA(:),parU(:),parW(:),parH(:) 	!<model parameters
 		real(dble), intent(in) :: sigma(:,:) 						!< variance covariance matrix of shocks
+		real(dble), intent(in) :: beta
 		real(dble), intent(in) :: a1type(:),pa1type(:) 				!<a1 distribution, vectors of size 2 each.
-		greal(dble), intent(in) :: parBmat(Bsizeexo+1,nfert) 		!<(4+1,6) birth probability parameters.
+		real(dble), intent(in) :: parBmat(Bsizeexo+1,nfert) 		!<(4+1,6) birth probability parameters.
 		integer, intent(in):: id 							!<unique sample id of the family
 		real(dble), intent(in) :: llmsvec(:) 				!< actual local labor market shocks for the sample object.
-		real(dble), intent(in) :: vcoef(Gsizeoc+1,nperiods),wcoef(Gsize+1,nperiods-deltamin+2)
+		real(dble), intent(in) :: vcoef(Gsizeoc+1,nperiods),wcoef(Gsize+1,nperiods-deltamin+2,deltamax-deltamin+1,1)
 		real(dble), intent(in) :: rho 						!<skill depreciation para, added later.
 		real(dble), intent(out) :: simdata(simvecsize,nperiods, Npaths)
 
+		! LOCALS
 		integer period, mainseed(2)
 		real(dble) a1(Npaths)
 		real(dble) Ainit,wage(Npaths),wageh(Npaths)
 		real(dble) mu(shocksize1)
 		real(dble) eps(Npaths,shocksize1)
 		! State space elements to be collected, even if they are not data, I will collect omega1 and omega2, except llms
-		real(dble) SS(6,nperiods+1,Npaths) 		
+		real(dble) SS(6,nperiods,Npaths) 		
 		! outcomes: wages of the father and mother.
-		real(dble) outcomes(2,nperiods+1,Npaths)
+		real(dble) outcomes(2,nperiods,Npaths)
 		! choices : the choice history of h.
-		real(dble) integer(1,neriods+1,Npaths) 
-		! choice specific utilities within the period
-		real(dble) umat(3,Npaths)
+		integer choices(1,neriods,Npaths) 
+		! not in the data, but I will keep an history of the x choices as well.
+		integer xchoices(1,nperiods,Npaths)
+			
+		
+		! choice specific utilities WITHIN the period
+		real(dble) umat(3,Npaths), umatbig(11,Npaths) 
+		! interpolating vectors within a period and for an npath alone, constant parts predicted beforehand.
+		real(dble) intcons(5), fvconsw, fvconsv
+		real(dble) intw(9), intv(5) ,fvw,fvv
+		real(dble) A1next, A2next, Enext
+		real(dble) pbirth, omegaB(4), birthdraw, birthhist(Npaths)
+		integer birth
+ 		integer i,j,k,l
+
 		mu=0.0d0
+		period=1
 		! first draw Npaths alternative folks to assign a1 values.	
-		mainseed=id
+		mainseed=id*(/1,1/)
 		call random_seed(put=mainseed)
 		call random_number(a1)
 		where (a1<pa1type(1))
@@ -317,13 +334,14 @@ end subroutine  type_packsimple
 		else 
 			a1=a1type(2)
 		end where
+		birthhist=0.d0 	! this records the timing of the second birth. if none, stays at zero.	
 
 		! initialize A
 		Ainit=intercepts(1)+parA(1)*omega3(1)+parA(2)*omega3(2)+parA(3)*omega3(3) 
 		! initialize wage	
 		logw0=intercepts(2)+parvecW(1)*schooling+parvecW(2)*afqt+parvecW(3)*age0m+parvecW(4)*age0m*age0m
-		
-		
+		! birth prob determiner
+		omegaB=(/omega3(3),omega3(3)**2,omega3(1),omega3(2)/)
 		! --------------FIRST PERIOD-------------
 		eps= randmnv(Npaths,5,mu,sigma,3,1,(1,id*1))
 		! initialize omegas
@@ -336,19 +354,91 @@ end subroutine  type_packsimple
 		
 		wage=wagef(0.d0,1.0d0,llmsvec(1),omega3(1),omega3(2),omega3(3),eps(:,4),intercepts(2),parW(5:7),parW(1:4))
 		wageh=wagehfquick(omega3(4),1.0d0,eps(:,5),parH(5:6))	
+		outcomes(1,1,:)=wage
+		outcomes(2,1,:)=wageh
+		! current utilities
 		umat(1,:)=parU(2)*SS(1,1,:) 	+     parU(4)*(wageh)**par(5)+par6(6)
 		umat(2,:)=parU(2)*SS(1,1,:)+a1*0.5d0+ parU(4)*(wageh+0.5d0*wage)**parU(5)+parU(6)+parU(7)*0.5d0
 		umat(3,:)=parU(2)*SS(1,1,:)+a1*1.0d0+ parU(4)*(wageh+wage)**parU(5)+parU(6)+parU(7)
-		choices(1,1,:)=maxloc(umat,1)
+		! --------------------future value calculations----------------------
+		! first, birth probabilities next period
+		pbirth=bprobexo(omegaB,parBmat(:,1))
+		! what I do this period will affect future A and E, the rest of the state space (which are used in the interpolations) are
+		! deterministic.
+		! first common deterministic parts
+		intcons=(/omega3(3)+1.0d0,llmsvec(period),omega3(1),omega3(2)/)
+		fvconsv=sum(vcoef(4:8,period+1)*intcons)+vcoef(Gsizeoc+1,period+1)
+		fvconsw=sum(wcoef(4:8,period+1,period,1)*intcons)+wcoef(Gsize+1,period+1period,1)
+	 	do i=1, Npaths
+	 		do j=1,3
+	 			A1next=pfone((/SS(1,period,i),(1-0.25d0*(j-1)),0.5d0*(wageh(i)+wage(i)*0.5d0*(j-1))/), omega3(1:3), period,parA,rho) 
+	 			A2next=Ainit
+	 			Enext=SS(3,period,i)+(j-1)*0.5d0
+	 			intw=(/A1next,A2next,Enext,A1next**2,A2next**2,Enext**2, A1next*A2next,A1next*Enext+A2next*Enext/)
+	 			intv=(/A1next,Enext,A1next**2,Enext**2, A1next*Enext/)
+				fvw=sum(intw*(/wcoef(1:3,period+1,period,1),wcoef(9:Gsize,period+1,period,1)/))
+				fvv=sum(intv*(/vcoef(1:2,period+1),wcoef(8:Gsizeoc,period+1)/))
+				! now add the expected future value to corresponding umat element
+				umat(j,i)=umat(j,i)+beta*(pbirth*(fvw+fvconsw)+(1-pbirth)*(fvv+fvconsv))
+			end do
+		end do
+	 	! finally, pick the highest expected utility one.
+		choices(1,period,:)=maxloc(umat,1)
 
 		! -----------------looooop to the future-----------
-		period=2
-		! form wages
-		wage=wagefsim(SS(3,period-1,:),period-1	
+		
+		do period=2,nperiods
+			! draw the period shocks
+			eps= randmnv(Npaths,5,mu,sigma,3,1,(period,id*period))
+			! update state space vectors as much as you can outside the loop	
+			SS(4,period,:)=SS(4,period-1,:)+1.0d0 	! update age1
+			SS(6,period,:)=SS(6,period-1,:)+1.0d0 	! udpate agem
+			SS(3,period,:)=SS(3,period-1,:)+(choices(1,period-1,:)*1.0d0-1.0d0)/2.0d0
+			
+			wage=wagefsim(SS(3,period,:),period*1.0d0,llmsvec(period),logw0,eps(:,4))	
+			wageh=wagehfquick(omega3(4),period*1.0d0,eps(:,5),parH(5:6))	
+			outcomes(1,period,:)=wage
+			outcomes(2,period,:)=wageh
+			
+			! determine the prob of a child birth. this part is constant all the Npaths
+			! DEPENDING ON THE TIME PERIOD, NECESSARY CALCULATION CHANGES QUITE A BIT, SO WE NEED TO FACILITATE THAT!!!
+			do i=1,Npaths
+				if (period<8) then			! if it is still fecund period.
+					! BIRTH for families who don't have their second child.
+					if (SS(5,period-1,i)<0.001) then
+						pbirth=bprobexo(omegaB,parBmat(:,period-1))	
+						call random_seed(put=mainseed*period*i) 
+						call random_number(birthdraw)
+						if (birthdraw<pbirth) then
+							birth=1
+							! record the birth time
+							birthhist(i)=period 
+							! initialize ss for the young one.	
+							SS(2,period,i)=Ainit
+							SS(5,period,i)=1.0d0
+						else
+							birth=0
+						end if
+					end if
+				
+				
+				elseif (8,15)
+				
+				else >15 
+					
 
-		! draw the period shocks
-		eps= randmnv(Npaths,5,mu,sigma,3,1,(period,id*period))
-	end subroutine simhist
+
+				end if
+
+
+
+
+			end do
+
+		
+		end do	
+		
+		end subroutine simhist
 
 
 
