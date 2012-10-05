@@ -1861,14 +1861,14 @@ subroutine wsolver(solw,delta,ftype,parA,parW,parH,parU,beta,Sigma,rho)
 	 solw(:,22)=coef
 	do period=21, delta, -1
 		! if the second kid is also out of the zone of mother's influence, use coeflate
-		if (period>astar+delta-1) then 			
+		if (period>=astar+delta-1) then 			
 			call coeflate(coefnew,period*1.0d0,delta*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,coef)
 		!print*, '------------------ delta= ', delta, ' --------------------'
 		!print*, 'Calculated coef for late period'
 		!print*, 'period is ', period
 		!print*, 'coef is ', coefnew
 !		 second kid is influenced by the mother but not the first one.
-		else if ((period<=astar+delta-1).AND.(astar<=period)) then
+		else if ((period<astar+delta-1).AND.(astar<=period)) then
 			call coefhc(coefnew, period*1.0d0, delta*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma, coef,rho)
 		!print*, '------------------ delta= ', delta, ' --------------------'
 		!print*, 'Calculated coef for hc period'

@@ -322,14 +322,19 @@ end subroutine  type_packsimple
 		real(dble) nextcollect(3,3) ! to collect collected future state space points and carry them to next period.
 		real(dble) nextcollectbig(3,3,xgridsize) ! 
 		real(dble) next(3,Npaths)  ! to collect collected future state space points and carry them to next period.
-		real(dble) pbirth, omegaB(4), birthdraw, birthhist(Npaths)
+		real(dble) pbirth, omegaB(4), birthdraw, 
+		integer birthhist(Npaths)
 		integer birth, baby
  		integer i,j,k,l
  		integer coordbig(2)
-		
+		real(dble) incrat ! ratio of the income that goes to consumption. I use this in the periods 15,21 to change income for W.
+
+
+		! Iniatilize some stuff
 		mu=0.0d0
 		xchoices=0 			! if not chosen, be 0.
 		period=1
+		birthhist=0 	! this records the timing of the second birth. if none, stays at zero.	
 		! first draw Npaths alternative folks to assign a1 values.	
 		mainseed=id*(/1,1/)
 		call random_seed(put=mainseed)
@@ -339,7 +344,6 @@ end subroutine  type_packsimple
 		else 
 			a1=a1type(2)
 		end where
-		birthhist=0.d0 	! this records the timing of the second birth. if none, stays at zero.	
 
 		! initialize A
 		Ainit=intercepts(1)+parA(1)*omega3(1)+parA(2)*omega3(2)+parA(3)*omega3(3) 
@@ -451,8 +455,6 @@ end subroutine  type_packsimple
 				! of choice specific utilities.
 
 				do i=Npaths
-					! calculations are different for V and W.
-					
 					! ----------------------------1.a PERIOD<8: ONE CHILD-----------------------------------
 					if (SS(5,period,i)<0.001) then 		! if still with one child. 
 						if (SS(4,period,i)<3) then
@@ -525,7 +527,7 @@ end subroutine  type_packsimple
 								
 				! --%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%--
 				!----------------------------2. 8<period<15 NO CHANCE OF BIRTH, FIRST KID STILL IN CARE---------------------------------
-			elseif ((period>=8) .AND. (period<15))
+			elseif ((period>=8) .AND. (period<astar))
 				do i=Npaths
 					! calculations are different for V and W.
 					
@@ -596,8 +598,8 @@ end subroutine  type_packsimple
 				!#%#%#%#%#%#%#%#%#%#%#%#%%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%%#%#%#%#%%#%#
 
 
-				! ---------------------3. Period (15,21) No x choice, because Kid 1 has grown
-			elseif (period>=15)
+				! ---------------------3. Period (16,21) No x choice, because Kid 1 has grown
+			elseif (period>=astar)
 				do i=Npaths
 					! calculations are different for V and W.
 				
@@ -607,14 +609,16 @@ end subroutine  type_packsimple
 						! there is no chance of having a baby at this point
 						baby=0
 						uc=parU(2)*SS(1,period,i) 
+						! NOTE: important difference: all the income goes into the consumption now, because there is no production of
+						! skils
 						umat(1,i)=uc+parU(4)*(wageh(i))**par(5)+par6(6)*baby
 						umat(2,i)=uc+a1(i)*0.5d0+ parU(4)*(wageh(i)+0.5d0*wage(i))**parU(5)+parU(6)*baby+parU(7)*0.5d0*baby
 						umat(3,i)=uc+a1(i)*1.0d0+ parU(4)*(wageh(i)+wage(i))**parU(5)+parU(6)*baby+parU(7)*baby
 						
 						! now calculate future values for the possible 3 decisions, so we can calculate the future value.
 						do j=1,3
-							A1next=pfone((/SS(1,period,i),(1-0.25d0*(j-1)),0.5d0*(wageh(i)+wage(i)*0.5d0*(j-1))/), omega3(1:3), period,parA(4:12),rho) 
-							A2next=Ainit
+							A1next=SS(1,period,i)
+							A2next=SS(2,period,i)
 							Enext=SS(3,period,i)+(j-1)*0.5d0
 							intv=(/A1next,Enext,A1next**2,Enext**2, A1next*Enext/)
 							fvv=sum(intv*(/vcoef(1:2,period+1),wcoef(8:Gsizeoc,period+1)/))
@@ -633,18 +637,26 @@ end subroutine  type_packsimple
 						baby=0
 						! because period is above astar, first kid does not get inputs anymore, no x choice
 						uc=uctwo(SS(1,period,i),SS(2,period,i),parU(1)) 
-						umat(1,i)=	uc + 	 parU(4)*(wageh(i))**par(5)+par6(6)*baby
-						umat(2,i)= uc +a1(i)*0.5d0+ parU(4)*(wageh(i)+0.5d0*wage(i))**parU(5)+parU(6)*baby+parU(7)*0.5d0*baby
-						umat(3,i)= uc +a1(i)*1.0d0+ parU(4)*(wageh(i)+wage(i))**parU(5)+parU(6)*baby+parU(7)*baby
+						! NOTE Depending on the age of the second child, we need modify how much of the income goes to the
+						! production of skills. This depends on the birth history, so good thing we have birthhist, which recorded
+						! the timing of the second birth (if any) as the period number it happened. if period is later than second's
+						! kids departure from mother's care (periodage 15 and thereafter)
+						
+						incrat=0.5d0
+						if (period>=astar+birthhist(i)-1) incrat=1.0d0
+
+						umat(1,i)=	uc + 	 parU(4)*(wageh(i)*incrat)**par(5)+par6(6)*baby
+						umat(2,i)= uc +a1(i)*0.5d0+ parU(4)*(incrat*(wageh(i)+0.5d0*wage(i)))**parU(5)+parU(6)*baby+parU(7)*0.5d0*baby
+						umat(3,i)= uc +a1(i)*1.0d0+ parU(4)*(incrat*(wageh(i)+wage(i)))**parU(5)+parU(6)*baby+parU(7)*baby
 						! now calculate and add future values.
 						do j=1,3
-							! E does not depend on x, so calculate it beforehand, also income
 							Enext=SS(3,period,i)+(j-1)*0.5d0
 							income=wageh(i)+wage(i)*(j-1)*0.25 ! it is 0.25 because half the income goes to goods inputs
 							inputs=(/SS(1,period,i),SS(2,period,i),0.d0,(1-0.25*(j-1))*(1-xgrid(k)),income/)
 							Anext=pftwo(inputs,omega3(1:3),parA(4:12), SS(4:5,period,i),rho)
-							A1next=Anext(1)
+							A1next=SS(1,period,i) 	! don't change A1
 							A2next=Anext(2)
+							if (period>=astar+birthhist(i)-1) A2next=SS(2,period,i)
 							intw=(/A1next,A2next,Enext,A1next**2,A2next**2,Enext**2, A1next*A2next,A1next*Enext+A2next*Enext/)
 							fvw=sum(intw*(/wcoef(1:3,period+1,period,1),wcoef(9:Gsize,period+1,period,1)/))
 							umatbig(j,k,i)=umatbig(j,k,i)+beta*(fvw+fvconsw)
@@ -665,13 +677,17 @@ end subroutine  type_packsimple
 
 				!-------------------------4. FINAL PERIOD-----------------------------
 			else
-					
+				! This is the final period. Future values are not calculated but terminal values are used.
+				! I have been using these temporary terminal values for the model, it seems like I will stick to those 
+				! for the jmpsimple. they will have three choices as before. 
+
+				
 
 
 			end if
 
 
-
+		end do
 
 
 		
