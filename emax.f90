@@ -200,7 +200,7 @@ implicit none
 	real(dble), intent(in):: agem 					!< age of the mother at TP.
 
 	real(dble) mult, power
-	power=(finalage/period)-(agem)
+	power=(finalage/timeperiod)-(agem)
 	mult=beta*(1.0d0-beta**power)/(1.0d0-beta)
 
 	TV(:,1)=(uh0+uct)*mult

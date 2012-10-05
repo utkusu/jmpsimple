@@ -15,12 +15,26 @@ real(dble) omega1(3),omega2(4),omega3(4),eps(Nmc,shocksize1)
 real(dble) ftype(5)
 real(dble) solw(Gsize,nperiods-deltamin+2)
 real(dble) sollw(Gsize+1,nperiods-deltamin+2)
-real(dble) wcoeff(Gsize+1,nperiods-deltamin+2,deltamax-deltamin+1,nctype)
+real(dble) wcoeff(Gsize+1,nperiods-deltamin+2,deltamax-deltamin+1,nttypes)
+real(dble) vcoeff(Gsizeoc+1,nperiods,deltamax-deltamin+1,nttypes)
 real(dble) solv(Gsizeoc+1,nperiods)
 real(dble) parBmat(Bsizeexo+1,nfert)
 real(dble) typevec(1)
 real(dble) typeprob(1)
 integer k
+
+! the simulation result collectors
+real(dble) SS(6,nperiods,Npaths) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
+real(dble) outcomes(2,nperiods,Npaths) !< outcomes: wages of the father and mother.
+integer choices(1,neriods,Npaths) 	!< choices : the choice history of h.
+integer xchoices(1,nperiods,Npaths) 	!< not in the data, but I will keep an history of the x choices as well.
+integer birthhist(Npaths) 			!< the birth timing vec, 0 if one child throughout.
+
+! stuff for simulation
+real(dble) intercepts(3),a1type(2),pa1type(2),llmsvec(SampleSize)
+integer id
+
+
 omega1=(/8.d0,5.0d0,0.0d0/)
 omega2=(/2.0d0,1.0d0,20.0d0,20.0d0/)
 omega3=(/10.0d0,1.0d0,18.0d0,10.0d0/)
@@ -43,7 +57,12 @@ typevec=0.5d0
 typeprob=1.0d0
 wcoeff=1.0d0
 ! try the coefochcb
-parBmat=0.1d0
+parBmat=0.5d0
+intercepts=(/1.0d0,1.0d0,1.0d0/)
+a1type=(/0.0d0,1.0d0/)
+pa1type(/0.3d0,0.7d0/)
+call simhist(SS,outcomes, choices, xchoices,birthhist,omega3,intercepts,parA,parU,parW,parH,beta,Sigma,a1type,pa1type,parBmat,vcoef,wcoeff,llmsvec,id,rho)
+
 !print*, emaxlate(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV)
 !print*, emaxhc(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,1.0d0)
 !print*, emaxhcx(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,1.0d0)
@@ -87,8 +106,7 @@ parBmat=0.1d0
 !jcall wsolver(sollw,3.0d0,ftype,parA,parW,parH(5:6),parU,beta,Sigma,1.0d0)
 
 !print *,sollw(:,4)
-call vsolver(solv,ftype,parA,parW,parH,parU,parBmat,beta,Sigma, wcoeff,typevec,typeprob,1.0d0)
-
+!call vsolver(solv,ftype,parA,parW,parH,parU,parBmat,beta,Sigma, wcoeff,typevec,typeprob,1.0d0)
 
 
 end program try

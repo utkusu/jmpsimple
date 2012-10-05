@@ -5,14 +5,15 @@ save
 
 integer, parameter:: dble=kind(1d0)		!< double precision
 ! parameters of the model
-integer, parameter:: period=1 				!< parameter for frequency of data, 1 is yearly, 0.5 half a year, 0.25 quarterly
-integer, parameter:: abar=7*(1/period)		!< when switch to old child- at abar, the child is old.
-integer, parameter:: astar=15*(1/period)	!< childhood ends
-integer, parameter:: deltamax=7*(1/period)	!< maximum birth of second child
-integer, parameter:: deltamin=2*(1/period)		!< minimum birth timing for second, set to 1 to allow twins
-integer, parameter:: finalage=65*(1/period)		!< final age of decision making for mother: retirement
-integer, parameter:: fertmaxage=37*(1/period)	!< latest age a mom can give birth.
-integer, parameter:: fertminage=20*(1/period)	!< first age a mom can give birth. Will get rid of teenage moms
+integer, parameter:: SampleSize=500
+integer, parameter:: timeperiod=1 				!< parameter for frequency of data, 1 is yearly, 0.5 half a year, 0.25 quarterly
+integer, parameter:: abar=7*(1/timeperiod)		!< when switch to old child- at abar, the child is old.
+integer, parameter:: astar=15*(1/timeperiod)	!< childhood ends
+integer, parameter:: deltamax=7*(1/timeperiod)	!< maximum birth of second child
+integer, parameter:: deltamin=2*(1/timeperiod)		!< minimum birth timing for second, set to 1 to allow twins
+integer, parameter:: finalage=65*(1/timeperiod)		!< final age of decision making for mother: retirement
+integer, parameter:: fertmaxage=37*(1/timeperiod)	!< latest age a mom can give birth.
+integer, parameter:: fertminage=20*(1/timeperiod)	!< first age a mom can give birth. Will get rid of teenage moms
 integer, parameter::nperiods=22 				!< number of solution periods
 integer, parameter::nfert=6 					!< number of periods where can the mother can pregnant.
 !-----------------size of of stuff----------------------
