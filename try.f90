@@ -42,6 +42,7 @@ omega3=(/10.0d0,1.0d0,18.0d0,10.0d0/)
 
 parA=0.10d0
 parU=1.0d0
+parU(4)=100000.0d0
 !parU(1)=-100
 parW=0.1d0*0.010
 parW(6)=-0.0001d0
@@ -58,14 +59,23 @@ typevec=0.5d0
 typeprob=1.0d0
 wcoeff=1.0d0
 ! try the coefochcb
-parBmat=0.5d0
+parBmat=0.0001d0
 intercepts=(/1.0d0,1.0d0,1.0d0/)
 a1type=(/0.0d0,1.0d0/)
 pa1type=(/0.3d0,0.7d0/)
 rho=1.0d0
-
+id=18
 call simhist(SS,outcomes, choices, xchoices,birthhist,omega3,intercepts,parA,parU,parW,parH,beta,Sigma,a1type,pa1type,parBmat,vcoeff,wcoeff,llmsvec,id,rho)
-print*, choices(1,:,3)
+
+print*, choices(1,:,9)
+print*, '------------------------'
+print*, xchoices(1,:,9)
+
+print*, '-----------------'
+
+print*, birthhist
+
+
 !print*, emaxlate(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV)
 !print*, emaxhc(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,1.0d0)
 !print*, emaxhcx(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,1.0d0)

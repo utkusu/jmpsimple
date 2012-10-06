@@ -359,7 +359,7 @@ end subroutine  type_packsimple
 		real(dble) nextcollect(3,3) ! to collect collected future state space points and carry them to next period.
 		real(dble) nextcollectbig(3,3,xgridsize) ! 
 		real(dble) next(3,Npaths)  ! to collect collected future state space points and carry them to next period.
-		real(dble) pbirth, omegaB(4), birthdraw 
+		real(dble) pbirth, omegaB(4), birthdraw(Npaths) 
 		integer birth, baby
  		integer i,j,k,l
  		integer coordbig(2)
@@ -373,7 +373,7 @@ end subroutine  type_packsimple
 		period=1
 		birthhist=0 	! this records the timing of the second birth. if none, stays at zero.	
 		! first draw Npaths alternative folks to assign a1 values.	
-		mainseed=id*(/1,1/)
+		mainseed=id*(/2,2/)
 		call random_seed(put=mainseed)
 		call random_number(pa1)
 		a1order=(/(i,i=1, nttypes)/)
@@ -443,7 +443,7 @@ end subroutine  type_packsimple
 		end do
 		!                            -----------------LOOOOOP TO THE FUTURE-----------------
 		
-		do period=2,nperiods
+		do period=2,nperiods-1
 			! draw the period shocks
 			eps= randmnv(Npaths,5,mu,sigma,3,1,(/period,id*period/))
 			! update state space vectors as much as you can outside the loop	
@@ -463,25 +463,26 @@ end subroutine  type_packsimple
 			outcomes(1,period,:)=wage
 			outcomes(2,period,:)=wageh
 			
-			! determine the prob of a child birth. this part is constant all the Npaths
-			pbirth=bprobexo(omegaB,parBmat(:,period-1))	
 			
 			! get some period specific but not path specific stuff to calculate interpolated fv
 			intcons=(/omega3(3)+period*1.0d0,llmsvec(period),omega3(1),omega3(2)/)
-			do k=1,nttypes
-				fvconsv(k)=sum(vcoef(4:7,period+1,k)*intcons)+vcoef(Gsizeoc+1,period+1,k)
-				fvconsw(k)=sum(wcoef(4:7,period+1,period,k)*intcons)+wcoef(Gsize+1,period+1,period,k)
-			end do
+			if (period<nperiods) then
+				do k=1,nttypes
+					fvconsv(k)=sum(vcoef(4:7,period+1,k)*intcons)+vcoef(Gsizeoc+1,period+1,k)
+				end do
+			end if
 
-			! -------------------------- 1a. PERIOD<8: STILL IN THE FECUND PERIOD ---------------------------------
-			if (period<8)  then
+			! -------------------------- 1a. PERIOD<7: STILL IN THE FECUND PERIOD ---------------------------------
+			if (period<7)  then
 
-				! FIRST FIGURE OUT WHO HAD BIRTH
+			! determine the prob of a child birth. this part is constant all the Npaths
+			pbirth=bprobexo(omegaB,parBmat(:,period-1))	
+			call random_seed(put=mainseed*(period*10)+period) 
+			call random_number(birthdraw)
+			! FIRST FIGURE OUT WHO HAD BIRTH
 				do i=1,Npaths
 					if (SS(5,period-1,i)<0.001) then   ! they don't have a second child
-						call random_seed(put=mainseed*period*i) 
-						call random_number(birthdraw)
-						if (birthdraw<pbirth) then
+						if (birthdraw(i)<pbirth) then
 							! record the birth time
 							birthhist(i)=period 
 							! initialize ss for the young one.
@@ -499,7 +500,8 @@ end subroutine  type_packsimple
 				! of choice specific utilities.
 
 				do i=1,Npaths
-					! ----------------------------1.a PERIOD<8: ONE CHILD-----------------------------------
+					! ----------------------------1.a PERIOD<7: ONE CHILD-----------------------------------
+				
 					if (SS(5,period,i)<0.001) then 		! if still with one child. 
 						if (SS(4,period,i)<3) then
 							baby=1
@@ -511,7 +513,12 @@ end subroutine  type_packsimple
 						umat(2,i)=uc+a1type(a1holder(i))*0.5d0+ parU(4)*(wageh(i)+0.5d0*wage(i))**parU(5)+parU(6)*baby+parU(7)*0.5d0*baby
 						umat(3,i)=uc+a1type(a1holder(i))*1.0d0+ parU(4)*(wageh(i)+wage(i))**parU(5)+parU(6)*baby+parU(7)*baby
 						
-						! now calculate future values for the possible 3 decisions, so we can calculate the future value.
+						
+						do k=1,nttypes
+							fvconsw(k)=sum(wcoef(4:7,period+1,period,k)*intcons)+wcoef(Gsize+1,period+1,period,k)
+						end do
+							! now calculate future values for the possible 3 decisions, so we can calculate the future value.
+						
 						do j=1,3
 							A1next=pfone((/SS(1,period,i),(1-0.25d0*(j-1)),0.5d0*(wageh(i)+wage(i)*0.5d0*(j-1))/), omega3(1:3), period*1.0d0,parA(4:12),rho) 
 							A2next=Ainit
@@ -529,9 +536,12 @@ end subroutine  type_packsimple
 						choices(1,period,i)=picker(1)
 						! get the optimized future state space points to use them in future.
 						next(:,i)=nextcollect(:,picker(1))
-					
- 					!-------------------------- PERIOD<8: 1.b TWO CHILDREN ------------------------------
+
+ 					!-------------------------- PERIOD<7: 1.b TWO CHILDREN ------------------------------
 					else
+						do k=1,nttypes
+							fvconsw(k)=sum(wcoef(4:7,period+1,birthhist(i),k)*intcons)+wcoef(Gsize+1,period+1,birthhist(i),k)
+						end do
 						! increase the age2 by one if it is different than zero
 						SS(5,period,i)=SS(5,period,i)+1.0d0
 						! is there a baby at home
@@ -547,6 +557,7 @@ end subroutine  type_packsimple
 						umatbig(1,:,i)=	uc + 			 parU(4)*(wageh(i))**parU(5)+parU(6)*baby
 						umatbig(2,:,i)= uc +a1type(a1holder(i))*0.5d0+ parU(4)*(wageh(i)+0.5d0*wage(i))**parU(5)+parU(6)*baby+parU(7)*0.5d0*baby
 						umatbig(3,:,i)= uc +a1type(a1holder(i))*1.0d0+ parU(4)*(wageh(i)+wage(i))**parU(5)+parU(6)*baby+parU(7)*baby
+
 						! now calculate and add future values.
 						do j=1,3
 							! E does not depend on x, so calculate it beforehand, also income
@@ -554,11 +565,11 @@ end subroutine  type_packsimple
 							income=wageh(i)+wage(i)*(j-1)*0.25 ! it is 0.25 because half the income goes to goods inputs
 							do k=1,xgridsize
 								inputs=(/SS(1,period,i),SS(2,period,i),(1-0.25*(j-1))*xgrid(k),(1-0.25*(j-1))*(1-xgrid(k)),income/)
-								Anext=pftwo(inputs,omega3(1:3),parA(4:12), SS(4:5,period,i),rho)
+								Anext=pftwo(inputs,omega3(1:3),SS(4:5,period,i),parA(4:12), rho)
 								A1next=Anext(1)
 								A2next=Anext(2)
 								intw=(/A1next,A2next,Enext,A1next**2,A2next**2,Enext**2, A1next*A2next,A1next*Enext,A2next*Enext/)
-								fvw=sum(intw*(/wcoef(1:3,period+1,period,a1holder(i)),wcoef(9:Gsize,period+1,period,a1holder(i))/))
+								fvw=sum(intw*(/wcoef(1:3,period+1,birthhist(i),a1holder(i)),wcoef(9:Gsize,period+1,birthhist(i),a1holder(i))/))
 								umatbig(j,k,i)=umatbig(j,k,i)+beta*(fvw+fvconsw(a1holder(i)))
 								nextcollectbig(:,j,k)=(/A1next,A2next,Enext/)
 							end do
@@ -574,12 +585,12 @@ end subroutine  type_packsimple
 				end do
 								
 				! --%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%--
-				!----------------------------2. 8<period<15 NO CHANCE OF BIRTH, FIRST KID STILL IN CARE---------------------------------
-			elseif ((period>=8) .AND. (period<astar)) then
+				!----------------------------2. 7<period<15 NO CHANCE OF BIRTH, FIRST KID STILL IN CARE---------------------------------
+			elseif ((period>=7) .AND. (period<astar)) then
 				do i=1,Npaths
 					! calculations are different for V and W.
 					
-					! ---------------------------2.a PERIOD (8,15): ONE CHILD-----------------------------------
+					! ---------------------------2.a PERIOD (7,15): ONE CHILD-----------------------------------
 					if (SS(5,period,i)<0.001) then 		! if still with one child. 
 						if (SS(4,period,i)<3) then
 							baby=1
@@ -608,7 +619,7 @@ end subroutine  type_packsimple
 						! get the optimized future state space points to use them in future.
 						next(:,i)=nextcollect(:,choices(1,period,i))
 					
-					!-------------------------- 2.b PERIOD(8,15): TWO CHILDREN ------------------------------
+					!-------------------------- 2.b PERIOD(7,15): TWO CHILDREN ------------------------------
 					else
 						! increase the age2 by one if it is different than zero
 						 SS(5,period,i)=SS(5,period,i)+1.0d0
@@ -626,17 +637,22 @@ end subroutine  type_packsimple
 						umatbig(2,:,i)= uc +a1type(a1holder(i))*0.5d0+ parU(4)*(wageh(i)+0.5d0*wage(i))**parU(5)+parU(6)*baby+parU(7)*0.5d0*baby
 						umatbig(3,:,i)= uc +a1type(a1holder(i))*1.0d0+ parU(4)*(wageh(i)+wage(i))**parU(5)+parU(6)*baby+parU(7)*baby
 						! now calculate and add future values.
+					
+						do k=1,nttypes
+							fvconsw(k)=sum(wcoef(4:7,period+1,birthhist(i),k)*intcons)+wcoef(Gsize+1,period+1,birthhist(i),k)
+						end do
+						
 						do j=1,3
 							! E does not depend on x, so calculate it beforehand, also income
 							Enext=SS(3,period,i)+(j-1)*0.5d0
 							income=wageh(i)+wage(i)*(j-1)*0.25 ! it is 0.25 because half the income goes to goods inputs
 							do k=1,xgridsize
 								inputs=(/SS(1,period,i),SS(2,period,i),(1-0.25*(j-1))*xgrid(k),(1-0.25*(j-1))*(1-xgrid(k)),income/)
-								Anext=pftwo(inputs,omega3(1:3),parA(4:12), SS(4:5,period,i),rho)
+								Anext=pftwo(inputs,omega3(1:3),SS(4:5,period,i),parA(4:12), rho)
 								A1next=Anext(1)
 								A2next=Anext(2)
 								intw=(/A1next,A2next,Enext,A1next**2,A2next**2,Enext**2, A1next*A2next,A1next*Enext,A2next*Enext/)
-								fvw=sum(intw*(/wcoef(1:3,period+1,period,a1holder(i)),wcoef(9:Gsize,period+1,period,a1holder(i))/))
+								fvw=sum(intw*(/wcoef(1:3,period+1,birthhist(i),a1holder(i)),wcoef(9:Gsize,period+1,birthhist(i),a1holder(i))/))
 								!umatbig(j,k,i)=umatbig(j,k,i)+beta*(fvw+fvconsw(a1holder(i)))
 								nextcollectbig(:,j,k)=(/A1next,A2next,Enext/)
 							end do
@@ -651,7 +667,7 @@ end subroutine  type_packsimple
 
 
 				! ---------------------3. Period (16,21) No x choice, because Kid 1 has grown
-			elseif (period>=astar) then 
+			elseif ((period>=astar).AND.(period<22)) then 
 				do i=1,Npaths
 					! calculations are different for V and W.
 				
@@ -705,16 +721,21 @@ end subroutine  type_packsimple
 						umat(2,i)= uc +a1type(a1holder(i))*0.5d0+ parU(4)*(incrat*(wageh(i)+0.5d0*wage(i)))**parU(5)+parU(6)*baby+parU(7)*0.5d0*baby
 						umat(3,i)= uc +a1type(a1holder(i))*1.0d0+ parU(4)*(incrat*(wageh(i)+wage(i)))**parU(5)+parU(6)*baby+parU(7)*baby
 						! now calculate and add future values.
+
+						do k=1,nttypes
+							fvconsw(k)=sum(wcoef(4:7,period+1,birthhist(i),k)*intcons)+wcoef(Gsize+1,period+1,birthhist(i),k)
+						end do
+						
 						do j=1,3
 							Enext=SS(3,period,i)+(j-1)*0.5d0
 							income=wageh(i)+wage(i)*(j-1)*0.25 ! it is 0.25 because half the income goes to goods inputs
 							inputs=(/SS(1,period,i),SS(2,period,i),0.d0,(1-0.25*(j-1))*(1-xgrid(k)),income/)
-							Anext=pftwo(inputs,omega3(1:3),parA(4:12), SS(4:5,period,i),rho)
+							Anext=pftwo(inputs,omega3(1:3),SS(4:5,period,i),parA(4:12), rho)
 							A1next=SS(1,period,i) 	! don't change A1
 							A2next=Anext(2) 		
 							if (period>=astar+birthhist(i)-1) A2next=SS(2,period,i)
 							intw=(/A1next,A2next,Enext,A1next**2,A2next**2,Enext**2, A1next*A2next,A1next*Enext,A2next*Enext/)
-							fvw=sum(intw*(/wcoef(1:3,period+1,period,a1holder(i)),wcoef(9:Gsize,period+1,period,a1holder(i))/))
+							fvw=sum(intw*(/wcoef(1:3,period+1,birthhist(i),a1holder(i)),wcoef(9:Gsize,period+1,birthhist(i),a1holder(i))/))
 							umat(j,i)=umat(j,i)+beta*(fvw+fvconsw(a1holder(i)))
 							nextcollect(:,j)=(/A1next,A2next,Enext/)
 						end do
