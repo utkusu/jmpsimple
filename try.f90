@@ -2,6 +2,7 @@ program try
 use global
 use randomgen
 use emax
+use opt
 USE IFPORT ! for intel fortran only
 implicit none
 
@@ -26,12 +27,12 @@ integer k
 ! the simulation result collectors
 real(dble) SS(6,nperiods,Npaths) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
 real(dble) outcomes(2,nperiods,Npaths) !< outcomes: wages of the father and mother.
-integer choices(1,neriods,Npaths) 	!< choices : the choice history of h.
+integer choices(1,nperiods,Npaths) 	!< choices : the choice history of h.
 integer xchoices(1,nperiods,Npaths) 	!< not in the data, but I will keep an history of the x choices as well.
 integer birthhist(Npaths) 			!< the birth timing vec, 0 if one child throughout.
 
 ! stuff for simulation
-real(dble) intercepts(3),a1type(2),pa1type(2),llmsvec(SampleSize)
+real(dble) intercepts(3),a1type(2),pa1type(2),llmsvec(SampleSize),rho
 integer id
 
 
@@ -60,9 +61,11 @@ wcoeff=1.0d0
 parBmat=0.5d0
 intercepts=(/1.0d0,1.0d0,1.0d0/)
 a1type=(/0.0d0,1.0d0/)
-pa1type(/0.3d0,0.7d0/)
-call simhist(SS,outcomes, choices, xchoices,birthhist,omega3,intercepts,parA,parU,parW,parH,beta,Sigma,a1type,pa1type,parBmat,vcoef,wcoeff,llmsvec,id,rho)
+pa1type=(/0.3d0,0.7d0/)
+rho=1.0d0
 
+call simhist(SS,outcomes, choices, xchoices,birthhist,omega3,intercepts,parA,parU,parW,parH,beta,Sigma,a1type,pa1type,parBmat,vcoeff,wcoeff,llmsvec,id,rho)
+print*, choices(1,:,3)
 !print*, emaxlate(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV)
 !print*, emaxhc(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,1.0d0)
 !print*, emaxhcx(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,1.0d0)
