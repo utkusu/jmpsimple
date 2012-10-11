@@ -22,7 +22,7 @@ real(dble) solv(Gsizeoc+1,nperiods)
 real(dble) parBmat(Bsizeexo+1,nfert)
 real(dble) typevec(1)
 real(dble) typeprob(1)
-integer k
+integer k,i
 
 ! the simulation result collectors
 real(dble) SS(6,nperiods,Npaths) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
@@ -42,15 +42,15 @@ omega3=(/10.0d0,1.0d0,18.0d0,10.0d0/)
 
 parA=0.10d0
 parU=1.0d0
-parU(4)=100000.0d0
-!parU(1)=-100
+parU(4)=1.0d0
+parU(1)=-100
 parW=0.1d0*0.010
 parW(6)=-0.0001d0
 parH=0.1d0*0.0000020
 Sigma=0.5d0*0.10
 beta=0.95d0
-parFV=1.0d0
-parFVv=1.0d0
+parFV=0.10d0
+parFVv=0.10d0
 parFVmat=1.0d0
 mutype=1.0d0
 eps=0.0d0
@@ -64,14 +64,21 @@ intercepts=(/1.0d0,1.0d0,1.0d0/)
 a1type=(/0.0d0,1.0d0/)
 pa1type=(/0.3d0,0.7d0/)
 rho=1.0d0
-id=18
+id=28
+
 call simhist(SS,outcomes, choices, xchoices,birthhist,omega3,intercepts,parA,parU,parW,parH,beta,Sigma,a1type,pa1type,parBmat,vcoeff,wcoeff,llmsvec,id,rho)
 
-print*, choices(1,:,9)
+print*, choices(1,:,8)
 print*, '------------------------'
-print*, xchoices(1,:,9)
+print*, xchoices(1,:,8)
 
 print*, '-----------------'
+print*, 'STATE SPACE'
+do i=1,22
+	print*, SS(:,i,8)
+	print*, '----------------'
+end do 
+
 
 print*, birthhist
 

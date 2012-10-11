@@ -26,8 +26,12 @@ integer, parameter:: Ssize=16			!< the number of elements in state space
 integer, parameter:: Bsize=2			!< the number of regressors in the birth probability function other than the contraception
 integer, parameter:: Bsizeexo=4			!< the number of regressors in the birth probability function other than the contraception
 
-integer,parameter::Npaths=100 			!<number of simulated paths for each family.
+! estimation stuff 
+integer,parameter::Npaths=1000 			!<number of simulated paths for each family.
 integer,parameter::simvecsize=10 		!<the size of the simulated data vector for each period. obviosly very related to ss.
+integer, parameter::SampleSize=500 		!< Size of the estimation sample
+integer, parameter:: MomentSize=20 		!< number of moments to be matched
+
 
 integer, parameter::o1size=3 			!< size of omega1
 integer, parameter::o2size=4	!< size of omega1

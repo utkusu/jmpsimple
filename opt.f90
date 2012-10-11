@@ -829,10 +829,30 @@ end subroutine  type_packsimple
 		end do !--------------- END PERIOD LOOP---------------
 
 		
-		end subroutine simhist
+	end subroutine simhist
+
+	subroutine moments(SS,outcomes, choices, xchoices,birthhist,idmat)
+		implicit none
+		real(dble),intent(in):: SS(6,nperiods,Npaths) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
+		real(dble),intent(in):: outcomes(2,nperiods,Npaths) !< outcomes: wages of the father and mother.
+		integer,intent(in):: choices(1,nperiods,Npaths) 	!< choices : the choice history of h.
+		integer,intent(in):: xchoices(1,nperiods,Npaths) 	!< not in the data, but I will keep an history of the x choices as well.
+		integer,intent(in):: birthhist(Npaths) 		    	!< the birth timing vec, 0 if one child throughout.
+		integer, intent(in)::idmat(SampleSize,:) 	   		!<indicates the which sample units are in the jth columnth moment
+															!<calculation
+		real(dble), intent(out) :: momentvec(MomentSize) 			!< The set of moments produced by the simulated data
+			
+
+		! locals 
+		integer i,j,k,l
 
 
+		! STARTING OUT WITH 6A and 6B in jmpsimple document. 
+		! linear regressions with work status, where regressor vector is [1 schooling AFQT agem baby E 2child]
 
+
+	 
+	end subroutine moments
 
 
 	!----------------------OPTIMIZATION RELATED STUFF--------------------------
