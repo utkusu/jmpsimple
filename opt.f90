@@ -318,7 +318,7 @@ end subroutine  type_packsimple
 	end function cumx
 
 
-	subroutine simhist(SS,outcomes, choices, xchoices,birthhist,omega3,intercepts,parA,parU,parW,parH,beta,sigma,a1type,pa1type,parBmat,vcoef,wcoef,llmsvec,id,rho)
+	subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,omega3,intercepts,parA,parU,parW,parH,beta,sigma,a1type,pa1type,parBmat,vcoef,wcoef,llmsvec,id,rho,lambdas,sigmaetas)
 		implicit none
 		real(dble), intent(in) :: omega3(:) 		!< observed family type
 		real(dble), intent(in) :: intercepts(:) 	!< normaly hetero, but for now constant: ctype,mtype,atype
@@ -336,8 +336,14 @@ end subroutine  type_packsimple
 		integer,intent(out):: choices(1,nperiods,Npaths) 	!< choices : the choice history of h.
 		integer,intent(out):: xchoices(1,nperiods,Npaths) 	!< not in the data, but I will keep an history of the x choices as well.
 		integer,intent(out):: birthhist(Npaths) 			!< the birth timing vec, 0 if one child throughout.
-		
-		
+		! test score stuff
+		real(dble), intent(in) ::lambdas(Ntestage) 			!< old factor loadings in a two test world 
+		real(dble), intent(in) :: sigmaetas(2,:Ntestage) 			!<measurement error variance for each age.
+		real(dble), intent(out) :: testoutcomes(4,Ntestage, Npaths)
+	
+		! smoothed stuff
+
+			
 		! LOCALS
 		integer period, mainseed(2)
 		integer a1holder(Npaths)
@@ -367,6 +373,11 @@ end subroutine  type_packsimple
 	
 		integer a1order(nttypes)
 		integer picker(1)
+
+		! adding Test Scores
+		real(dble) sigmafortests(2,2)
+		real(dble) etashock(Npaths,4)
+		
 		! Iniatilize some stuff
 		mu=0.0d0
 		xchoices=0 			! if not chosen, be 0.
@@ -404,7 +415,9 @@ end subroutine  type_packsimple
 		SS(4,1,:)=1.0d0 	!age1
 		SS(5,1,:)=0.0d0 	!age2
 		SS(6,1,:)=omega3(3) !agem
-		
+	
+		! initialize test scores
+		testoutcome=0.0d0
 		wage=wagef(0.d0,1.0d0,llmsvec(1),omega3(1),omega3(2),omega3(3),eps(:,4),intercepts(2),parW(5:7),parW(1:4))
 		wageh=wagehfquick(omega3(4),1.0d0,eps(:,5),parH(5:6))	
 		outcomes(1,1,:)=wage
@@ -463,7 +476,13 @@ end subroutine  type_packsimple
 			outcomes(1,period,:)=wage
 			outcomes(2,period,:)=wageh
 			
-			
+			if (period>=testminage .AND. period<=testmaxage) then
+				sigmafortests=0.0d0
+				sigmafortests(1,1)=sigmaetas(1,period-testminage+1)
+				sigmafortests(2,2)=sigmaetas(2,period-testminage+1)
+				etashock=randmnv(Npaths,4,mu,sigmafortests,3,1,(/100*period+5*period+period,300*id*period+15*period+period+id))	
+			end if
+
 			! get some period specific but not path specific stuff to calculate interpolated fv
 			intcons=(/omega3(3)+period*1.0d0,llmsvec(period),omega3(1),omega3(2)/)
 			if (period<nperiods) then
@@ -580,9 +599,21 @@ end subroutine  type_packsimple
 						next(:,i)=nextcollectbig(:,coordbig(1),coordbig(2))
 				
 					end if  ! end of period<8 WV if
+						
+					if (SS(4,period,i)>=testminage) then
+						testoutcomes(1,period-testminage+1,i)=SS(1,period,:)+etashock(i,1)
+						testoutcomes(2,period-testminage+1,i)=lambdas(period-testminage+1)*SS(1,period,i)+etashock(i,1)
+					end if
 
+					if (SS(5,period,i)>=testminage) then
+						testoutcomes(3,period-testminage+1,i)=SS(2,period,:)+etashock(i,1)
+						testoutcomes(4,period-testminage+1,i)=lambdas(period-testminage+1)*SS(2,period,i)+etashock(i,1)
+					end if
 
 				end do
+
+				! before switching to other group: HANDLE THE TEST SCORE PRODUCTION
+				! 
 								
 				! --%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%--
 				!----------------------------2. 7<period<15 NO CHANCE OF BIRTH, FIRST KID STILL IN CARE---------------------------------
@@ -662,11 +693,25 @@ end subroutine  type_packsimple
 						xchoices(1,period,i)=coordbig(2)
 						next(:,i)=nextcollectbig(:,coordbig(1),coordbig(2))
 					end if  ! end of period<8 WV if
+				
+				! create test scores	
+
+					if (SS(4,period,i)>=testminage) then
+						testoutcomes(1,period-testminage+1,i)=SS(1,period,:)+etashock(i,1)
+						testoutcomes(2,period-testminage+1,i)=lambdas(period-testminage+1)*SS(1,period,i)+etashock(i,1)
+					end if
+
+					if (SS(5,period,i)>=testminage) then
+						testoutcomes(3,period-testminage+1,i)=SS(2,period,:)+etashock(i,1)
+						testoutcomes(4,period-testminage+1,i)=lambdas(period-testminage+1)*SS(2,period,i)+etashock(i,1)
+					end if
+				
 				end do
+				
 				!#%#%#%#%#%#%#%#%#%#%#%#%%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%%#%#%#%#%%#%#
 
 
-				! ---------------------3. Period (16,21) No x choice, because Kid 1 has grown
+				! ---------------------3. Period (15,21) No x choice, because Kid 1 has grown
 			elseif ((period>=astar).AND.(period<22)) then 
 				do i=1,Npaths
 					! calculations are different for V and W.

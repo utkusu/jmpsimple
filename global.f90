@@ -31,7 +31,9 @@ integer,parameter::Npaths=1000 			!<number of simulated paths for each family.
 integer,parameter::simvecsize=10 		!<the size of the simulated data vector for each period. obviosly very related to ss.
 integer, parameter::SampleSize=500 		!< Size of the estimation sample
 integer, parameter:: MomentSize=20 		!< number of moments to be matched
-
+integer, parameter:: Ntestage=11 		!< number of ages in which we have test scores. start at 5, end in 15.
+integer, parameter:: testminage=5 		!< earliest test scores
+integer, parameter:: testmaxage=15 		!< latest test scores
 
 integer, parameter::o1size=3 			!< size of omega1
 integer, parameter::o2size=4	!< size of omega1
