@@ -5,7 +5,6 @@ save
 
 integer, parameter:: dble=kind(1d0)		!< double precision
 ! parameters of the model
-integer, parameter:: SampleSize=500
 integer, parameter:: timeperiod=1 				!< parameter for frequency of data, 1 is yearly, 0.5 half a year, 0.25 quarterly
 integer, parameter:: abar=7*(1/timeperiod)		!< when switch to old child- at abar, the child is old.
 integer, parameter:: astar=15*(1/timeperiod)	!< childhood ends
@@ -31,9 +30,9 @@ integer,parameter::Npaths=1000 			!<number of simulated paths for each family.
 integer,parameter::simvecsize=10 		!<the size of the simulated data vector for each period. obviosly very related to ss.
 integer, parameter::SampleSize=500 		!< Size of the estimation sample
 integer, parameter:: MomentSize=20 		!< number of moments to be matched
-integer, parameter:: Ntestage=11 		!< number of ages in which we have test scores. start at 5, end in 15.
+integer, parameter:: Ntestage=10 		!< number of ages in which we have test scores. start at 5, end in 15.
 integer, parameter:: testminage=5 		!< earliest test scores
-integer, parameter:: testmaxage=15 		!< latest test scores
+integer, parameter:: testmaxage=14 		!< latest test scores
 
 integer, parameter::o1size=3 			!< size of omega1
 integer, parameter::o2size=4	!< size of omega1

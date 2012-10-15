@@ -318,7 +318,7 @@ end subroutine  type_packsimple
 	end function cumx
 
 
-	subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,omega3,intercepts,parA,parU,parW,parH,beta,sigma,a1type,pa1type,parBmat,vcoef,wcoef,llmsvec,id,rho,lambdas,sigmaetas)
+	subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoices, smexperience, smAs, smtestoutcomes,omega3,intercepts,parA,parU,parW,parH,beta,sigma,a1type,pa1type,parBmat,vcoef,wcoef,llmsvec,id,rho,lambdas,sigmaetas,smpar)
 		implicit none
 		real(dble), intent(in) :: omega3(:) 		!< observed family type
 		real(dble), intent(in) :: intercepts(:) 	!< normaly hetero, but for now constant: ctype,mtype,atype
@@ -338,11 +338,16 @@ end subroutine  type_packsimple
 		integer,intent(out):: birthhist(Npaths) 			!< the birth timing vec, 0 if one child throughout.
 		! test score stuff
 		real(dble), intent(in) ::lambdas(Ntestage) 			!< old factor loadings in a two test world 
-		real(dble), intent(in) :: sigmaetas(2,:Ntestage) 			!<measurement error variance for each age.
+		real(dble), intent(in) :: sigmaetas(2,Ntestage) 			!<measurement error variance for each age.
 		real(dble), intent(out) :: testoutcomes(4,Ntestage, Npaths)
 	
 		! smoothed stuff
-
+		real(dble), intent(in) :: smpar
+		real(dble), intent(out) :: smchoices(3,nperiods, Npaths)
+		real(dble), intent(out) :: smexperience(nperiods, Npaths)
+		real(dble), intent(out) :: smAs(2,nperiods, Npaths)
+		real(dble) , intent(out):: smtestoutcomes(4,Ntestage, Npaths)
+		
 			
 		! LOCALS
 		integer period, mainseed(2)
@@ -377,10 +382,20 @@ end subroutine  type_packsimple
 		! adding Test Scores
 		real(dble) sigmafortests(2,2)
 		real(dble) etashock(Npaths,4)
-		
+	
+		! smoothing shit
+		real(dble) smdenom
+		real(dble) smxchoices(xgridsize, nperiods, Npaths)
+		real(dble) smh, smx
+		real(dble) smnext(3,Npaths)
+		real(dble) smbig(3,xgridsize)
+			
 		! Iniatilize some stuff
 		mu=0.0d0
-		xchoices=0 			! if not chosen, be 0.
+		choices=-9999
+		xchoices=-9999 !if not chosen, be -9999.
+		smchoices=-9999
+		smxchoices=-9999 !if not chosen, be -9999.
 		period=1
 		birthhist=0 	! this records the timing of the second birth. if none, stays at zero.	
 		! first draw Npaths alternative folks to assign a1 values.	
@@ -417,7 +432,7 @@ end subroutine  type_packsimple
 		SS(6,1,:)=omega3(3) !agem
 	
 		! initialize test scores
-		testoutcome=0.0d0
+		testoutcomes=0.0d0
 		wage=wagef(0.d0,1.0d0,llmsvec(1),omega3(1),omega3(2),omega3(3),eps(:,4),intercepts(2),parW(5:7),parW(1:4))
 		wageh=wagehfquick(omega3(4),1.0d0,eps(:,5),parH(5:6))	
 		outcomes(1,1,:)=wage
@@ -453,6 +468,16 @@ end subroutine  type_packsimple
 			picker=maxloc(umat(:,i))
 			choices(1,period,i)=picker(1)
 			next(:,i)=nextcollect(:,picker(1))
+
+			! NEW: Smoothed As and Es and choices and later test scores (not this period, though)
+			smdenom=sum(exp((umat(:,i)-minval(umat(:,i)))/smpar))
+			smchoices(:,period,i)=exp((umat(:,i)-minval(umat(:,i)))/smpar)/smdenom
+			smh=sum(smchoices(:,period,i)*(/0.d0,0.5d0,1.0d0/))
+			smnext(1,i)=pfone((/SS(1,period,i),smh,0.5d0*(wageh(i)+wage(i)*smh)/), omega3(1:3), period*1.0d0,parA(4:12),rho) 
+			smnext(2,i)=SS(2,period,i)
+			smnext(3,i)=SS(3,period,i)+smh
+
+				
 		end do
 		!                            -----------------LOOOOOP TO THE FUTURE-----------------
 		
@@ -476,11 +501,14 @@ end subroutine  type_packsimple
 			outcomes(1,period,:)=wage
 			outcomes(2,period,:)=wageh
 			
+			smexperience(period,:)=smnext(3,:)
+			smAs(:,period,:)=smnext(1:2,:)
+			
 			if (period>=testminage .AND. period<=testmaxage) then
 				sigmafortests=0.0d0
 				sigmafortests(1,1)=sigmaetas(1,period-testminage+1)
 				sigmafortests(2,2)=sigmaetas(2,period-testminage+1)
-				etashock=randmnv(Npaths,4,mu,sigmafortests,3,1,(/100*period+5*period+period,300*id*period+15*period+period+id))	
+				etashock=randmnv(Npaths,4,mu,sigmafortests,3,1,(/100*period+5*period+period,300*id*period+15*period+period+id/))	
 			end if
 
 			! get some period specific but not path specific stuff to calculate interpolated fv
@@ -532,7 +560,6 @@ end subroutine  type_packsimple
 						umat(2,i)=uc+a1type(a1holder(i))*0.5d0+ parU(4)*(wageh(i)+0.5d0*wage(i))**parU(5)+parU(6)*baby+parU(7)*0.5d0*baby
 						umat(3,i)=uc+a1type(a1holder(i))*1.0d0+ parU(4)*(wageh(i)+wage(i))**parU(5)+parU(6)*baby+parU(7)*baby
 						
-						
 						do k=1,nttypes
 							fvconsw(k)=sum(wcoef(4:7,period+1,period,k)*intcons)+wcoef(Gsize+1,period+1,period,k)
 						end do
@@ -555,6 +582,14 @@ end subroutine  type_packsimple
 						choices(1,period,i)=picker(1)
 						! get the optimized future state space points to use them in future.
 						next(:,i)=nextcollect(:,picker(1))
+						
+						! NEW: Smoothed As and Es and choices and later test scores (not this period, though)
+						smdenom=sum(exp((umat(:,i)-minval(umat(:,i)))/smpar))
+						smchoices(:,period,i)=exp((umat(:,i)-minval(umat(:,i)))/smpar)/smdenom
+						smh=sum(smchoices(:,period,i)*(/0.d0,0.5d0,1.0d0/))
+						smnext(1,i)=pfone((/smAs(1,period,i),smh,0.5d0*(wageh(i)+wage(i)*smh)/), omega3(1:3), period*1.0d0,parA(4:12),rho) 
+						smnext(2,i)=SS(2,period,i)
+						smnext(3,i)=smexperience(period,i)+smh
 
  					!-------------------------- PERIOD<7: 1.b TWO CHILDREN ------------------------------
 					else
@@ -597,16 +632,28 @@ end subroutine  type_packsimple
 						choices(1,period,i)=coordbig(1)
 						xchoices(1,period,i)=coordbig(2)
 						next(:,i)=nextcollectbig(:,coordbig(1),coordbig(2))
+						
+						! NEW: Smoothed As and Es and choices and later test scores (not this period, though)
+						smdenom=sum(exp((umatbig(:,:,i)-minval(umatbig(:,:,i)))/smpar))
+						smbig=exp((umatbig(:,;,i)-minval(umat(:,:,i)))/smpar)/smdenom
+						smchoices(:,period,i)=sum(smbig,1) 							! marginal of h
+						smxchoices(:,period,i)=sum(smbig,2) 						! marginal of x
+						smh=sum(smchoices(:,period,i)*(/0.d0,0.5d0,1.0d0/))
+						smx=sum(smxchoices(:,period,i)*xgrid)
+						! NOTE: LAST THING: switch to pftwo
+						smnext(1,i)=pfone((/smAs(1,period,i),smh,0.5d0*(wageh(i)+wage(i)*smh)/), omega3(1:3), period*1.0d0,parA(4:12),rho) 
+						smnext(2,i)=SS(2,period,i)
+						smnext(3,i)=smexperience(period,i)+smh
 				
 					end if  ! end of period<8 WV if
 						
 					if (SS(4,period,i)>=testminage) then
-						testoutcomes(1,period-testminage+1,i)=SS(1,period,:)+etashock(i,1)
+						testoutcomes(1,period-testminage+1,i)=SS(1,period,i)+etashock(i,1)
 						testoutcomes(2,period-testminage+1,i)=lambdas(period-testminage+1)*SS(1,period,i)+etashock(i,1)
 					end if
 
 					if (SS(5,period,i)>=testminage) then
-						testoutcomes(3,period-testminage+1,i)=SS(2,period,:)+etashock(i,1)
+						testoutcomes(3,period-testminage+1,i)=SS(2,period,i)+etashock(i,1)
 						testoutcomes(4,period-testminage+1,i)=lambdas(period-testminage+1)*SS(2,period,i)+etashock(i,1)
 					end if
 
@@ -697,12 +744,12 @@ end subroutine  type_packsimple
 				! create test scores	
 
 					if (SS(4,period,i)>=testminage) then
-						testoutcomes(1,period-testminage+1,i)=SS(1,period,:)+etashock(i,1)
+						testoutcomes(1,period-testminage+1,i)=SS(1,period,i)+etashock(i,1)
 						testoutcomes(2,period-testminage+1,i)=lambdas(period-testminage+1)*SS(1,period,i)+etashock(i,1)
 					end if
 
 					if (SS(5,period,i)>=testminage) then
-						testoutcomes(3,period-testminage+1,i)=SS(2,period,:)+etashock(i,1)
+						testoutcomes(3,period-testminage+1,i)=SS(2,period,i)+etashock(i,1)
 						testoutcomes(4,period-testminage+1,i)=lambdas(period-testminage+1)*SS(2,period,i)+etashock(i,1)
 					end if
 				
@@ -876,28 +923,28 @@ end subroutine  type_packsimple
 		
 	end subroutine simhist
 
-	subroutine moments(SS,outcomes, choices, xchoices,birthhist,idmat)
-		implicit none
-		real(dble),intent(in):: SS(6,nperiods,Npaths) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
-		real(dble),intent(in):: outcomes(2,nperiods,Npaths) !< outcomes: wages of the father and mother.
-		integer,intent(in):: choices(1,nperiods,Npaths) 	!< choices : the choice history of h.
-		integer,intent(in):: xchoices(1,nperiods,Npaths) 	!< not in the data, but I will keep an history of the x choices as well.
-		integer,intent(in):: birthhist(Npaths) 		    	!< the birth timing vec, 0 if one child throughout.
-		integer, intent(in)::idmat(SampleSize,:) 	   		!<indicates the which sample units are in the jth columnth moment
-															!<calculation
-		real(dble), intent(out) :: momentvec(MomentSize) 			!< The set of moments produced by the simulated data
+	!subroutine moments(SS,outcomes, choices, xchoices,birthhist,idmat)
+		!implicit none
+		!real(dble),intent(in):: SS(6,nperiods,Npaths) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
+		!real(dble),intent(in):: outcomes(2,nperiods,Npaths) !< outcomes: wages of the father and mother.
+		!integer,intent(in):: choices(1,nperiods,Npaths) 	!< choices : the choice history of h.
+		!integer,intent(in):: xchoices(1,nperiods,Npaths) 	!< not in the data, but I will keep an history of the x choices as well.
+		!integer,intent(in):: birthhist(Npaths) 		    	!< the birth timing vec, 0 if one child throughout.
+		!integer, intent(in)::idmat(SampleSize,:) 	   		!<indicates the which sample units are in the jth columnth moment
+															!!<calculation
+		!real(dble), intent(out) :: momentvec(MomentSize) 			!< The set of moments produced by the simulated data
 			
 
-		! locals 
-		integer i,j,k,l
+		!! locals 
+		!integer i,j,k,l
 
 
-		! STARTING OUT WITH 6A and 6B in jmpsimple document. 
-		! linear regressions with work status, where regressor vector is [1 schooling AFQT agem baby E 2child]
+		!! STARTING OUT WITH 6A and 6B in jmpsimple document. 
+		!! linear regressions with work status, where regressor vector is [1 schooling AFQT agem baby E 2child]
 
 
 	 
-	end subroutine moments
+	!end subroutine moments
 
 
 	!----------------------OPTIMIZATION RELATED STUFF--------------------------
