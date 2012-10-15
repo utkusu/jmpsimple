@@ -43,6 +43,8 @@ function pfone(inputs, constants,age, parameters,rho)
 	else
 		pfone=rho*inputs(1)+(parameters(5)+parameters(6)*constants(1)+parameters(7)*constants(1)+parameters(8)*constants(3))*inputs(2)+parameters(9)*inputs(3)
 	end if
+
+	if (age>=astar) pfone=inputs(1) 		! if older than a star, just stay put. 
 end function pfone
 !> cognitive skill production for two child families
 function pftwo(inputs, constants,age,parameters,rho)
