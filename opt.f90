@@ -973,131 +973,227 @@ end subroutine  type_packsimple
 		
 	end subroutine simhist
 
-	!subroutine moments(SS,outcomes, choices, xchoices,birthhist,idmat)
-		!implicit none
-		!real(dble),intent(in):: SS(6,nperiods,Npaths) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
-		!real(dble),intent(in):: outcomes(2,nperiods,Npaths) !< outcomes: wages of the father and mother.
-		!integer,intent(in):: choices(1,nperiods,Npaths) 	!< choices : the choice history of h.
-		!integer,intent(in):: xchoices(1,nperiods,Npaths) 	!< not in the data, but I will keep an history of the x choices as well.
-		!integer,intent(in):: birthhist(Npaths) 		    	!< the birth timing vec, 0 if one child throughout.
-		!integer, intent(in)::idmat(SampleSize,:) 	   		!<indicates the which sample units are in the jth columnth moment
-															!!<calculation
-		!real(dble), intent(out) :: momentvec(MomentSize) 			!< The set of moments produced by the simulated data
+
+
+	! aux routines for moments
+	! calculate the mean, variance and consecutive variances of the columns of data matrix which hold series in its columns
+	subroutine mv(datamat,outputvec)
+		implicit none
+		real(dble), intent(in) :: datamat(:,:) 	!< data matrix holding x1,x2,x3..xK in its columns
+		real(dble), intent(out) :: outputvec(2*size(datamat,2)) 	!< output vec: first means, then variances
+		integer n,k,i
+		n=size(datamat,1)
+		k=size(datamat,2)
+		do i=1,k
+			outputvec(i)=sum(datamat(:,i))/n
+			outputvec(k+i)= sum((datamat(:,i)-outputvec(i))**2)/(n-1)
+		!	if (i<k) outputvec(2*k+i)=sum((datamat(:,i)-outputvec(i))*(datamat(:,i+1)-outputvec(i+1)))/(n-1)
+		end do
+	end subroutine mvc
+	
+	subroutine moments(SS,outcomes, choices, testoutcomes,birthhist,omega3data,lfpperiods, eperiods, idmat)
+		implicit none
+		real(dble),intent(in):: SS(6,nperiods,Npaths,SampleSize) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
+		real(dble),intent(in):: outcomes(2,nperiods,Npaths,SampleSize) !< outcomes: wages of the father and mother.
+		integer,intent(in):: choices(1,nperiods,Npaths,SampleSize) 	!< choices : the choice history of h.
+		integer,intent(in):: xchoices(1,nperiods,Npaths,SampleSize) !< not in the data, but I will keep an history of the x choices as well.
+		integer,intent(in):: birthhist(Npaths,SampleSize)  		    !< the birth timing vec, 0 if one child throughout.
+		real(dble), intent(in) :: omega3data(o3size, SampleSize) 	!< holds the omega3 data for Sample people
+		integer, intent(in):: lfpperiods(:) 			!< the array that holds the period numbers for which labor for particapation
+												    	!< equations are estimated.
+		
+		integer, intent(in):: eperiods(:) 		!< the array that holds the period numbers for which experience moments calculated
+		integer, intent(in)::idmat(SampleSize,:) 	   		!<indicates the which sample units are in the jth columnth moment
+															!<calculation
+		real(dble), intent(out) :: momentvec(MomentSize) 	!< The set of moments produced by the simulated data
 			
-
-		!! locals 
-		!integer i,j,k,l
-
-
-		!! STARTING OUT WITH 6A and 6B in jmpsimple document. 
-		!! linear regressions with work status, where regressor vector is [1 schooling AFQT agem baby E 2child]
+	  	! NOTE ------------ON IDMAT---------------
+	  	! * first size(lfpperiods) of the idmat is for the periods at which participation equations are estimated.
+	  	! * next size(eperiods) is for the mean and variance calculations of experience levels.
+	  	! * following size(eperiods)-1 is for the cov(E_t,E_t+1) calculations. 
 
 
-	 
-	!end subroutine moments
+
+		! locals 
+		integer i,j,k,l, counter, counter2, baby, twochild
+		
+		! create the regressions matrix for participation equations. the first size(lfpperiods) of the idmat holds the indicators
+		! for the involvement of the sample members in a particular period for the participation equations. example: if
+		! lfpperiods=(/3,6,9,12/), the first four columns of idmat holds the indicators for the data for these periods. By summing
+		! up all the columns, we count the total number sample points that should be entering this regressions, including the time
+		! dimension. Each of these will be associated with Npaths simulated observations
+		integer Nregsample
+		real(dble) giantregmat(sum(idmat(:,1:size(lfpperiods)))*Npaths,nreglfp+1) 	
+		real(dble) fulltimevec(sum(idmat(:,1:size(lfpperiods)))*Npaths)
+		real(dble) parttimevec(sum(idmat(:,1:size(lfpperiods)))*Npaths)
+		real(dble) parttimecoef(nreglfp+1)
+		real(dble) fulltimecoef(nreglfp+1)
+		
+		! for experience calculations, create a matrix that will hold the relevant experience observations
+		real(dble),allocatable:: experience(:), dualexperience(:,2)
 
 
-	!----------------------OPTIMIZATION RELATED STUFF--------------------------
+		! lapack stuff
+		real(dble) work(nreglfp+1+(nreglfp+1)*blocksize)
+		integer info
+		
+		
+		! initalize stuff
+		regsample=sum(idmat(:,1:size(lfpperiods)))*Npaths ! participation equation big sample size
+		counter=1
+		
+		! INDICATOR MATRIX IDMAT SHOULD FOLLOW THIS ORDER
+		! STARTING OUT WITH 6A and 6B in jmpsimple document. 
+		! linear regressions with work status, where regressor vector is [1 schooling AFQT agem baby E 2child]
+		
+		! first fill in 1.0d0 s to the last column. 	
+		giantregmat(:,nreglfp+1)=1.d0
+		do k=1, size(lfpperiods)
+			do l=1,SampleSize
+				if ( idmat(l,k) == 1 ) then
+					do i=1, Npaths
+						if ((SS(4,lfpperiods(k),i,l)<3.1) .OR. (SS(5,lfpperiods(k),i,l)<3.1)) baby=1
+						if (SS(5,lfpperiods(k),i,l)>0.1) twochild=1
+						! fill in the regressor matrix
+						giantregmat(counter,1:2)=omega3mat(1:2,l)
+						giantregmat(counter,3)omega3mat(3,l)+lfpperiods(k)
+						giantregmat(counter,4)=baby*1.0d0
+						giantregmat(counter,5)=SS(3,lfpperiods(k),i,l)
+						giantregmat(counter,6)=twochild*1.0d0
+						! fill in the dependent variable	
+						if (choices(1,lfpperiods(k),i,l) > 2.5) fulltimevec(counter)=1.0d0
+						if ( (choices(1,lfpperiods(k),i,l) < 2.5) .AND. (choices(1,lfpperiods(k),i,l) > 1.5) ) parttimevec(counter)=1.0d0
+						counter=counter+1
+					end do
+				end if
+			end do
+		end do
+
+		! now run the lapack to get the regression coefficients
+
+		call DGELS('N', regsample, nreglfp+1,1,giantregmat,regsample, fulltimevec, regsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
+		fulltimecoef=fulltimevec(1:nreglfp+1)
+		call DGELS('N', regsample, nreglfp+1,1,giantregmat,regsample, parttimevec, regsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
+		fulltimecoef=parttimevec(1:nreglfp+1)
+		! NOTE: Do I need to go for the variance of error term? 
+
+
+		! EXPERIENCE LEVELS: mean experience levels at age 25, 30, 35, 40. Variance at the same ages. Covariance between age 25,30,
+		! 30,35 and 35,40 wages. I will write a subroutine for this (=mvc).
+		! prepare the vectors first. idmat's following 4 columns mark the people who entered into these calculations. 
+		counter=1
+		do k=1, size(eperiods)
+			allocate( experience ( sum( idmat(:,size(lfpperiods)+1) ) ) )
+			do l=1, SampleSize
+ 				if (idmat(l,k+
+!TODO write covariance routines, make thes size shit global 				
+				experience=	
+		end do
+
+
+	end subroutine moments
+
+
 
 	!> initialize parameters
-	subroutine initparam(parA,parU,parW, parH, beta,sigma1, parB, ctype, mtype, atype, a1type, condprob) 
-	implicit none
-		real(dble), intent(out) ::  parA(12),parU(7),parW(7),parH(6),beta,sigma1(shocksize1,shocksize2),parB(Bsizeexo+1)
-		real(dble), intent(out):: ctype, mtype, atype, a1type(na1type)
-		real(dble), intent(out):: condprob ! prob of second child of being a certain type, conditional on mother type 
-		! locals
-		real(dble) var0,varp,varf,varw, varwh, var00, var01, varp0,varp1,varf0,varf1
-		real(dble) cov0p, cov0f, covpf, covwwh, cov0w,cov0wh,covpw, covpwh,covfw,covfwh
-		real(dble) cov0001,cov00p0,cov00p1,cov00f0,cov00f1,cov01p0,cov01p1,cov01f0,cov01f1,covp0p1,covp0f0,covp0f1,covp1f0,covp1f1,covf0f1			
-		! -----------FUNDAMENTAL PARAMETERS---------------
-		! gamma0's and gamma's: 
-		parA=(/1.0d0,0.1d0,0.1d0,0.1d0,0.1d0, 0.1d0,0.1d0,0.1d0,0.1d0,0.1d0,0.1d0,0.1d0/)
-		! gamma, alpha, alpha1,...alpha5	
-		parU=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0, 0.1d0,0.1d0/)
-		! beta0 (4) and beta (3) in wage equation
-		parW=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0, -0.1d0,0.1d0/)*0.00005
-		! beta_ws (4)
-		parH=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0,0.1d0/)*0.04
+   ! subroutine initparam(parA,parU,parW, parH, beta,sigma1, parB, ctype, mtype, atype, a1type, condprob) 
+	!implicit none
+		!real(dble), intent(out) ::  parA(12),parU(7),parW(7),parH(6),beta,sigma1(shocksize1,shocksize2),parB(Bsizeexo+1)
+		!real(dble), intent(out):: ctype, mtype, atype, a1type(na1type)
+		!real(dble), intent(out):: condprob ! prob of second child of being a certain type, conditional on mother type 
+		!! locals
+		!real(dble) var0,varp,varf,varw, varwh, var00, var01, varp0,varp1,varf0,varf1
+		!real(dble) cov0p, cov0f, covpf, covwwh, cov0w,cov0wh,covpw, covpwh,covfw,covfwh
+		!real(dble) cov0001,cov00p0,cov00p1,cov00f0,cov00f1,cov01p0,cov01p1,cov01f0,cov01f1,covp0p1,covp0f0,covp0f1,covp1f0,covp1f1,covf0f1			
+		!! -----------FUNDAMENTAL PARAMETERS---------------
+		!! gamma0's and gamma's: 
+		!parA=(/1.0d0,0.1d0,0.1d0,0.1d0,0.1d0, 0.1d0,0.1d0,0.1d0,0.1d0,0.1d0,0.1d0,0.1d0/)
+		!! gamma, alpha, alpha1,...alpha5	
+		!parU=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0, 0.1d0,0.1d0/)
+		!! beta0 (4) and beta (3) in wage equation
+		!parW=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0, -0.1d0,0.1d0/)*0.00005
+		!! beta_ws (4)
+		!parH=(/0.1d0,0.1d0,0.1d0,0.1d0,0.1d0,0.1d0/)*0.04
 
-		beta=0.95
-		condprob=1
-		parB=0.10d0	
-		! ------------SHOCK STUFF-----------------------
-		! ----   VARIANCES
+		!beta=0.95
+		!condprob=1
+		!parB=0.10d0	
+		!! ------------SHOCK STUFF-----------------------
+		!! ----   VARIANCES
 		
-		! hc periods
-		var0=0.1d0 		! variance h=0
-		varp=0.1d0 		! variance h=0.5
-		varf=0.1d0 		! variance h=1
-		varw=0.1d0 		! variance of wage shock
-		varwh=0.1d0 	! variance of father's wage shock
+		!! hc periods
+		!var0=0.1d0 		! variance h=0
+		!varp=0.1d0 		! variance h=0.5
+		!varf=0.1d0 		! variance h=1
+		!varw=0.1d0 		! variance of wage shock
+		!varwh=0.1d0 	! variance of father's wage shock
 		
-		! hcb periods
-		!var00=0.1d0 	! variance of h=0, b=0
-		!var01=0.1d0 	! variance of h=0, b=1
-		!varp0=0.1d0 	! variance of h=0.5, b=0
-		!varp1=0.1d0 	! variance of h=0.5, b=1
-		!varf0=0.1d0 	! variance of h=1, b=0
-		!varf1=0.1d0 	! variance of h=1, b=1
+		!! hcb periods
+		!!var00=0.1d0 	! variance of h=0, b=0
+		!!var01=0.1d0 	! variance of h=0, b=1
+		!!varp0=0.1d0 	! variance of h=0.5, b=0
+		!!varp1=0.1d0 	! variance of h=0.5, b=1
+		!!varf0=0.1d0 	! variance of h=1, b=0
+		!!varf1=0.1d0 	! variance of h=1, b=1
 		
-		! ---  COVARIANCES
-		! hc periods
-		cov0p=0.1d0 	! cov(h=0,h=0.5)
-		cov0f=0.1d0 	! cov(h=0,h=1)
-		covpf=0.1d0 	! cov(h=0.5,h=1)
-		covwwh=0.1d0 	! cov(wages of mom and dad)
-		! cross w and preference shocks- JUST ZERO FOR NOW
-		cov0w=0.0d0 	! cov(wage, h=0)
-		cov0wh=0.0d0 	! cov(wageh, h=0)
-		covpw=0.0d0 	! cov(wage, h=0.5)
-		covpwh=0.0d0 	! cov(wageh, h=0.5)
-		covfw=0.0d0 	! cov(wage, h=1)
-		covfwh=0.0d0 	! cov(wageh, h=1)
+		!! ---  COVARIANCES
+		!! hc periods
+		!cov0p=0.1d0 	! cov(h=0,h=0.5)
+		!cov0f=0.1d0 	! cov(h=0,h=1)
+		!covpf=0.1d0 	! cov(h=0.5,h=1)
+		!covwwh=0.1d0 	! cov(wages of mom and dad)
+		!! cross w and preference shocks- JUST ZERO FOR NOW
+		!cov0w=0.0d0 	! cov(wage, h=0)
+		!cov0wh=0.0d0 	! cov(wageh, h=0)
+		!covpw=0.0d0 	! cov(wage, h=0.5)
+		!covpwh=0.0d0 	! cov(wageh, h=0.5)
+		!covfw=0.0d0 	! cov(wage, h=1)
+		!covfwh=0.0d0 	! cov(wageh, h=1)
 		
-		! hcb periods
+		!! hcb periods
 	
-		!cov0001=0.1d0 	! cov(h=0,b=0 and h=0, b=1)
-		!cov00p0=0.1d0 	! cov(h=0,b=0 and h=0.5, b=0)	
-		!cov00p1=0.1d0 	! cov(h=0,b=0 and h=0.5, b=1)	
-		!cov00f0=0.1d0 	! cov(h=0,b=0 and h=1, b=0)	
-		!cov00f1=0.1d0 	! cov(h=0,b=0 and h=1, b=1)	
+		!!cov0001=0.1d0 	! cov(h=0,b=0 and h=0, b=1)
+		!!cov00p0=0.1d0 	! cov(h=0,b=0 and h=0.5, b=0)	
+		!!cov00p1=0.1d0 	! cov(h=0,b=0 and h=0.5, b=1)	
+		!!cov00f0=0.1d0 	! cov(h=0,b=0 and h=1, b=0)	
+		!!cov00f1=0.1d0 	! cov(h=0,b=0 and h=1, b=1)	
 		
-		!cov01p0=0.1d0 	! cov(h=0,b=1 and h=0.5, b=0)	
-		!cov01p1=0.1d0 	! cov(h=0,b=1 and h=0.5, b=1)	
-		!cov01f0=0.1d0 	! cov(h=0,b=1 and h=1, b=0)	
-		!cov01f1=0.1d0 	! cov(h=0,b=1 and h=1, b=1)	
+		!!cov01p0=0.1d0 	! cov(h=0,b=1 and h=0.5, b=0)	
+		!!cov01p1=0.1d0 	! cov(h=0,b=1 and h=0.5, b=1)	
+		!!cov01f0=0.1d0 	! cov(h=0,b=1 and h=1, b=0)	
+		!!cov01f1=0.1d0 	! cov(h=0,b=1 and h=1, b=1)	
 	
-		!covp0p1=0.1d0 	! cov(h=0.5,b=0 and h=0.5,b=1)
-		!covp0f0=0.1d0
-		!covp0f1=0.1d0
+		!!covp0p1=0.1d0 	! cov(h=0.5,b=0 and h=0.5,b=1)
+		!!covp0f0=0.1d0
+		!!covp0f1=0.1d0
 		
-		!covp1f0=0.1d0
-		!covp1f1=0.1d0
+		!!covp1f0=0.1d0
+		!!covp1f1=0.1d0
 
-		!covf0f1=0.1d0
+		!!covf0f1=0.1d0
 
 		
-		! cross w and preference shocks
-		! fuck, let's just say they are zero.	
-		! TODO: NEED TO PROPERLY HANDLE PARAMETERS. YOU WILL NEED TO UPDATE THESE AT SOME POINT
-		! fill in sigma => might fill this in properly later
-		sigma1=0.1d0
+		!! cross w and preference shocks
+		!! fuck, let's just say they are zero.	
+		!! TODO: NEED TO PROPERLY HANDLE PARAMETERS. YOU WILL NEED TO UPDATE THESE AT SOME POINT
+		!! fill in sigma => might fill this in properly later
+		!sigma1=0.1d0
 		
 		
-		ctype=1.0d0
-		mtype=1.0d0
-		atype=1.0d0
-		a1type=(/0.0d0,1.0d0/)
-		!ctype=(/0.0d0,1.0d0/)
-		!mtype=(/0.d0,1.0d0/)
-		!atype=(/1.0d0,1.5d0/)
-		!a1type=(/1.0d0,2.0d0/)
+		!ctype=1.0d0
+		!mtype=1.0d0
+		!atype=1.0d0
+		!a1type=(/0.0d0,1.0d0/)
+		!!ctype=(/0.0d0,1.0d0/)
+		!!mtype=(/0.d0,1.0d0/)
+		!!atype=(/1.0d0,1.5d0/)
+		!!a1type=(/1.0d0,2.0d0/)
 	
-		! conditional probabilities of child 2 type should be pr(x|y)=pr(ctype=x,mtype=y)/pr(mtype=y)
-		! so I need to specify the joint distribution of ctype and mtype. if this does not go anywhere else I can just use the
-		! conditional probs as a parameter 
+		!! conditional probabilities of child 2 type should be pr(x|y)=pr(ctype=x,mtype=y)/pr(mtype=y)
+		!! so I need to specify the joint distribution of ctype and mtype. if this does not go anywhere else I can just use the
+		!! conditional probs as a parameter 
 			
-	end subroutine initparam	
+	!end subroutine initparam	
 
 
 

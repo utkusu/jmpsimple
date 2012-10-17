@@ -54,7 +54,7 @@ omega3=(/10.0d0,1.0d0,18.0d0,10.0d0/)
 
 parA=0.10d0
 parU=1.0d0
-parU(4)=10.0d0
+parU(4)=100.0d0
 parU(1)=-100
 parW=0.1d0*0.010
 parW(6)=-0.01d0
@@ -69,7 +69,8 @@ eps=0.0d0
 ftype=(/1.0d0,1.0d0, 1.0d0,1.0d0,0.0d0/)
 typevec=0.5d0
 typeprob=1.0d0
-wcoeff=1.0d0
+wcoeff=0.10d0
+vcoeff=0.1d0
 ! try the coefochcb
 parBmat=0.0001d0
 intercepts=(/1.0d0,1.0d0,1.0d0/)
@@ -78,7 +79,7 @@ pa1type=(/0.3d0,0.7d0/)
 rho=1.0d0
 id=18
 
-smpar=10.0d0
+smpar=1.0d0
 lambdas=1.0d0
 sigmaetas=0.1d0
 

@@ -33,10 +33,15 @@ integer, parameter:: MomentSize=20 		!< number of moments to be matched
 integer, parameter:: Ntestage=10 		!< number of ages in which we have test scores. start at 5, end in 15.
 integer, parameter:: testminage=5 		!< earliest test scores
 integer, parameter:: testmaxage=14 		!< latest test scores
-
+integer, parameter:: nreglfp=6 			!< number of regressors in labor force participation equations
 integer, parameter::o1size=3 			!< size of omega1
-integer, parameter::o2size=4	!< size of omega1
-integer, parameter::o3size=4 			!< size of omega1
+integer, parameter::o2size=4			!< size of omega2
+integer, parameter::o3size=4 			!< size of omega3
+
+! moments vector sizes
+
+
+
 
 ! parameter vector sizes
 
@@ -69,7 +74,7 @@ real(dble), parameter::onescxgrid(cxgridsize)=1.0d0
 real(dble), parameter::onescgridwithbirth(cgridsize*2)=1.0d0
 
 ! emax interpolation parameters
-integer, parameter:: Nmc=10		!<monte carlo integration draw size
+integer, parameter:: Nmc=100		!<monte carlo integration draw size
 
 ! following are the fixed vectors of observed types for the emax approximations
 integer, parameter::svecage0m=4

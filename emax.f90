@@ -1624,7 +1624,7 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 	end do
 
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space 
-	call DGELS('N',nintpoc,Gsizeoc,1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
+	call DGELS('N',nintpoc,Gsizeoc+1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
 	coef=vemax(1:Gsizeoc+1)
 end subroutine coefocfinal
 
@@ -1689,7 +1689,7 @@ subroutine coefoclate(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	end do
 
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space FIXME
-	call DGELS('N',nintpoc,Gsizeoc,1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
+	call DGELS('N',nintpoc,Gsizeoc+1,1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
 	! add a zero for the second child A2
 	coef=vemax(1:Gsizeoc+1)
 end subroutine coefoclate
@@ -1758,7 +1758,7 @@ subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,rho
 	end do
 
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space 
-	call DGELS('N',nintpoc,Gsizeoc,1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
+	call DGELS('N',nintpoc,Gsizeoc+1,1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
 	coef=vemax(1:Gsizeoc+1)
 end subroutine coefochc
 
@@ -1829,7 +1829,7 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 		!end do
 	end do
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space troc_late
-	call DGELS('N',nintpoc,Gsizeoc,1,tmss, nintpoc, vemax, nintp,work, Gsizeoc+(Gsizeoc)*blocksize,info)
+	call DGELS('N',nintpoc,Gsizeoc+1,1,tmss, nintpoc, vemax, nintp,work, Gsizeoc+(Gsizeoc)*blocksize,info)
 	coef=vemax(1:Gsizeoc+1)
 end subroutine coefochcb
 
