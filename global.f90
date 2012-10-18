@@ -40,6 +40,8 @@ integer, parameter::o3size=4 			!< size of omega3
 
 ! moments vector sizes
 
+lfpsize=4 			!< number of periods for the participation equations
+expsize=4 			!< number of mother's ages at which the experieence level distributions are matched
 
 
 
@@ -76,7 +78,6 @@ real(dble), parameter::onescgridwithbirth(cgridsize*2)=1.0d0
 ! emax interpolation parameters
 integer, parameter:: Nmc=100		!<monte carlo integration draw size
 
-! following are the fixed vectors of observed types for the emax approximations
 integer, parameter::svecage0m=4
 integer, parameter::svecsch0m=4
 integer, parameter::svecaqft=4

@@ -976,20 +976,33 @@ end subroutine  type_packsimple
 
 
 	! aux routines for moments
-	! calculate the mean, variance and consecutive variances of the columns of data matrix which hold series in its columns
+	! calculate the mean, variance of a matrix 
 	subroutine mv(datamat,outputvec)
 		implicit none
-		real(dble), intent(in) :: datamat(:,:) 	!< data matrix holding x1,x2,x3..xK in its columns
-		real(dble), intent(out) :: outputvec(2*size(datamat,2)) 	!< output vec: first means, then variances
+		real(dble), intent(in) :: datamat(:) 	!< data vec  holding the data
+		real(dble), intent(out) :: outputvec(2) 	!< output vec: first means, then variances
 		integer n,k,i
 		n=size(datamat,1)
-		k=size(datamat,2)
-		do i=1,k
-			outputvec(i)=sum(datamat(:,i))/n
-			outputvec(k+i)= sum((datamat(:,i)-outputvec(i))**2)/(n-1)
+			outputvec(1)=sum(datamat)/n
+			outputvec(2)= sum((datamat-outputvec(1))**2)/(n-1)
 		!	if (i<k) outputvec(2*k+i)=sum((datamat(:,i)-outputvec(i))*(datamat(:,i+1)-outputvec(i+1)))/(n-1)
 		end do
-	end subroutine mvc
+	end subroutine mv
+
+!> calculate consecutive covariances of variables stored in the the cols of
+!>datamat
+	subroutine concov(datamat,output)
+		implicit none
+		real(dble), intent(in) :: datamat(:,:)
+		real(dble), intent(out) :: output(size(datamat,2)-1)
+		integer i
+		real(dble) :: mean1, mean2
+		do i=1,size(datamat,2)
+			mean1=sum(datamat(:,i)/n
+			mean2=sum(datamat(:,i+1)/n
+			output(i)=sum((datamat(:,i)-mean1)*(datamat(:,i+1)-mean2)))/(n-1)
+		end do
+	end subroutine concov
 	
 	subroutine moments(SS,outcomes, choices, testoutcomes,birthhist,omega3data,lfpperiods, eperiods, idmat)
 		implicit none
@@ -1086,7 +1099,6 @@ end subroutine  type_packsimple
 			allocate( experience ( sum( idmat(:,size(lfpperiods)+1) ) ) )
 			do l=1, SampleSize
  				if (idmat(l,k+
-!TODO write covariance routines, make thes size shit global 				
 				experience=	
 		end do
 
