@@ -79,7 +79,7 @@ pa1type=(/0.3d0,0.7d0/)
 rho=1.0d0
 id=18
 
-smpar=1.0d0
+smpar=0.30d0
 lambdas=1.0d0
 sigmaetas=0.1d0
 

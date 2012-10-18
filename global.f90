@@ -33,16 +33,18 @@ integer, parameter:: MomentSize=20 		!< number of moments to be matched
 integer, parameter:: Ntestage=10 		!< number of ages in which we have test scores. start at 5, end in 15.
 integer, parameter:: testminage=5 		!< earliest test scores
 integer, parameter:: testmaxage=14 		!< latest test scores
-integer, parameter:: nreglfp=6 			!< number of regressors in labor force participation equations
 integer, parameter::o1size=3 			!< size of omega1
 integer, parameter::o2size=4			!< size of omega2
 integer, parameter::o3size=4 			!< size of omega3
 
+integer, parameter:: nreglfp=6 			!< number of regressors in labor force participation equations
+
+
 ! moments vector sizes
 
-lfpsize=4 			!< number of periods for the participation equations
-expsize=4 			!< number of mother's ages at which the experieence level distributions are matched
-
+integer, parameter:: lfpsize=4 			!< number of periods for the participation equations
+integer, parameter:: expsize=4 			!< number of mother's ages at which the experieence level distributions are matched
+integer, parameter:: tssize=4 			!< number of ages for which the children's test score averages to be calculated.
 
 
 ! parameter vector sizes
