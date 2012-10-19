@@ -30,17 +30,17 @@ integer,parameter::Npaths=1000 			!<number of simulated paths for each family.
 integer,parameter::simvecsize=10 		!<the size of the simulated data vector for each period. obviosly very related to ss.
 integer, parameter::SampleSize=500 		!< Size of the estimation sample
 integer, parameter:: MomentSize=20 		!< number of moments to be matched
-integer, parameter:: Ntestage=10 		!< number of ages in which we have test scores. start at 5, end in 15.
+integer, parameter:: Ntestage=10 		!< number of ages in which we have test scores. start at 5, end in 14.
 integer, parameter:: testminage=5 		!< earliest test scores
 integer, parameter:: testmaxage=14 		!< latest test scores
 integer, parameter::o1size=3 			!< size of omega1
 integer, parameter::o2size=4			!< size of omega2
 integer, parameter::o3size=4 			!< size of omega3
 
-integer, parameter:: nreglfp=6 			!< number of regressors in labor force participation equations
+integer, parameter:: nreglfp=6 			!< number of regressors in labor force participation equations. intercept not included.
+integer, parameter:: nregtsdiff=10 		!> number of regressors in tsdiff equations. intercept not included.
 
-
-! moments vector sizes
+! moments vector sizes used in moments()
 
 integer, parameter:: lfpsize=4 			!< number of periods for the participation equations
 integer, parameter:: expsize=4 			!< number of mother's ages at which the experieence level distributions are matched
