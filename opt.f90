@@ -1058,11 +1058,12 @@ subroutine moments(momentvec, SS,outcomes, choices, testoutcomes,birthhist, smch
 	real(dble), allocatable:: tsdiffmat(:,:)
 	real(dble), allocatable:: tsdiffvec(:)
 	real(dble) tsdiffest(nregtsdiff+1)
-	real(dble) smh, smhnext
+	real(dble) smh, smhnext, A1, A2, A1F, A2F
 
 	! lapack stuff
 	real(dble) work(nreglfp+1+(nreglfp+1)*blocksize)
-	integer info
+	real(dble) worktsdiff(nregtsdiff+1+(nregtsdiff+1)*blocksize)
+	integer info, infotsdiff
 	
 	
 	! initalize stuff
@@ -1156,7 +1157,8 @@ subroutine moments(momentvec, SS,outcomes, choices, testoutcomes,birthhist, smch
 	! test score levels will help to pin down gammahat parameters. match levels at different ages.  
 	! NOTE: CONTENT OF THE tsperiods is the test score numbers. For example, if first test score is at 5 years old, and the last one
 	! is at 14, "1" means at age 5, "5" means age 9. so if somebody wants to match the mean test scores at 6, 8, 10 and 12, they
-	! need to enter tsperiods=(/2,4,6,12/)
+	! need to enter tsperiods=(/2,4,6,12/). this is because testoutcome matrices start from has a lower dim than SS, just enough
+	! for test scores
 
 	do k=1, tssize
 		counter=1
@@ -1172,14 +1174,20 @@ subroutine moments(momentvec, SS,outcomes, choices, testoutcomes,birthhist, smch
 		do l=1, SampleSize
 			if ( (idmat(l,lfpsize+2*expsize-1+k)==1) .OR. (idmat(l,lfpsize+2*expsize-1+k)==3)) then  ! first child
 				do i=1, Npaths
-					if (testoutcomes(1, tsperiods(k), i, l) > -9999.0d0 ) ts(counter)=testoutcomes(1, tsperiods(k), i, l)
+					if (testoutcomes(1, tsperiods(k), i, l) > -999.0d0 ) ts(counter)=testoutcomes(1, tsperiods(k), i, l)
 					counter=counter+1
 				end do
 			end if
 
-			if  (idmat(l,lfpsize+2*expsize-1+k)==2) then  ! second child
-				do i=1, Npaths
-					if (testoutcomes(3, tsperiods(k), i, l) > -9999.0d0 ) ts(counter)=testoutcomes(3, tsperiods(k), i, l)
+			
+			! second child: if mom has a second child with test score associated with the AGE tsperiod(k)
+			
+			if  (idmat(l,lfpsize+2*expsize-1+k)==2) then 				
+				do i=1, Npaths 
+					! check if at age2=tsperiod(k) [which corresponds to period tsperiod(k)+birthhist(i,l)-1 for mom]
+					! is a period for the ith simulation has a test score. If it does, it is the one:
+					! it is tsperiod+birthist-1 period for mom, the age of the second kid is tsperiod
+					if (testoutcomes(3, tsperiods(k)+birthhist(i,l)-1, i, l) > -999.0d0 ) ts(counter)=testoutcomes(3, tsperiods(k)+birthhist(i,l)-1, i, l)
 					counter=counter+1
 				end do
 			end if
@@ -1199,46 +1207,61 @@ subroutine moments(momentvec, SS,outcomes, choices, testoutcomes,birthhist, smch
 	
 	do k=testminage+1,testmaxage-2
 		do l=1, SampleSize
-		if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
-			do i=1,Npaths 	! ... go through simulated outcomes for that mom and figure which ones have test scores for both kids at that period.
-				! if kid 2 is older than 5, then create a spot
-				if (SS(5,k,i,l) > 4.8)  nspots=nspots+1
-			end do
-		end if
+			if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
+				do i=1,Npaths 	! ... go through simulated outcomes for that mom and figure which ones have test scores for both kids at that period.
+					! if kid 2 is older than 5, then create a spot
+					if (SS(5,k,i,l) > 4.8)  nspots=nspots+1
+				end do
+			end if
+		end do
 	end do
 
 	! now we can allocate data matrix and dependent variable vectors
 	allocate(tsdiffmat (nspots, nregtsdiff+1) )
 	allocate(tsdiffvec (nspots) )
 	
-	tsdiffvec(:,nregtsdiff+1)=1.0d0
+	tsdiffmat(:,nregtsdiff+1)=1.0d0
 	! another loop to fill in these guys
 	counter=1
 	do k=testminage+1,testmaxage-2
-	do l=1, SampleSize
-		if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
-
-			do i=1,Npaths 	! ... go through simulated outcomes for that mom and pick the right ones
-				! 1. fill in the labor supply related parts (smh)
-				if (SS(5,k,i,l) > 4.8)  then
-					smh=sum(smchoices(:,k,i,l)*(/0.0d0,0.5d0,1.0d0/))
-					smhnext=sum(smchoices(:,k+1,i,l)*(/0.0d0,0.5d0,1.0d0/))
-					tsdiffmat(counter, 1:2)=(/smh,smhnext/)
-					tsdiffmat(counter, 3:5)=smh*omega3data(1:3,l)
-					tsdiffmat(counter, 6:8)=smhnext*omega3data(1:3,l)
-					tsdiffmat(counter,9:11)=omega3data(1:3,l)
-					tsdiffmat(counter,12:13)=SS(4:5,k,i,l)
-					! now fillin the tsdiffmatvec
-					A1=testoutcomes(1,k-testminage+1,i,l)
-					A2=testoutcomes(3,k-testminage+1,i,l)
-					A1f=testoutcomes(1,k-testminage+3,i,l)
-					A2f=testoutcomes(3,k-testminage+3,i,l)
-					tsdiffvec(counter)= A1f-A1+A2f-A2
-				end if
-			end do
-		end if
+		do l=1, SampleSize
+			if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
+				do i=1,Npaths 	! ... go through simulated outcomes for that mom and pick the right ones
+					! 1. fill in the labor supply related parts (smh)
+					if ( testoutcomes(3, k-testminage+1,i,l) > -999 )   then ! if the second kid is old enough to have a testscore (first is kid is already at most testmaxage-2
+						smh=sum(smchoices(:,k,i,l)*(/0.0d0,0.5d0,1.0d0/))
+						smhnext=sum(smchoices(:,k+1,i,l)*(/0.0d0,0.5d0,1.0d0/))
+						tsdiffmat(counter, 1:2)=(/smh,smhnext/)
+						tsdiffmat(counter, 3:5)=smh*omega3data(1:3,l)
+						tsdiffmat(counter, 6:8)=smhnext*omega3data(1:3,l)
+						tsdiffmat(counter,9:11)=omega3data(1:3,l)
+						tsdiffmat(counter,12:13)=SS(4:5,k,i,l)
+						! now fillin the tsdiffmatvec
+						A1=testoutcomes(1,k-testminage+1,i,l)
+						A2=testoutcomes(3,k-testminage+1,i,l)
+						A1f=testoutcomes(1,k-testminage+3,i,l)
+						A2f=testoutcomes(3,k-testminage+3,i,l)
+						tsdiffvec(counter)= A1f-A1+A2f-A2
+					end if
+				end do
+			end if
+		end do
 	end do
-	! TODO check the conditonal above. check the ages of the children thing with the average test scores. I am not sure it is right.
+
+	! lapack
+	call DGELS('N', nspots, nregtsdiff+1,1,tsdiffmat,nspots, tsdiffvec, nspots,worktsdiff,nregtsdiff+1+(nregtsdiff+1)*blocksize,infotsdiff)
+	tsdiffest=tsdiffvec(1:nregtsdiff+1)
+
+	! deallocate
+	deallocate(tsdiffvec)
+	deallocate(tsdiffmat)
+	
+	
+	! put all the vecs together
+
+	momentvec=(/fulltimecoef, parttimecoef, expest, tsest,tsdiffest/)
+
+
 
 		
 
@@ -1246,13 +1269,6 @@ subroutine moments(momentvec, SS,outcomes, choices, testoutcomes,birthhist, smch
 
 
 
-		
-
-
-
-
-
-	momentvec=1.d0 ! TODO DON'T forget me here
 
 end subroutine moments
 
