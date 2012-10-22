@@ -55,7 +55,7 @@ omega3=(/10.0d0,1.0d0,18.0d0,10.0d0/)
 parA=0.10d0
 parU=1.0d0
 parU(4)=100.0d0
-parU(1)=-100
+parU(1)=1.d0
 parW=0.1d0*0.010
 parW(6)=-0.01d0
 parH=0.1d0*0.0000020
@@ -72,14 +72,14 @@ typeprob=1.0d0
 wcoeff=0.10d0
 vcoeff=0.1d0
 ! try the coefochcb
-parBmat=0.0001d0
+parBmat=0.01d0
 intercepts=(/1.0d0,1.0d0,1.0d0/)
 a1type=(/0.0d0,1.0d0/)
 pa1type=(/0.3d0,0.7d0/)
 rho=1.0d0
-id=18
+id=80
 
-smpar=0.30d0
+smpar=0.5d0
 lambdas=1.0d0
 sigmaetas=0.1d0
 
@@ -99,10 +99,11 @@ call simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoices, sm
 	!print*, SS(:,i,8)
 	!print*, '----------------'
 !end do 
-
-print*,smchoices(:,:,80)
+print*,'-----------'
+print*,smchoices(:,:,1)
 print*,'---------'
-print*, smexperience(:,80)
+print*, smexperience(:,2)
+print*, birthhist(1)
 
 !print*, emaxlate(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV)
 !print*, emaxhc(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,1.0d0)

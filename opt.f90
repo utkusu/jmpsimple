@@ -390,6 +390,8 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 	real(dble) smnext(3,Npaths)
 	real(dble) smbig(3,xgridsize)
 		
+	integer counter
+	
 	! Iniatilize some stuff
 	mu=0.0d0
 	choices=-9999
@@ -398,6 +400,8 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 	smxchoices=-9999 !if not chosen, be -9999.
 	period=1
 	birthhist=0 	! this records the timing of the second birth. if none, stays at zero.	
+	
+	counter=0
 	! first draw Npaths alternative folks to assign a1 values.	
 	mainseed=id*(/2,2/)
 	call random_seed(put=mainseed)
@@ -482,7 +486,7 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 	end do
 	!                            -----------------LOOOOOP TO THE FUTURE-----------------
 	
-	do period=2,nperiods-1
+	do period=2,nperiods
 		! draw the period shocks
 		eps= randmnv(Npaths,5,mu,sigma,3,1,(/period,id*period/))
 		! update state space vectors as much as you can outside the loop	
@@ -523,11 +527,12 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 		! -------------------------- 1a. PERIOD<7: STILL IN THE FECUND PERIOD ---------------------------------
 		if (period<7)  then
 
-		! determine the prob of a child birth. this part is constant all the Npaths
-		pbirth=bprobexo(omegaB,parBmat(:,period-1))	
-		call random_seed(put=mainseed*(period*10)+period) 
-		call random_number(birthdraw)
-		! FIRST FIGURE OUT WHO HAD BIRTH
+			! determine the prob of a child birth. this part is constant all the Npaths
+			pbirth=bprobexo(omegaB,parBmat(:,period-1))	
+			call random_seed(put=mainseed*(period*10)+period) 
+			call random_number(birthdraw)
+			! FIRST FIGURE OUT WHO HAD BIRTH
+			
 			do i=1,Npaths
 				if (SS(5,period-1,i)<0.001) then   ! they don't have a second child
 					if (birthdraw(i)<pbirth) then
@@ -591,7 +596,7 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					smnext(1,i)=pfone((/smAs(1,period,i),smh,0.5d0*(wageh(i)+wage(i)*smh)/), omega3(1:3), period*1.0d0,parA(4:12),rho) 
 					smnext(2,i)=SS(2,period,i)
 					smnext(3,i)=smexperience(period,i)+smh
-
+					
 				!-------------------------- PERIOD<7: 1.b TWO CHILDREN ------------------------------
 				else
 					do k=1,nttypes
@@ -636,6 +641,11 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					
 					! NEW: Smoothed As and Es and choices and later test scores 
 					smdenom=sum(exp((umatbig(:,:,i)-maxval(umatbig(:,:,i)))/smpar))
+					
+					!if ((i==2) .AND. (period==3)) then
+						!print*,smdenom
+						!print*, SS(6, period,i)
+					!end if
 					smbig=exp((umatbig(:,:,i)-maxval(umatbig(:,:,i)))/smpar)/smdenom
 					smchoices(:,period,i)=sum(smbig,2) 							! marginal of h
 					smxchoices(:,period,i)=sum(smbig,1) 						! marginal of x
@@ -646,6 +656,8 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					inputs=(/smAs(1,period,i),smAs(2,period,i),(1-0.5*smh)*smx,(1-0.5*smh)*(1-smx),income/)
 					smnext(1:2,i)=pftwo(inputs,omega3(1:3),SS(4:5,period,i),parA(4:12), rho)
 					smnext(3,i)=smexperience(period,i)+smh
+					
+					
 				end if  ! end of period<8 WV if
 					
 				if (SS(4,period,i)>=testminage) then
@@ -661,12 +673,8 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					smtestoutcomes(3,period-testminage+1,i)=smAs(2,period,i)+etashock(i,1)
 					smtestoutcomes(4,period-testminage+1,i)=lambdas(period-testminage+1)*smAs(2,period,i)+etashock(i,1)
 				end if
-
 			end do
 
-			! before switching to other group: HANDLE THE TEST SCORE PRODUCTION
-			! 
-							
 			! --%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%--
 			!----------------------------2. 7<period<15 NO CHANCE OF BIRTH, FIRST KID STILL IN CARE---------------------------------
 		elseif ((period>=7) .AND. (period<astar)) then
@@ -724,6 +732,8 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					! period utilities don't depend on x, so first get rid of those
 					! because there are two children, I need to use the CES utility function
 					uc=uctwo(SS(1,period,i),SS(2,period,i),parU(1)) 
+					if (i==1) print*, SS(1:2,period,i), parU(1)
+					
 					umatbig(1,:,i)=	uc + 			 parU(4)*(wageh(i))**parU(5)+parU(6)*baby
 					umatbig(2,:,i)= uc +a1type(a1holder(i))*0.5d0+ parU(4)*(wageh(i)+0.5d0*wage(i))**parU(5)+parU(6)*baby+parU(7)*0.5d0*baby
 					umatbig(3,:,i)= uc +a1type(a1holder(i))*1.0d0+ parU(4)*(wageh(i)+wage(i))**parU(5)+parU(6)*baby+parU(7)*baby
@@ -744,7 +754,10 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 							A2next=Anext(2)
 							intw=(/A1next,A2next,Enext,A1next**2,A2next**2,Enext**2, A1next*A2next,A1next*Enext,A2next*Enext/)
 							fvw=sum(intw*(/wcoef(1:3,period+1,birthhist(i),a1holder(i)),wcoef(9:Gsize,period+1,birthhist(i),a1holder(i))/))
-							!umatbig(j,k,i)=umatbig(j,k,i)+beta*(fvw+fvconsw(a1holder(i)))
+							!if (i==1) then
+								!print*, umatbig(j,k,i), fvw, fvconsw(a1holder(i))
+							!end if
+							umatbig(j,k,i)=umatbig(j,k,i)+beta*(fvw+fvconsw(a1holder(i)))
 							nextcollectbig(:,j,k)=(/A1next,A2next,Enext/)
 						end do
 					end do
@@ -765,6 +778,7 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					inputs=(/smAs(1,period,i),smAs(2,period,i),(1-0.5*smh)*smx,(1-0.5*smh)*(1-smx),income/)
 					smnext(1:2,i)=pftwo(inputs,omega3(1:3),SS(4:5,period,i),parA(4:12), rho)
 					smnext(3,i)=smexperience(period,i)+smh
+					!if (i==1) print*, smdenom 
 				end if  ! end of period<8 WV if
 			
 			! create test scores	
@@ -967,9 +981,7 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 
 		end if ! end of if that divides the the periods
 
-
 	end do !--------------- END PERIOD LOOP---------------
-
 	
 end subroutine simhist
 

@@ -26,7 +26,7 @@ integer, parameter:: Bsize=2			!< the number of regressors in the birth probabil
 integer, parameter:: Bsizeexo=4			!< the number of regressors in the birth probability function other than the contraception
 
 ! estimation stuff 
-integer,parameter::Npaths=1000 			!<number of simulated paths for each family.
+integer,parameter::Npaths=5 			!<number of simulated paths for each family.
 integer,parameter::simvecsize=10 		!<the size of the simulated data vector for each period. obviosly very related to ss.
 integer, parameter::SampleSize=500 		!< Size of the estimation sample
 integer, parameter:: Ntestage=10 		!< number of ages in which we have test scores. start at 5, end in 14.

@@ -95,6 +95,8 @@ function uctwo(A1, A2, phi)
 	real(dble) A1,A2	!< achievement level of the first and second child
 	real(dble) phi 		!< the parameter
 	uctwo=((0.5*A1**phi) + (0.5*A2**phi) )**(1/phi)
+	if ( phi<0.000001 .AND. phi>-0.0000001) uctwo=(A1**(0.5d0))*(A2**(0.5d0)) 	! practically converge to cobbdouglas
+	
 	uctwo=uctwo/emaxscale
 end function uctwo
 
