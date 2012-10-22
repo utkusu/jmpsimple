@@ -642,10 +642,6 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					! NEW: Smoothed As and Es and choices and later test scores 
 					smdenom=sum(exp((umatbig(:,:,i)-maxval(umatbig(:,:,i)))/smpar))
 					
-					!if ((i==2) .AND. (period==3)) then
-						!print*,smdenom
-						!print*, SS(6, period,i)
-					!end if
 					smbig=exp((umatbig(:,:,i)-maxval(umatbig(:,:,i)))/smpar)/smdenom
 					smchoices(:,period,i)=sum(smbig,2) 							! marginal of h
 					smxchoices(:,period,i)=sum(smbig,1) 						! marginal of x
@@ -732,7 +728,6 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					! period utilities don't depend on x, so first get rid of those
 					! because there are two children, I need to use the CES utility function
 					uc=uctwo(SS(1,period,i),SS(2,period,i),parU(1)) 
-					if (i==1) print*, SS(1:2,period,i), parU(1)
 					
 					umatbig(1,:,i)=	uc + 			 parU(4)*(wageh(i))**parU(5)+parU(6)*baby
 					umatbig(2,:,i)= uc +a1type(a1holder(i))*0.5d0+ parU(4)*(wageh(i)+0.5d0*wage(i))**parU(5)+parU(6)*baby+parU(7)*0.5d0*baby
@@ -754,9 +749,6 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 							A2next=Anext(2)
 							intw=(/A1next,A2next,Enext,A1next**2,A2next**2,Enext**2, A1next*A2next,A1next*Enext,A2next*Enext/)
 							fvw=sum(intw*(/wcoef(1:3,period+1,birthhist(i),a1holder(i)),wcoef(9:Gsize,period+1,birthhist(i),a1holder(i))/))
-							!if (i==1) then
-								!print*, umatbig(j,k,i), fvw, fvconsw(a1holder(i))
-							!end if
 							umatbig(j,k,i)=umatbig(j,k,i)+beta*(fvw+fvconsw(a1holder(i)))
 							nextcollectbig(:,j,k)=(/A1next,A2next,Enext/)
 						end do
@@ -778,7 +770,6 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					inputs=(/smAs(1,period,i),smAs(2,period,i),(1-0.5*smh)*smx,(1-0.5*smh)*(1-smx),income/)
 					smnext(1:2,i)=pftwo(inputs,omega3(1:3),SS(4:5,period,i),parA(4:12), rho)
 					smnext(3,i)=smexperience(period,i)+smh
-					!if (i==1) print*, smdenom 
 				end if  ! end of period<8 WV if
 			
 			! create test scores	
@@ -1008,26 +999,29 @@ subroutine concov(datamat,output)
 	real(dble), intent(out) :: output
 	real(dble) :: mean1, mean2
 	real(dble) n
-	n=size(datamat,2)*1.0d0
+	n=size(datamat,1)*1.0d0
 	mean1=sum(datamat(:,1))/n
 	mean2=sum(datamat(:,2))/n
 	output=sum((datamat(:,1)-mean1)*(datamat(:,2)-mean2))/(n-1)
 end subroutine concov
 
-subroutine moments(momentvec, SS,outcomes, choices, testoutcomes,birthhist, smchoices, smexperience, omega3data,lfpperiods, expperiods, tsperiods, idmat)
+
+
+!subroutine moments(momentvec, SS,outcomes, choices, testoutcomes, birthhist, smchoices, smexperience, omega3data,lfpperiods, expperiods, tsperiods, idmat)
+subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperience, omega3data,lfpperiods, expperiods, tsperiods, idmat)
 	implicit none
 	real(dble),intent(in):: SS(6,nperiods,Npaths,SampleSize) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
-	real(dble),intent(in):: outcomes(2,nperiods,Npaths,SampleSize) !< outcomes: wages of the father and mother.
-	integer,intent(in):: choices(1,nperiods,Npaths,SampleSize) 	!< choices : the choice history of h.
+	!real(dble),intent(in):: outcomes(2,nperiods,Npaths,SampleSize) !< outcomes: wages of the father and mother.
+	!integer,intent(in):: choices(1,nperiods,Npaths,SampleSize) 	!< choices : the choice history of h.
 	integer,intent(in):: birthhist(Npaths,SampleSize)  		    !< the birth timing vec, 0 if one child throughout.
 	real(dble), intent(in) :: omega3data(o3size, SampleSize) 	!< holds the omega3 data for Sample people
-	real(dble), intent(in) ::testoutcomes(4,Ntestage,Npaths,SampleSize)  !< holds test scores for two children 
+	real(dble), intent(in) ::smtestoutcomes(4,Ntestage,Npaths,SampleSize)  !< holds test scores for two children 
 	real(dble), intent(in) :: smchoices(3,nperiods,Npaths,SampleSize)
 	real(dble), intent(in) :: smexperience(nperiods,Npaths,SampleSize)
 	integer, intent(in):: expperiods(expsize) 		!< the array that holds the ages of mom for which experience moments calculated
 	integer, intent(in):: lfpperiods(lfpsize) 			!< the array that holds the period numbers for which labor for particapation equations are estimated.
 	integer, intent(in):: tsperiods(expsize) 		!< the array that holds the ages for which test score averages are calculated. 
-	integer, intent(in)::idmat(SampleSize,MomentSize) 	   		!<indicates the which sample units are in the jth columnth moment
+	integer, intent(in):: idmat(SampleSize,MomentSize) 	   		!<indicates the which sample units are in the jth columnth moment
 														!<calculation
 	real(dble), intent(out) :: momentvec(MomentSize) 	!< The set of moments produced by the simulated data
 		
@@ -1086,7 +1080,6 @@ subroutine moments(momentvec, SS,outcomes, choices, testoutcomes,birthhist, smch
 	! STARTING OUT WITH 6A and 6B in jmpsimple document. 
 
 
-
 	!---------------------------------PARTICIPATION EQUATIONS------------------------------------------
 	! linear regressions with work status, where regressor vector is [1 schooling AFQT agem baby E 2child]
 	
@@ -1102,11 +1095,14 @@ subroutine moments(momentvec, SS,outcomes, choices, testoutcomes,birthhist, smch
 					lfpmat(counter,1:2)=omega3data(1:2,l)
 					lfpmat(counter,3)=omega3data(3,l)+lfpperiods(k)
 					lfpmat(counter,4)=baby*1.0d0
-					lfpmat(counter,5)=SS(3,lfpperiods(k),i,l)
+					!lfpmat(counter,5)=SS(3,lfpperiods(k),i,l)
+					lfpmat(counter,5)=smexperience(lfpperiods(k),i,l)
 					lfpmat(counter,6)=twochild*1.0d0
 					! fill in the dependent variable	
-					if (choices(1,lfpperiods(k),i,l) > 2.5) fulltimevec(counter)=1.0d0
-					if ( (choices(1,lfpperiods(k),i,l) < 2.5) .AND. (choices(1,lfpperiods(k),i,l) > 1.5) ) parttimevec(counter)=1.0d0
+					!if (choices(1,lfpperiods(k),i,l) > 2.5) fulltimevec(counter)=1.0d0
+					!if ( (choices(1,lfpperiods(k),i,l) < 2.5) .AND. (choices(1,lfpperiods(k),i,l) > 1.5) ) parttimevec(counter)=1.0d0
+					fulltimevec(counter)=smchoices(3,lfpperiods(k),i,l)
+					parttimevec(counter)=smchoices(2,lfpperiods(k),i,l)
 					counter=counter+1
 				end do
 			end if
@@ -1130,11 +1126,12 @@ subroutine moments(momentvec, SS,outcomes, choices, testoutcomes,birthhist, smch
 	! THE EXPPERIODS ARE AGES OF THE MOTHER, NOT PERIODS, SO WE NEED TO PICK THE CORRECT PERIOD with OMEGA3(3)
 	do k=1, expsize
 		counter=1
-		allocate( experience ( sum (idmat(:,lfpsize+k) ) ) )
+		allocate( experience ( sum (idmat(:,lfpsize+k)*Npaths ) ) )
 		do l=1, SampleSize
 			if (idmat(l,lfpsize+k)==1) then
 				do i=1,Npaths
-					experience(counter)=SS(3,expperiods(k)+omega3data(3,l),i,l)
+					!experience(counter)=SS(3,expperiods(k)+omega3data(3,l),i,l)
+					experience(counter)=smexperience(expperiods(k)-int(omega3data(3,l)+1),i,l)
 					counter=counter+1
 				end do
 			end if
@@ -1148,19 +1145,21 @@ subroutine moments(momentvec, SS,outcomes, choices, testoutcomes,birthhist, smch
 	! now covariance of experiences.
 	do k=1, expsize-1
 		counter=1
-		allocate ( dualexperience( sum(idmat(:,lfpsize+expsize+k)),2 ) )
+		allocate ( dualexperience( sum(idmat(:,lfpsize+expsize+k))*Npaths,2 ) )
 		do l=1, SampleSize
 			if (idmat(l,lfpsize+expsize+k)==1) then
 				do i=1, Npaths
-					dualexperience(counter,1)=SS(3,expperiods(k)+omega3data(3,l),i,l)
-					dualexperience(counter,2)=SS(3,expperiods(k+1)+omega3data(3,l),i,l)
+					!dualexperience(counter,1)=SS(3,expperiods(k)+omega3data(3,l),i,l)
+					!dualexperience(counter,2)=SS(3,expperiods(k+1)+omega3data(3,l),i,l)
+					dualexperience(counter,1)=smexperience(expperiods(k)-int(omega3data(3,l)+1),i,l)
+					dualexperience(counter,2)=smexperience(expperiods(k+1)-int(omega3data(3,l)+1),i,l)
 					counter=counter+1
 				end do
 			end if
 		end do
 		! calculate covariance
 		call concov(dualexperience,covexp)
-		expest( (2*expsize+k) )=covexp	
+		expest((2*expsize+k))=covexp	
 		! deallocate
 		deallocate (dualexperience)
 	end do
@@ -1175,37 +1174,34 @@ subroutine moments(momentvec, SS,outcomes, choices, testoutcomes,birthhist, smch
 	do k=1, tssize
 		counter=1
 		nspots=0
-		! figure out how many places in the experience vector you will need.
+		! figure out how many places in the test score vector you will need.
 		do l=1,SampleSize
 			if ( (idmat(l,lfpsize+2*expsize-1+k)>0)) nspots=nspots+1 ! if kids exist add one
 			if (idmat(l,lfpsize+2*expsize-1+k)==3) nspots=nspots+1 ! one more if two
 		end do
 		
-		allocate (ts (nspots))
+		allocate (ts (nspots*Npaths))
 		
 		do l=1, SampleSize
 			if ( (idmat(l,lfpsize+2*expsize-1+k)==1) .OR. (idmat(l,lfpsize+2*expsize-1+k)==3)) then  ! first child
 				do i=1, Npaths
-					if (testoutcomes(1, tsperiods(k), i, l) > -999.0d0 ) ts(counter)=testoutcomes(1, tsperiods(k), i, l)
+					if (smtestoutcomes(1, tsperiods(k), i, l) > -1.0d0 ) ts(counter)=smtestoutcomes(1, tsperiods(k), i, l)
 					counter=counter+1
 				end do
 			end if
-
-			
 			! second child: if mom has a second child with test score associated with the AGE tsperiod(k)
-			
 			if  (idmat(l,lfpsize+2*expsize-1+k)==2) then 				
 				do i=1, Npaths 
 					! check if at age2=tsperiod(k) [which corresponds to period tsperiod(k)+birthhist(i,l)-1 for mom]
 					! is a period for the ith simulation has a test score. If it does, it is the one:
 					! it is tsperiod+birthist-1 period for mom, the age of the second kid is tsperiod
-					if (testoutcomes(3, tsperiods(k)+birthhist(i,l)-1, i, l) > -999.0d0 ) ts(counter)=testoutcomes(3, tsperiods(k)+birthhist(i,l)-1, i, l)
+					if (smtestoutcomes(3, tsperiods(k)+birthhist(i,l)-1, i, l) > -1.0d0 ) ts(counter)=smtestoutcomes(3, tsperiods(k)+birthhist(i,l)-1, i, l)
 					counter=counter+1
 				end do
 			end if
 		end do
 		! now, calculate the average of the ts vector and put it tsest, then deallocate
-		tsest(k)=sum(experience)/nspots
+		tsest(k)=sum(ts)/nspots
 		deallocate(ts)
 	end do
 
@@ -1240,7 +1236,8 @@ subroutine moments(momentvec, SS,outcomes, choices, testoutcomes,birthhist, smch
 			if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
 				do i=1,Npaths 	! ... go through simulated outcomes for that mom and pick the right ones
 					! 1. fill in the labor supply related parts (smh)
-					if ( testoutcomes(3, k-testminage+1,i,l) > -999 )   then ! if the second kid is old enough to have a testscore (first is kid is already at most testmaxage-2
+					!if ( smtestoutcomes(3, k-testminage+1,i,l) > -1.0d0 )   then ! if the second kid is old enough to have a testscore (first is kid is already at most testmaxage-2
+					if (SS(5,k,i,l)>4.8) then 
 						smh=sum(smchoices(:,k,i,l)*(/0.0d0,0.5d0,1.0d0/))
 						smhnext=sum(smchoices(:,k+1,i,l)*(/0.0d0,0.5d0,1.0d0/))
 						tsdiffmat(counter, 1:2)=(/smh,smhnext/)
@@ -1248,39 +1245,29 @@ subroutine moments(momentvec, SS,outcomes, choices, testoutcomes,birthhist, smch
 						tsdiffmat(counter, 6:8)=smhnext*omega3data(1:3,l)
 						tsdiffmat(counter,9:11)=omega3data(1:3,l)
 						tsdiffmat(counter,12:13)=SS(4:5,k,i,l)
-						! now fillin the tsdiffmatvec
-						A1=testoutcomes(1,k-testminage+1,i,l)
-						A2=testoutcomes(3,k-testminage+1,i,l)
-						A1f=testoutcomes(1,k-testminage+3,i,l)
-						A2f=testoutcomes(3,k-testminage+3,i,l)
+						! now fillin the tsdiffmat vec
+						A1=smtestoutcomes(1,k-testminage+1,i,l)
+						A2=smtestoutcomes(3,k-testminage+1,i,l)
+						A1f=smtestoutcomes(1,k-testminage+3,i,l)
+						A2f=smtestoutcomes(3,k-testminage+3,i,l)
 						tsdiffvec(counter)= A1f-A1+A2f-A2
+						counter=counter+1
 					end if
 				end do
 			end if
 		end do
 	end do
+	print*, tsdiffmat(:,3:5)
+
 
 	! lapack
 	call DGELS('N', nspots, nregtsdiff+1,1,tsdiffmat,nspots, tsdiffvec, nspots,worktsdiff,nregtsdiff+1+(nregtsdiff+1)*blocksize,infotsdiff)
 	tsdiffest=tsdiffvec(1:nregtsdiff+1)
-
 	! deallocate
 	deallocate(tsdiffvec)
 	deallocate(tsdiffmat)
-	
-	
 	! put all the vecs together
-
 	momentvec=(/fulltimecoef, parttimecoef, expest, tsest,tsdiffest/)
-
-
-
-		
-
-
-
-
-
 
 end subroutine moments
 

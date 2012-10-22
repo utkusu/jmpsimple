@@ -44,15 +44,30 @@ real(dble) smtestoutcomes(4,Ntestage, Npaths)
 		
 			
 ! stuff for simulation
-real(dble) intercepts(3),a1type(2),pa1type(2),llmsvec(SampleSize),rho
+real(dble) intercepts(3),a1type(2),pa1type(2),llmsvec(nperiods),rho
 integer id
 
+
+real(dble) SScollect(6,nperiods,Npaths,SampleSize) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
+!real(dble) outcomescollect(2,nperiods,Npaths,SampleSize) !< outcomes: wages of the father and mother.
+!integer choicescollect(1,nperiods,Npaths,SampleSize) 	!< choices : the choice history of h.
+integer birthhistcollect(Npaths,SampleSize)  		    !< the birth timing vec, 0 if one child throughout.
+real(dble) omega3data(o3size, SampleSize) 	!< holds the omega3 data for Sample people
+real(dble) smtestoutcomescollect(4,Ntestage,Npaths,SampleSize)  !< holds test scores for two children 
+real(dble) smchoicescollect(3,nperiods,Npaths,SampleSize)
+real(dble) smexperiencecollect(nperiods,Npaths,SampleSize)
+integer expperiods(expsize) 		!< the array that holds the ages of mom for which experience moments calculated
+integer lfpperiods(lfpsize) 			!< the array that holds the period numbers for which labor for particapation equations are estimated.
+integer tsperiods(expsize) 		!< the array that holds the ages for which test score averages are calculated. 
+integer idmat(SampleSize,MomentSize) 	   		!<indicates the which sample units are in the jth columnth moment
+													!<calculation
+real(dble) momentvec(MomentSize) 	!
 
 omega1=(/8.d0,5.0d0,0.0d0/)
 omega2=(/2.0d0,1.0d0,20.0d0,20.0d0/)
 omega3=(/10.0d0,1.0d0,18.0d0,10.0d0/)
 
-parA=0.10d0
+parA=0.010d0
 parU=1.0d0
 parU(4)=100.0d0
 parU(1)=1.d0
@@ -83,27 +98,26 @@ smpar=0.5d0
 lambdas=1.0d0
 sigmaetas=0.1d0
 
-call simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoices, smexperience, smAs, smtestoutcomes,omega3,intercepts,parA,parU,parW,parH,beta,Sigma,a1type,pa1type,parBmat,vcoeff,wcoeff,llmsvec,id,rho,lambdas,sigmaetas,smpar)
-!print*, choices(1,:,80)
-!print*, '------------------------'
-!print*, xchoices(1,:,80)
+expperiods=(/25,30,35,40/)
+lfpperiods=(/3,5,7,9/)
+tsperiods=(/2,4,6,8/)
+idmat=1 ! everybody is in everthing.
+
+do id=1,10
+	call simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoices, smexperience, smAs, smtestoutcomes,omega3,intercepts,parA,parU,parW,parH,beta,Sigma,a1type,pa1type,parBmat,vcoeff,wcoeff,llmsvec,id,rho,lambdas,sigmaetas,smpar)
+	SScollect(:,:,:,id)=SS
+	birthhistcollect(:,id)=birthhist
+	omega3data(:,id)=omega3
+	smchoicescollect(:,:,:,id)=smchoices
+	smexperiencecollect(:,:,id)=smexperience
+	smtestoutcomescollect(:,:,:,id)=smtestoutcomes
+end do
+call moments(momentvec, SScollect, smtestoutcomescollect,  birthhistcollect, smchoicescollect, smexperiencecollect, omega3data,lfpperiods, expperiods, tsperiods, idmat)
+print*,'-------------'
+print*, momentvec
+print*,'-------------'
 
 
-!print*,'------------------'
-!print*, testoutcomes(:,:,80)
-
-
-!print*, '-----------------'
-!print*, 'STATE SPACE'
-!do i=1,22
-	!print*, SS(:,i,8)
-	!print*, '----------------'
-!end do 
-print*,'-----------'
-print*,smchoices(:,:,1)
-print*,'---------'
-print*, smexperience(:,2)
-print*, birthhist(1)
 
 !print*, emaxlate(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV)
 !print*, emaxhc(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,1.0d0)

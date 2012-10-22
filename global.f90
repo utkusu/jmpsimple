@@ -28,7 +28,7 @@ integer, parameter:: Bsizeexo=4			!< the number of regressors in the birth proba
 ! estimation stuff 
 integer,parameter::Npaths=5 			!<number of simulated paths for each family.
 integer,parameter::simvecsize=10 		!<the size of the simulated data vector for each period. obviosly very related to ss.
-integer, parameter::SampleSize=500 		!< Size of the estimation sample
+integer, parameter::SampleSize=10 		!< Size of the estimation sample
 integer, parameter:: Ntestage=10 		!< number of ages in which we have test scores. start at 5, end in 14.
 integer, parameter:: testminage=5 		!< earliest test scores
 integer, parameter:: testmaxage=14 		!< latest test scores
@@ -42,7 +42,7 @@ integer, parameter:: lfpsize=4 			!< number of periods for the participation equ
 integer, parameter:: expsize=4 			!< number of mother's ages at which the experieence level distributions are matched
 integer, parameter:: tssize=4 			!< number of ages for which the children's test score averages to be calculated.
 integer, parameter:: nreglfp=6 			!< number of regressors in labor force participation equations. intercept not included.
-integer, parameter:: nregtsdiff=10 		!> number of regressors in tsdiff equations. intercept not included.
+integer, parameter:: nregtsdiff=13 		!> number of regressors in tsdiff equations. intercept not included.
 
 integer, parameter:: MomentSize= (2*nreglfp+2) + (3*expsize-1) + (tssize) + (nregtsdiff+1) 		!< number of moments to be matched
 
