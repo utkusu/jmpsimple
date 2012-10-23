@@ -116,5 +116,79 @@ real(dble), parameter :: pi=3.141592653589793238462643d0
 ! lapack parameters
 integer, parameter:: blocksize=64
 
+! ------------------------- NEW GLOBALS--------------------------------------
+
+
+! MPI Globals
+! don't put status yet
+integer nproc, rank, ier, sender, position, number_sent, number_received, order, tag, rorder, order3, order4
+
+! parameter globals
+integer, parameter:: parameterssize=20
+
+! wage parameters
+real(dble), parameter::gparW(parWsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 /)*1.0d0
+real(dble), parameter::gparH(parHsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01  /) *1.0d0
+real(dble) , parameter:: gpart2_parA(9)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01 /)*1.0d0
+real(dble) gparB(Bsizeexo+1,nfert)
+
+
+! parameters of other kind
+real(dble), parameter:: grho=1.0d0
+real(dble), parameter:: gbeta=0.950d0    ! beta is a free parameter for now
+! factor model parameters: read these from a matrix
+real(dble) glambdas(Ntestage)
+real(dble) gsigmaetas(2,Ntestage)
+
+! smoothing parameter for the smoothing
+integer, parameter:: gsmpar=0.5
+
+
+! intercepts - later on these will be types, too
+real(dble) , parameter:: gctype=0.1d0
+real(dble) , parameter:: gmtype=0.1d0
+real(dble) , parameter:: gatype=0.1d0
+
+
+
+! data to read
+integer gidmat(SampleSize, MomentSize)
+real(dble) gomega3data(osize, SampleSize)
+real(dble) llmsmat(nperiods, SampleSize)
+
+
+
+! global parameters for moment calculation
+integer,parameter:: gexpperiods(expsize)=(/25,30,35,40/) 		! the array that holds the ages of mom for which experience moments calculated
+! the array that holds the period numbers for which labor for particapation equations are estimated.
+integer,parameter:: glfpperiods(lfpsize)=(/3,5,7,9/) 
+! the array that holds the ages for which test score averages are calc. see explanation if confused 
+integer,parameter:: gtsperiods(expsize)=(/2,4,6,8/) 				
+
+
+! ------------ initialize variables---------------------
+
+gparB(:,1)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+gparB(:,2)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+gparB(:,3)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+gparB(:,4)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+gparB(:,5)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+gparB(:,6)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+
+
+! read idmat and omega3 -NEED TO MAKE THESE READING FROM THE ACTUAL DATA FILES.
+gidmat=1
+gomega3data=1.0d0
+llmsmat=0.5d0
+
+glambdas=1.0d0
+gsigmaetas=1.d0
+
+
+
+
+
+
+
 
 end module global
