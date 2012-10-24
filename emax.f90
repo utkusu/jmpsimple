@@ -1289,7 +1289,7 @@ subroutine coeffinal(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma)
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
-
+	call setvecAs(period, delta,2)
 	! get a set of llms, which are fixed
 	call random_seed(put=(/int(1000*period+delta),1/))
 	call random_number(llmsvec)
@@ -1368,7 +1368,8 @@ subroutine coeflate(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,par
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
-
+	call setvecAs(period, delta,2)
+	
 	! get a set of llms, which are fixed
 	call random_seed(put=(/int(1000*period+delta),1/))
 	call random_number(llmsvec)
@@ -1446,6 +1447,7 @@ subroutine coefhc(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
+	call setvecAs(period, delta,2)
 
 	! get a set of llms, which are fixed
 	call random_seed(put=(/int(1000*period+delta),1/))
@@ -1514,7 +1516,8 @@ subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parF
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
-
+	call setvecAs(period, delta,2)
+	
 	! get a set of llms, which are fixed
 	call random_seed(put=(/int(1000*period+delta),1/))
 	call random_number(llmsvec)
@@ -1590,6 +1593,7 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
 
+	call setvecAs(period, 0.0d0,1)
 	! get a set of llms, which are fixed
 	call random_seed(put=(/int(1000*period+1),1/))
 	call random_number(llmsvec)
@@ -1656,6 +1660,7 @@ subroutine coefoclate(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
 
+	call setvecAs(period, 0.0d0,1)
 	! get a set of llms, which are fixed
 	call random_seed(put=(/int(1000*period+1),1/))
 	call random_number(llmsvec)
@@ -1724,6 +1729,7 @@ subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,rho
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
 
+	call setvecAs(period, 0.0d0,1)
 	! get a set of llms, which are fixed
 	call random_seed(put=(/int(1000*period+1),1/))
 	call random_number(llmsvec)
@@ -1795,7 +1801,7 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
-
+	call setvecAs(period, 0.0d0,1)
 	! get a set of llms, which are fixed
 	call random_seed(put=(/int(1000*period+1),1/))
 	call random_number(llmsvec)

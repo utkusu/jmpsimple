@@ -7,19 +7,24 @@ use opt
 USE IFPORT ! for intel fortran only
 implicit none
 include 'mpif.h'
+real(dble) parameters(parsize), dist, targetvec(MomentSize), weightmat(MomentSize,MomentSize)
 
 
 call MPI_INIT(ier)
 call MPI_COMM_SIZE(MPI_COMM_WORLD, nproc, ier)
 call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ier)
 
-rho=1.0d0
-npack=parAsize+parWsize+parUsize+parHsize+1+(shocksize1+shocksize1*(shocksize1-1)/2)+Bsizeexo+1+4
-nftype=na1type*(deltamax-deltamin+1)
-
-
 call readdata()	
 call readsomeparam()
+parameters=0.01d0
+targetvec=0.0d0
+weightmat=1.0d0
+
+call distance(dist, parameters, targetvec, weightmat)
+
+print*,dist
+
+
 
 
 call MPI_FINALIZE(ier)
@@ -32,8 +37,8 @@ contains
 
 	subroutine distance(dist,parameters,targetvec,weightmat)
 		implicit none
-		use 'mpif.h'
-		real(dble), intent(in)::parameters(parameterssize)
+		include 'mpif.h'
+		real(dble), intent(in)::parameters(parsize)
 		real(dble), intent(in)::weightmat(MomentSize, MomentSize) 
 		real(dble), intent(in) :: targetvec(MomentSize)
 		real(dble), intent(out) :: dist
@@ -41,12 +46,14 @@ contains
 
 		! locals
 		! first to break up the parameters
-		real(dble) part1_parA(4) 	! A production function including intercept (first element intercept)
+		real(dble) part1_parA(3) 	! A production function excluding intercept
 		real(dble) parUpart(parUsize-1) ! parameters of utility except alpha1
 		real(dble) a1type(na1type)  ! alpha1 typevec
 		real(dble) pa1type(na1type-1) ! probability of alpha1, last one is 1-sum the rest 
 		real(dble) sigma(shocksize1,shocksize1) ! variance matrix of shocks. first diagonal then off diagonal. go column wise: (2,1) (3,1) (3,2) for 3
-		real(dble) beta 
+		real(dble) beta
+
+		integer id
 
 
 		! the stuff needed between steps
@@ -72,15 +79,29 @@ contains
 		real(dble) smchoicescollect(3,nperiods,Npaths,SampleSize)
 		real(dble) smexperiencecollect(nperiods,Npaths,SampleSize)
 		integer idmat(SampleSize,MomentSize) 	   		!indicates the which sample units are in the jth columnth moment
-															!calculation
+					
+		! one use ones 
+		real(dble) SS(6,nperiods,Npaths) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
+		real(dble) outcomes(2,nperiods,Npaths) !< outcomes: wages of the father and mother.
+		integer choices(1,nperiods,Npaths) 	!< choices : the choice history of h.
+		integer xchoices(1,nperiods,Npaths) 	!< not in the data, but I will keep an history of the x choices as well.
+		integer birthhist(Npaths) 			!< the birth timing vec, 0 if one child throughout.
+		real(dble) testoutcomes(4,Ntestage, Npaths)
+		real(dble) smchoices(3,nperiods, Npaths)
+		real(dble) smexperience(nperiods, Npaths)
+		real(dble) smAs(2,nperiods, Npaths)
+		real(dble) smtestoutcomes(4,Ntestage, Npaths)
+		real(dble) omega3(o3size) 
+		
+		!calculation
 		real(dble) momentvec(MomentSize) 	!
 
 		integer status(MPI_STATUS_SIZE)
-		real(dble) difft(1,MomentSize), diff(MomentSize,1)
+		real(dble) difft(1,MomentSize), diff(MomentSize,1), middlestep(1,MomentSize), laststep(1,1)
 			
 		
 		! break up parameters for two types
-		part1_parA=parameters(1:4)
+		part1_parA=parameters(1:3)
 		parUpart= parameters(5:10)
 		a1type=parameters(11:12)
 		pa1type=parameters(13)
@@ -88,6 +109,7 @@ contains
 		sigma(2,1)=parameters(17); sigma(1,2)=parameters(17)
 		sigma(3,1)=parameters(18); sigma(1,3)=parameters(18)
 		sigma(3,2)=parameters(19); sigma(2,3)=parameters(19)
+		beta=parameters(20)	
 
 		parA=(/part1_parA,gpart2_parA/)
 		parU=(/parUpart(1:2), 1.0d0, parUpart(3:6)/) ! put a number in there,a1 will come from a1 distribution but wsolver handles that
@@ -186,7 +208,7 @@ contains
 				if(tag>10) then
 					! get the correct mother type from solwall
 					wcoef(:,:,:,1)=solwall(:,:,:,order)
-					call vsolver(solv,(/gctype,gctype,gmtype,gatype,a1type(order)/), parA,gparW,gparH(5:6),parU,gparB, beta,sigma,wcoef,(/ctype/),(/1.0d0/),grho)
+					call vsolver(solv,(/gctype,gctype,gmtype,gatype,a1type(order)/), parA,gparW,gparH(5:6),parU,gparBmat, beta,sigma,wcoef,(/gctype/),(/1.0d0/),grho)
 					rorder=order   ! returning the order
 					call MPI_SEND(rorder, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, ier)
 					call MPI_SEND(solv,(Gsizeoc+1)*nperiods,MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
@@ -197,35 +219,37 @@ contains
 			end do
 			end if
 		end if
-	
+		
+		print*, 'MODEL SOLVED, MOVING ONTO SIMULATIONS'
 
 		! now that we have the solwall and solvall (the coeffiecients for the interpolation, it is time to simulate data from these.
 		! it is only master who should do this.
 		if (rank==0) then
 
 			do id=1,SampleSize
-				call simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoices, smexperience, smAs, smtestoutcomes,gomega3data(:,id),(/gctype,gmtype/),parA,parU,gparW,gparH,beta,sigma,a1type,pa1type,gparBmat,solvall,solwall,llmsmat(:,id),id,grho,glambdas,gsigmaetas,gsmpar)
+				call simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoices, smexperience, smAs, smtestoutcomes,gomega3data(:,id),(/gctype,gmtype/),parA,parU,gparW,gparH,beta,sigma,a1type,pa1type,gparBmat,solvall,solwall,llmsmat(:,id),id,grho,glambdas,gsigmaetas, gsmpar)
 				SScollect(:,:,:,id)=SS
 				birthhistcollect(:,id)=birthhist
-				omega3data(:,id)=omega3
 				smchoicescollect(:,:,:,id)=smchoices
 				smexperiencecollect(:,:,id)=smexperience
 				smtestoutcomescollect(:,:,:,id)=smtestoutcomes
 			end do
 			call moments(momentvec, SScollect, smtestoutcomescollect,  birthhistcollect, smchoicescollect, smexperiencecollect, gomega3data,glfpperiods, gexpperiods, gtsperiods, gidmat)
 			
-			difft=momentvec-targetvec
-			diff=momentvec-targetvec
-			distance=matmul(matmul(difft,weightmat),diff)
+			difft(1,:)=momentvec-targetvec
+			diff(:,1)=momentvec-targetvec
+			middlestep=matmul(difft,weightmat)
+			laststep=matmul(middlestep,diff)
+			dist=laststep(1,1)
 		end if
 	end subroutine distance
 
 
 	!> make the distance function and its numerical derivatives a function to be evaluated by the optimizer
-	subroutine objfunc(val, n, xvec, grad, need_gradient, 1)
+	subroutine objfunc(val, n, xvec, grad, need_gradient, fmat)
 	implicit none
 	integer n, need_gradient
-	real(dble) val, xvec(n), grad(n)
+	real(dble) val, xvec(n), grad(n), fmat
 	
 
 	! locals

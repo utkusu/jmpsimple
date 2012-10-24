@@ -78,7 +78,7 @@ real(dble), parameter::onescxgrid(cxgridsize)=1.0d0
 real(dble), parameter::onescgridwithbirth(cgridsize*2)=1.0d0
 
 ! emax interpolation parameters
-integer, parameter:: Nmc=100		!<monte carlo integration draw size
+integer, parameter:: Nmc=50		!<monte carlo integration draw size
 
 integer, parameter::svecage0m=4
 integer, parameter::svecsch0m=4
@@ -96,8 +96,8 @@ real(dble), parameter:: vecomegaf(svecomegaf)=(/0.090d0,0.10d0, 0.130d0,0.15d0/)
 real(dble) , parameter:: vecaqft(svecaqft)=(/.1d0,.3d0,0.6d0,0.8d0/)
 
 ! temp A values for interpolation: TODO this will need to change every year, depending on the test scores.
-real(dble), parameter::veca1(sveca1)=(/1.0d0,1.20d0,1.3d0,1.4d0/)
-real(dble), parameter::veca2(sveca2)=(/1.0d0,1.20d0,1.3d0,1.4d0/)
+real(dble) veca1(sveca1)
+real(dble) veca2(sveca2)
 !real(dble), parameter::veca2(sveca2)=(/1.0d0,2.0d0/)
 
 ! temp A values for interpolation
@@ -124,13 +124,16 @@ integer, parameter:: blocksize=64
 integer nproc, rank, ier, sender, position, number_sent, number_received, order, tag, rorder, order3, order4
 
 ! parameter globals
-integer, parameter:: parameterssize=20
+integer, parameter:: parsize=20
+
+! space for target vec
+real(dble) btargetvec(MomentSize)
 
 ! wage parameters
-real(dble), parameter::gparW(parWsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 /)*1.0d0
-real(dble), parameter::gparH(parHsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01  /) *1.0d0
+real(dble), parameter::gparW(parWsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 /)*0.10d0
+real(dble), parameter::gparH(parHsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01  /) *0.00110d0
 real(dble) , parameter:: gpart2_parA(9)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01 /)*1.0d0
-real(dble) gparB(Bsizeexo+1,nfert)
+real(dble) gparBmat(Bsizeexo+1,nfert)
 
 
 ! parameters of other kind
@@ -143,7 +146,7 @@ real(dble) glambdas(Ntestage)
 real(dble) gsigmaetas(2,Ntestage)
 
 ! smoothing parameter for the smoothing
-integer, parameter:: gsmpar=0.5
+real(dble) , parameter:: gsmpar=0.5d0
 
 
 ! intercepts - later on these will be types, too
@@ -155,7 +158,7 @@ real(dble) , parameter:: gatype=0.1d0
 
 ! data to read
 integer gidmat(SampleSize, MomentSize)
-real(dble) gomega3data(osize, SampleSize)
+real(dble) gomega3data(o3size, SampleSize)
 real(dble) llmsmat(nperiods, SampleSize)
 
 
@@ -172,12 +175,11 @@ integer,parameter:: gtsperiods(expsize)=(/2,4,6,8/)
 
 
 
-
-
 contains 
 
 	subroutine readdata()
 		implicit none
+		integer i
 		! read idmat and omega3 -NEED TO MAKE THESE READING FROM THE ACTUAL DATA FILES.
 		gidmat=1
 		gomega3data=1.0d0
@@ -189,17 +191,37 @@ contains
 		! read some of the complicated members of the parameters space
 		glambdas=1.0d0
 		gsigmaetas=1.d0
-		
-		gparB(:,1)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		gparB(:,2)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		gparB(:,3)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		gparB(:,4)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		gparB(:,5)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		gparB(:,6)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		gparBmat(:,1)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		gparBmat(:,2)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		gparBmat(:,3)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		gparBmat(:,4)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		gparBmat(:,5)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		gparBmat(:,6)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
  	end subroutine readsomeparam
+	
+	! use the the mean test scores and their variance to set up grid points for veca1 and veca2
+	subroutine setvecAs(period, delta, noc)
+		implicit none
+		real(dble) period, delta
+		integer noc
+		real(dble) meantestscore(Ntestage)
+		real(dble) variancetestscores(Ntestage)
+		integer i, j, age1, age2
+		! insert data here!!!
+		meantestscore=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01, 0.01 /)*1.0d0
+		variancetestscores=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01, 0.01 /)*1.0d0
+	
+		age1=min(int(period)-testminage+1,Ntestage)
+		age2=min((int(period)-int(delta)+1)-testminage+1, Ntestage)
 
-
-
+		veca1=(/ meantestscore(age1)-2*SQRT(variancetestscores(age1)),meantestscore(age1)-SQRT(variancetestscores(age1)), &
+			& meantestscore(age1)+SQRT(variancetestscores(age1)),meantestscore(age1)+2*SQRT(variancetestscores(age1)) /) 
+	
+		if (noc==1) then		
+			veca2=(/ meantestscore(age2)-2*SQRT(variancetestscores(age2)),meantestscore(age2)-SQRT(variancetestscores(age2)) ,&
+				& meantestscore(age2)+SQRT(variancetestscores(age2)),meantestscore(age2)+2*SQRT(variancetestscores(age2)) /) 
+		end if
+	end subroutine setvecAs
 
 
 end module global

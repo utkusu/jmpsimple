@@ -6,7 +6,7 @@ implicit none
 contains
 
 !#####################---------RANDOM NORMALS------##################################
-
+! TODO This can throw in extreme values, develop a chopped off version.
 !> generate an array of n normal random variables using Box Muller method, with mean mu and VARIANCE sigma
 !>  opt determines how the seed is assigned.
 !>opt=0: reset to default seed, opt=1 : random seed using system clock,
