@@ -136,6 +136,8 @@ real(dble) gparB(Bsizeexo+1,nfert)
 ! parameters of other kind
 real(dble), parameter:: grho=1.0d0
 real(dble), parameter:: gbeta=0.950d0    ! beta is a free parameter for now
+
+
 ! factor model parameters: read these from a matrix
 real(dble) glambdas(Ntestage)
 real(dble) gsigmaetas(2,Ntestage)
@@ -168,24 +170,33 @@ integer,parameter:: gtsperiods(expsize)=(/2,4,6,8/)
 
 ! ------------ initialize variables---------------------
 
-gparB(:,1)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-gparB(:,2)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-gparB(:,3)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-gparB(:,4)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-gparB(:,5)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-gparB(:,6)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-
-
-! read idmat and omega3 -NEED TO MAKE THESE READING FROM THE ACTUAL DATA FILES.
-gidmat=1
-gomega3data=1.0d0
-llmsmat=0.5d0
-
-glambdas=1.0d0
-gsigmaetas=1.d0
 
 
 
+
+contains 
+
+	subroutine readdata()
+		implicit none
+		! read idmat and omega3 -NEED TO MAKE THESE READING FROM THE ACTUAL DATA FILES.
+		gidmat=1
+		gomega3data=1.0d0
+		llmsmat=0.5d0
+	end subroutine readdata
+
+	subroutine readsomeparam()
+		implicit none
+		! read some of the complicated members of the parameters space
+		glambdas=1.0d0
+		gsigmaetas=1.d0
+		
+		gparB(:,1)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		gparB(:,2)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		gparB(:,3)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		gparB(:,4)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		gparB(:,5)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		gparB(:,6)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+ 	end subroutine readsomeparam
 
 
 
