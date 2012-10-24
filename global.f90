@@ -208,16 +208,17 @@ contains
 		real(dble) variancetestscores(Ntestage)
 		integer i, j, age1, age2
 		! insert data here!!!
-		meantestscore=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01, 0.01 /)*1.0d0
+		meantestscore=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01, 0.01 /)*1000.0d0
 		variancetestscores=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01, 0.01 /)*1.0d0
-	
-		age1=min(int(period)-testminage+1,Ntestage)
-		age2=min((int(period)-int(delta)+1)-testminage+1, Ntestage)
+		
+		! to understand this later: if age1
+		age1=max(min(nint(period)-testminage+1,Ntestage),1)
+		age2=max(min((nint(period)-nint(delta)+1)-testminage+1, Ntestage),1)
 
 		veca1=(/ meantestscore(age1)-2*SQRT(variancetestscores(age1)),meantestscore(age1)-SQRT(variancetestscores(age1)), &
 			& meantestscore(age1)+SQRT(variancetestscores(age1)),meantestscore(age1)+2*SQRT(variancetestscores(age1)) /) 
 	
-		if (noc==1) then		
+		if (noc==2) then		
 			veca2=(/ meantestscore(age2)-2*SQRT(variancetestscores(age2)),meantestscore(age2)-SQRT(variancetestscores(age2)) ,&
 				& meantestscore(age2)+SQRT(variancetestscores(age2)),meantestscore(age2)+2*SQRT(variancetestscores(age2)) /) 
 		end if

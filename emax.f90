@@ -1291,7 +1291,7 @@ subroutine coeffinal(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma)
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
 	call setvecAs(period, delta,2)
 	! get a set of llms, which are fixed
-	call random_seed(put=(/int(1000*period+delta),1/))
+	call random_seed(put=(/nint(1000*period+delta),1/))
 	call random_number(llmsvec)
 	llmsvec=llmsvec*0.1d0 			!< adjust llms to have 0-10% unemployment rate 
 
@@ -1308,7 +1308,7 @@ subroutine coeffinal(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma)
 										omega1=(/veca1(p),veca2(q),vecE(r)/)	
 										omega2=(/period,(period-delta+1),period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
-										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/int(period*10+delta),counter/))
+										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+delta),counter/))
 										vemax(counter)=emaxfinal(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
 										!print *, 'counter at', counter, 'calculated', vemax(counter)
@@ -1324,21 +1324,22 @@ subroutine coeffinal(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma)
 	end do
 
 	call tr_late(tmss,mss,nintp) 			! transform the state space 
-	open(12, file = 'a.txt')
-	do k=1,nintp
-	write(12, 900)  (tmss(k,j) , j=1,Gsize+1)
-	end do
-	900 format(16f30.10)
-	close(12)
-	open(13, file = 'b.txt')
-	write(13, "(f30.10)")  (vemax(k) , k=1,nintp)
-	close(13)
+	
+	!open(12, file = 'a.txt')
+	!do k=1,nintp
+	!write(12, 900)  (tmss(k,j) , j=1,Gsize+1)
+	!end do
+	!900 format(16f30.10)
+	!close(12)
+	!open(13, file = 'b.txt')
+	!write(13, "(f30.10)")  (vemax(k) , k=1,nintp)
+	!close(13)
 
 
 	
 	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
 	coef=vemax(1:Gsize+1)
-	!print*, 'FINAL COEF=',coef
+	if (info .NE. 0)	print*, 'final period DGELS exploded in period, delta', period, delta
 	end subroutine coeffinal
 
 
@@ -1371,7 +1372,7 @@ subroutine coeflate(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,par
 	call setvecAs(period, delta,2)
 	
 	! get a set of llms, which are fixed
-	call random_seed(put=(/int(1000*period+delta),1/))
+	call random_seed(put=(/nint(1000*period+delta),1/))
 	call random_number(llmsvec)
 	llmsvec=llmsvec*0.1d0  		! unemployment rate max 10%
 	mu=0.0d0
@@ -1387,7 +1388,7 @@ subroutine coeflate(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,par
 										omega1=(/veca1(p),veca2(q),vecE(r)/)	
 										omega2=(/period,(period-delta+1),period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
-										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/int(period*10+delta),counter/))
+										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+delta),counter/))
 										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
 										vemax(counter)=emaxlate(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
@@ -1405,8 +1406,8 @@ subroutine coeflate(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,par
 
 	call tr_late(tmss,mss,nintp) 			! transform the state space 
 	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
+	if (info .NE. 0)	print*, 'late DGELS exploded in period, delta', period, delta
 	coef=vemax(1:Gsize+1)
-
 	
 	!open(12, file = 'a.txt')
 	!do k=1,nintp
@@ -1450,7 +1451,7 @@ subroutine coefhc(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV
 	call setvecAs(period, delta,2)
 
 	! get a set of llms, which are fixed
-	call random_seed(put=(/int(1000*period+delta),1/))
+	call random_seed(put=(/nint(1000*period+delta),1/))
 	call random_number(llmsvec)
 	llmsvec=llmsvec*0.1d0    ! 10% unemployment rate max.
 	mu=0.0d0
@@ -1467,7 +1468,7 @@ subroutine coefhc(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV
 										omega1=(/veca1(p),veca2(q),vecE(r)/)	
 										omega2=(/period,(period-delta+1),period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
-										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/int(period*10+delta),counter/))
+										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+delta),counter/))
 										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
 										vemax(counter)=emaxhc(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,rho)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
@@ -1486,7 +1487,7 @@ subroutine coefhc(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV
 	call tr_late(tmss,mss,nintp) 			! transform the state space 
 	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
 	coef=vemax(1:Gsize+1)
-
+	if (info .NE. 0)	print*, 'hc DGELS exploded in period,delta', period, delta
 end subroutine coefhc
 
 subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV,rho)
@@ -1517,9 +1518,8 @@ subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parF
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
 	call setvecAs(period, delta,2)
-	
 	! get a set of llms, which are fixed
-	call random_seed(put=(/int(1000*period+delta),1/))
+	call random_seed(put=(/nint(1000*period+delta),1/))
 	call random_number(llmsvec)
 	llmsvec=llmsvec*0.1d0    ! 10% unemployment rate max.
 	mu=0.0d0
@@ -1536,7 +1536,7 @@ subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parF
 										omega1=(/veca1(p),veca2(q),vecE(r)/)	
 										omega2=(/period,(period-delta+1),period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
-										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/int(period*10+delta),counter/))
+										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+delta),counter/))
 										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
 										vemax(counter)=emaxhcx(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,rho)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
@@ -1552,11 +1552,24 @@ subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parF
 		end do
 	end do
 
+
 	call tr_late(tmss,mss,nintp) 			! transform the state space 
-	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
+	!if ((nint(period)==7) .AND. (nint(delta)==4)) then
+		!open(12, file = 'a.txt')
+		!do k=1,nintp
+			!write(12, 900)  (tmss(k,j) , j=1,Gsize+1)
+		!end do
+		!900 format(16f30.10)
+		!close(12)
+		!open(13, file = 'b.txt')
+		!write(13, "(f30.10)")  (vemax(k) , k=1,nintp)
+		!close(13)
+	!end if 
+
+call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
 	coef=vemax(1:Gsize+1)
 
-	!print*, 'info', info
+	if (info .NE. 0)	print*, 'hcx DGELS exploded in period,delta', period,delta
 end subroutine coefhcx
 !---------------------------------------------------------------------------------------------------
 !---------------------                  ONE CHILD VERSIONS            ------------------------------
@@ -1595,7 +1608,7 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 
 	call setvecAs(period, 0.0d0,1)
 	! get a set of llms, which are fixed
-	call random_seed(put=(/int(1000*period+1),1/))
+	call random_seed(put=(/nint(1000*period+1),1/))
 	call random_number(llmsvec)
 	llmsvec=llmsvec*0.1d0    ! 10% unemployment rate max.
 	mu=0.0d0
@@ -1613,7 +1626,7 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 										omega1=(/veca1(p),0.0d0,vecE(r)/)	
 										omega2=(/period,0.0d0,period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
-										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/int(period*10+1),counter/))
+										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+1),counter/))
 										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
 										vemax(counter)=emaxocfinal(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
@@ -1631,6 +1644,7 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space 
 	call DGELS('N',nintpoc,Gsizeoc+1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
+	if (info .NE. 0)	print*, 'OC: final DGELS exploded in period', period
 	coef=vemax(1:Gsizeoc+1)
 end subroutine coefocfinal
 
@@ -1662,7 +1676,7 @@ subroutine coefoclate(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 
 	call setvecAs(period, 0.0d0,1)
 	! get a set of llms, which are fixed
-	call random_seed(put=(/int(1000*period+1),1/))
+	call random_seed(put=(/nint(1000*period+1),1/))
 	call random_number(llmsvec)
 	llmsvec=llmsvec*0.1d0    ! 10% unemployment rate max.
 	mu=0.0d0
@@ -1679,7 +1693,7 @@ subroutine coefoclate(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 										omega1=(/veca1(p),0.0d0,vecE(r)/)	
 										omega2=(/period,0.0d0,period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
-										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/int(period*10+1),counter/))
+										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+1),counter/))
 										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
 										vemax(counter)=emaxoclate(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
@@ -1698,6 +1712,7 @@ subroutine coefoclate(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space FIXME
 	call DGELS('N',nintpoc,Gsizeoc+1,1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
 	! add a zero for the second child A2
+	if (info .NE. 0)	print*, 'OC: late DGELS exploded in period', period
 	coef=vemax(1:Gsizeoc+1)
 end subroutine coefoclate
 
@@ -1731,7 +1746,7 @@ subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,rho
 
 	call setvecAs(period, 0.0d0,1)
 	! get a set of llms, which are fixed
-	call random_seed(put=(/int(1000*period+1),1/))
+	call random_seed(put=(/nint(1000*period+1),1/))
 	call random_number(llmsvec)
 	llmsvec=llmsvec*0.1d0    ! 10% unemployment rate max.
 	
@@ -1749,7 +1764,7 @@ subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,rho
 										omega1=(/veca1(p),0.0d0,vecE(r)/)	
 										omega2=(/period,0.0d0,period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
-										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/int(period*10+1),counter/))
+										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+1),counter/))
 										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
 										vemax(counter)=emaxochc(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,rho)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
@@ -1767,6 +1782,7 @@ subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,rho
 
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space 
 	call DGELS('N',nintpoc,Gsizeoc+1,1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
+	if (info .NE. 0)	print*, 'OC: hc DGELS exploded in period', period
 	coef=vemax(1:Gsizeoc+1)
 end subroutine coefochc
 
@@ -1803,7 +1819,7 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
 	call setvecAs(period, 0.0d0,1)
 	! get a set of llms, which are fixed
-	call random_seed(put=(/int(1000*period+1),1/))
+	call random_seed(put=(/nint(1000*period+1),1/))
 	call random_number(llmsvec)
 	llmsvec=llmsvec*0.1d0    ! 10% unemployment rate max.
 	
@@ -1821,9 +1837,9 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 										omega1=(/veca1(p),0.0d0,vecE(r)/)	
 										omega2=(/period,0.0d0,period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
-										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/int(period*10+1),counter/))
+										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+1),counter/))
 										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
-										vemax(counter)=emaxochcb(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,parFVv,parBmat(:,int(period)),typevec,typeprob,rho)
+										vemax(counter)=emaxochcb(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,parFVv,parBmat(:,nint(period)),typevec,typeprob,rho)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
 										!print *, 'counter at', counter, 'calculated', vemax(counter)
 										counter=counter+1
@@ -1838,6 +1854,7 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 	end do
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space troc_late
 	call DGELS('N',nintpoc,Gsizeoc+1,1,tmss, nintpoc, vemax, nintp,work, Gsizeoc+(Gsizeoc)*blocksize,info)
+	if (info .NE. 0)	print*, 'OC: hcb DGELS exploded in period', period
 	coef=vemax(1:Gsizeoc+1)
 end subroutine coefochcb
 
@@ -1867,7 +1884,8 @@ subroutine wsolver(solw,delta,ftype,parA,parW,parH,parU,beta,Sigma,rho)
 	
 	! the big loop to get all the coefficients
 	call coeffinal(coef,22.0d0,delta*1.0d0,ftype(1:3),parA,paractualU,parW,parH,beta,sigma)
-	 ! store these guys
+	
+	! store these guys
 	 solw(:,22)=coef
 	do period=21, delta, -1
 		! if the second kid is also out of the zone of mother's influence, use coeflate
@@ -1916,7 +1934,6 @@ subroutine vsolver(solv,ftype,parA,parW,parH,parU,parBmat,beta,Sigma, wcoef,type
 	real(dble) coefnew(Gsizeoc+1)
 	real(dble) paractualU(size(parU))
 	real(dble) parFV(Gsize+1, nctype+1)
-	! 
 	! fill up the sol with -10^7
 	solv=-10000000.0d0
 	period=22
@@ -1925,6 +1942,7 @@ subroutine vsolver(solv,ftype,parA,parW,parH,parU,parBmat,beta,Sigma, wcoef,type
 	paractualU(2:3)=ftype(4:5)
 	! first get the final coefficient.
 	call coefocfinal(coef,22.0d0,ftype(1:3),parA,paractualU,parW,parH,beta,sigma)
+	print*, 'CRAZY', coef
 	! store these guys
 	solv(:,22)=coef
 	do period=21,1, -1

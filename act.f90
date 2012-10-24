@@ -117,8 +117,6 @@ contains
 		! initialize stuff 
 		nftype=na1type*(deltamax-deltamin+1)
     	call type_packsimple(ftypemat,a1type)
-
-
 		! ---------------------------------SOLUTION ALGORITHM---------------------------------------
 		
 		! ---------------------------------------MASTER----------------------------------
@@ -156,7 +154,20 @@ contains
 			print*,'--------------------------------------------------------------------------------'
 			print*, '----MASTER: FINISHED THE SOLUTION OF THE WCOEF, NOW SWITCHING TO THE V-----'
 			print*,'--------------------------------------------------------------------------------'
-		
+			
+			
+			open(77,file='wcoef.txt')
+			do l=1,2
+				write(77,*) "-------------- type order=",l,"------------" 
+				do m=1,deltamax-deltamin+1
+					write(77,*) "########   delta type=",m,"------------"
+					write(77,70) ((solwall(j,k,m,l),k=1,nperiods-deltamin+2),j=1,Gsize+1)
+				end do
+			end do
+			70 format(22F26.9)
+			close(77)
+
+
 			call MPI_BCAST(solwall, (Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+1)*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 			print*, 'master broadcasted last stage results to workers successfully'
 		
@@ -173,6 +184,7 @@ contains
 				call MPI_RECV(rorder, 1, MPI_INTEGER, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, status, ier)
 				sender=status(MPI_SOURCE)	
 				call MPI_RECV(solv,(Gsizeoc+1)*nperiods,MPI_DOUBLE_PRECISION,sender,MPI_ANY_TAG,MPI_COMM_WORLD,status,ier)
+				print*,'Master recieved one child solution', solv
 				solvall(:,:,rorder)=solv
 				number_received=number_received+1
 				! this version has two types, so it is always less than no processors, there is no second round sending.
@@ -190,7 +202,7 @@ contains
 				if (tag>0) then
 					call wsolver(solw,ftypemat(2,order),(/gctype,gctype,gmtype,gatype,ftypemat(1,order)/),parA,gparW,gparH(5:6),parU, beta,sigma,grho)
 					!print*, ftypemat(1,:)
-					!print*,  '___worker',rank,'order=',order, 'calculated for', ftypemat(2,order), ftypemat(1,order)
+					print*,  '___worker',rank,'order=',order, 'calculated for', ftypemat(2,order), ftypemat(1,order), solw(10,10)
 					rorder=order
 					call MPI_SEND(rorder, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, ier)
 					call MPI_SEND(solw,(Gsize+1)*(nperiods-deltamin+2),MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
@@ -198,6 +210,9 @@ contains
 					EXIT
 				end if
 			end do
+
+			print*, 'WORKERS DONE WITH W'
+
 			! --------------Workers: SOLVING FOR V COEFFICIENTS-------------
 			! receive all the coefficients from the master-from the w stage
 			call MPI_BCAST(solwall, (Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+1)*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
@@ -209,6 +224,7 @@ contains
 					! get the correct mother type from solwall
 					wcoef(:,:,:,1)=solwall(:,:,:,order)
 					call vsolver(solv,(/gctype,gctype,gmtype,gatype,a1type(order)/), parA,gparW,gparH(5:6),parU,gparBmat, beta,sigma,wcoef,(/gctype/),(/1.0d0/),grho)
+					print*, solv
 					rorder=order   ! returning the order
 					call MPI_SEND(rorder, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, ier)
 					call MPI_SEND(solv,(Gsizeoc+1)*nperiods,MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
@@ -221,8 +237,14 @@ contains
 		end if
 		
 		print*, 'MODEL SOLVED, MOVING ONTO SIMULATIONS'
-
-		! now that we have the solwall and solvall (the coeffiecients for the interpolation, it is time to simulate data from these.
+		open(66,file='vcoef.txt')
+		do l=1,2
+			write(66,*) "-------------- type order=",l,"------------" 
+			write(66,60) ((solvall(j,k,l),k=1,nperiods),j=1,Gsizeoc+1)
+		end do
+		60 format(22F46.9)
+		close(66)
+			! now that we have the solwall and solvall (the coeffiecients for the interpolation, it is time to simulate data from these.
 		! it is only master who should do this.
 		if (rank==0) then
 
@@ -233,9 +255,10 @@ contains
 				smchoicescollect(:,:,:,id)=smchoices
 				smexperiencecollect(:,:,id)=smexperience
 				smtestoutcomescollect(:,:,:,id)=smtestoutcomes
+				print*, 'simulations complete for individual', id
 			end do
 			call moments(momentvec, SScollect, smtestoutcomescollect,  birthhistcollect, smchoicescollect, smexperiencecollect, gomega3data,glfpperiods, gexpperiods, gtsperiods, gidmat)
-			
+				print*, 'moments calculated'
 			difft(1,:)=momentvec-targetvec
 			diff(:,1)=momentvec-targetvec
 			middlestep=matmul(difft,weightmat)

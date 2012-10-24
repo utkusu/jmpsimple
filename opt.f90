@@ -1131,7 +1131,7 @@ subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperie
 			if (idmat(l,lfpsize+k)==1) then
 				do i=1,Npaths
 					!experience(counter)=SS(3,expperiods(k)+omega3data(3,l),i,l)
-					experience(counter)=smexperience(expperiods(k)-int(omega3data(3,l)+1),i,l)
+					experience(counter)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
 					counter=counter+1
 				end do
 			end if
@@ -1151,8 +1151,8 @@ subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperie
 				do i=1, Npaths
 					!dualexperience(counter,1)=SS(3,expperiods(k)+omega3data(3,l),i,l)
 					!dualexperience(counter,2)=SS(3,expperiods(k+1)+omega3data(3,l),i,l)
-					dualexperience(counter,1)=smexperience(expperiods(k)-int(omega3data(3,l)+1),i,l)
-					dualexperience(counter,2)=smexperience(expperiods(k+1)-int(omega3data(3,l)+1),i,l)
+					dualexperience(counter,1)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
+					dualexperience(counter,2)=smexperience(expperiods(k+1)-nint(omega3data(3,l)+1),i,l)
 					counter=counter+1
 				end do
 			end if
