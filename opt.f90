@@ -929,7 +929,7 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					end do
 					! finally, pick the highest expected utility one.
 					picker=maxloc(umat(:,i))
-					choices(1,period,i)=picker(i)
+					choices(1,period,i)=picker(1)
 					! get the optimized future state space points to use them in future.
 					next(:,i)=nextcollect(:,choices(1,period,i))
 				
@@ -1257,7 +1257,7 @@ subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperie
 			end if
 		end do
 	end do
-	print*, tsdiffmat(:,3:5)
+	!print*, tsdiffmat(:,3:5)
 
 
 	! lapack

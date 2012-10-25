@@ -13,10 +13,11 @@ real(dble) parameters(parsize), dist, targetvec(MomentSize), weightmat(MomentSiz
 real(dble) part1_parA(3) 	! A production function excluding intercept
 real(dble) parUpart(parUsize-1) ! parameters of utility except alpha1
 real(dble) a1type(na1type)  ! alpha1 typevec
-real(dble) pa1type(na1type-1) ! probability of alpha1, last one is 1-sum the rest 
+real(dble) pa1typepart(na1type-1) ! probability of alpha1, last one is 1-sum the rest 
+real(dble) pa1type(na1type)
 real(dble) sigma(shocksize1,shocksize1) ! variance matrix of shocks. first diagonal then off diagonal. go column wise: (2,1) (3,1) (3,2) for 3
 real(dble) beta
-real(dble) coef(Gsize+1)
+real(dble) coef(Gsize+1), coefoc(Gsizeoc+1)
 integer id
 ! the stuff needed between steps
 integer nftype
@@ -30,6 +31,32 @@ real(dble) ftypemat(2,na1type*(deltamax-deltamin+1))
 real(dble) start,endtime, vtime
 real(dble) parA(parAsize)
 real(dble) parU(parUsize)
+real(dble) SScollect(6,nperiods,Npaths,SampleSize) 		! Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
+!real(dble) outcomescollect(2,nperiods,Npaths,SampleSize) ! outcomes: wages of the father and mother.
+!integer choicescollect(1,nperiods,Npaths,SampleSize) 	! choices : the choice history of h.
+integer birthhistcollect(Npaths,SampleSize)  		    ! the birth timing vec, 0 if one child throughout.
+real(dble) omega3data(o3size, SampleSize) 	! holds the omega3 data for Sample people
+real(dble) smtestoutcomescollect(4,Ntestage,Npaths,SampleSize)  ! holds test scores for two children 
+real(dble) smchoicescollect(3,nperiods,Npaths,SampleSize)
+real(dble) smexperiencecollect(nperiods,Npaths,SampleSize)
+integer idmat(SampleSize,MomentSize) 	   		!indicates the which sample units are in the jth columnth moment
+! one use ones 
+real(dble) SS(6,nperiods,Npaths) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
+real(dble) outcomes(2,nperiods,Npaths) !< outcomes: wages of the father and mother.
+integer choices(1,nperiods,Npaths) 	!< choices : the choice history of h.
+integer xchoices(1,nperiods,Npaths) 	!< not in the data, but I will keep an history of the x choices as well.
+integer birthhist(Npaths) 			!< the birth timing vec, 0 if one child throughout.
+real(dble) testoutcomes(4,Ntestage, Npaths)
+real(dble) smchoices(3,nperiods, Npaths)
+real(dble) smexperience(nperiods, Npaths)
+real(dble) smAs(2,nperiods, Npaths)
+real(dble) smtestoutcomes(4,Ntestage, Npaths)
+real(dble) omega3(o3size) 
+	
+!calculation
+real(dble) momentvec(MomentSize) 	!
+
+real(dble) difft(1,MomentSize), diff(MomentSize,1), middlestep(1,MomentSize), laststep(1,1)
 
 
 call readdata()	
@@ -40,7 +67,8 @@ weightmat=1.0d0
 		part1_parA=parameters(1:3)
 		parUpart= parameters(5:10)
 		a1type=parameters(11:12)
-		pa1type=parameters(13)
+		pa1typepart=parameters(13)
+		pa1type=(/pa1typepart,1-sum(pa1typepart)/)
 		sigma(1,1)=parameters(14); sigma(2,2)=parameters(15); sigma(3,3)=parameters(16)
 		sigma(2,1)=parameters(17); sigma(1,2)=parameters(17)
 		sigma(3,1)=parameters(18); sigma(1,3)=parameters(18)
@@ -49,14 +77,29 @@ weightmat=1.0d0
 !call distance(dist, parameters, targetvec, weightmat)
 
 !print*,dist
-
-call coeffinal(coef, 22.0d0, 4.0d0, (/gctype,0.d0,gmtype/),parA, parU, gparW, gparH, beta,sigma)
-print*, coef
-
-
 !call MPI_FINALIZE(ier)
+solwall=1.0d0
+solvall=0.5d0
 
 
+
+do id=1,SampleSize
+	call simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoices, smexperience, smAs, smtestoutcomes,gomega3data(:,id),(/gctype,gmtype/),parA,parU,gparW,gparH,beta,sigma,a1type,pa1type,gparBmat,solvall,solwall,llmsmat(:,id),id,grho,glambdas,gsigmaetas, gsmpar)
+	SScollect(:,:,:,id)=SS
+	birthhistcollect(:,id)=birthhist
+	smchoicescollect(:,:,:,id)=smchoices
+	smexperiencecollect(:,:,id)=smexperience
+	smtestoutcomescollect(:,:,:,id)=smtestoutcomes
+	print*, 'simulations complete for individual', id
+end do
+call moments(momentvec, SScollect, smtestoutcomescollect,  birthhistcollect, smchoicescollect, smexperiencecollect, gomega3data,glfpperiods, gexpperiods, gtsperiods, gidmat)
+	print*, 'moments calculated'
+	difft(1,:)=momentvec-targetvec
+	diff(:,1)=momentvec-targetvec
+	middlestep=matmul(difft,weightmat)
+	laststep=matmul(middlestep,diff)
+	dist=laststep(1,1)
+print*, dist
 !contains
 
 
@@ -137,7 +180,6 @@ print*, coef
 		!sigma(1,1)=parameters(14); sigma(2,2)=parameters(15); sigma(3,3)=parameters(16)
 		!sigma(2,1)=parameters(17); sigma(1,2)=parameters(17)
 		!sigma(3,1)=parameters(18); sigma(1,3)=parameters(18)
-		!sigma(3,2)=parameters(19); sigma(2,3)=parameters(19)
 		!beta=parameters(20)	
 
 		!parA=(/part1_parA,gpart2_parA/)

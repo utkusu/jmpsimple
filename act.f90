@@ -22,7 +22,7 @@ weightmat=1.0d0
 
 call distance(dist, parameters, targetvec, weightmat)
 
-!print*,dist
+print*,dist
 
 
 
@@ -49,7 +49,8 @@ contains
 		real(dble) part1_parA(3) 	! A production function excluding intercept
 		real(dble) parUpart(parUsize-1) ! parameters of utility except alpha1
 		real(dble) a1type(na1type)  ! alpha1 typevec
-		real(dble) pa1type(na1type-1) ! probability of alpha1, last one is 1-sum the rest 
+		real(dble) pa1typepart(na1type-1) ! probability of alpha1, last one is 1-sum the rest 
+		real(dble) pa1type(na1type) ! probability of alpha1, last one is 1-sum the rest 
 		real(dble) sigma(shocksize1,shocksize1) ! variance matrix of shocks. first diagonal then off diagonal. go column wise: (2,1) (3,1) (3,2) for 3
 		real(dble) beta
 
@@ -106,7 +107,8 @@ contains
 		part1_parA=parameters(1:3)
 		parUpart= parameters(5:10)
 		a1type=parameters(11:12)
-		pa1type=parameters(13)
+		pa1typepart=parameters(13)
+		pa1type=(/pa1typepart,1-sum(pa1typepart)/)
 		sigma(1,1)=parameters(14); sigma(2,2)=parameters(15); sigma(3,3)=parameters(16)
 		sigma(2,1)=parameters(17); sigma(1,2)=parameters(17)
 		sigma(3,1)=parameters(18); sigma(1,3)=parameters(18)
@@ -124,10 +126,6 @@ contains
 		! ---------------------------------------MASTER----------------------------------
 		if (rank==0) then
 		!------------------- MASTER: W SOLVER -----------------
-	
-			call coefocfinal(coef, 22.0d0, (/gctype,0.d0,gmtype/),parA, parU, gparW, gparH, beta,sigma)
-			print*, 'COEF', coef
-		
 			! send order numbers to workers
 			number_sent=0
 			do i=1,min(nproc-1,nftype)

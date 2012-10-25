@@ -26,9 +26,9 @@ integer, parameter:: Bsize=2			!< the number of regressors in the birth probabil
 integer, parameter:: Bsizeexo=4			!< the number of regressors in the birth probability function other than the contraception
 
 ! estimation stuff 
-integer,parameter::Npaths=5 			!<number of simulated paths for each family.
+integer,parameter::Npaths=500 			!<number of simulated paths for each family.
 integer,parameter::simvecsize=10 		!<the size of the simulated data vector for each period. obviosly very related to ss.
-integer, parameter::SampleSize=10 		!< Size of the estimation sample
+integer, parameter::SampleSize=1000 		!< Size of the estimation sample
 integer, parameter:: Ntestage=10 		!< number of ages in which we have test scores. start at 5, end in 14.
 integer, parameter:: testminage=5 		!< earliest test scores
 integer, parameter:: testmaxage=14 		!< latest test scores
@@ -182,7 +182,7 @@ contains
 		integer i
 		! read idmat and omega3 -NEED TO MAKE THESE READING FROM THE ACTUAL DATA FILES.
 		gidmat=1
-		gomega3data=1.0d0
+		gomega3data=20.0d0
 		llmsmat=0.5d0
 	end subroutine readdata
 

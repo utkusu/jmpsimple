@@ -1289,6 +1289,7 @@ subroutine coeffinal(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma)
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
+	
 	call setvecAs(period, delta,2)
 	! get a set of llms, which are fixed
 	call random_seed(put=(/nint(1000*period+delta),1/))
@@ -1607,10 +1608,12 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
 
 	call setvecAs(period, 0.0d0,1)
-	! get a set of llms, which are fixed
+!a1vec=(/1,2,3,4,5/)
+! get a set of llms, which are fixed
 	call random_seed(put=(/nint(1000*period+1),1/))
 	call random_number(llmsvec)
 	llmsvec=llmsvec*0.1d0    ! 10% unemployment rate max.
+	
 	mu=0.0d0
 	counter=1
 	do p=1,sveca1 											! A1
@@ -1652,9 +1655,9 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 !	close(13)
 !close(rank)
 
-	call DGELS('N',nintpoc,Gsizeoc+1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
-	if (info .NE. 0)	print*, 'OC: final DGELS exploded in period', period
+	call DGELS('N',nintpoc,Gsizeoc+1,1, tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
 	coef=vemax(1:Gsizeoc+1)
+	if (info .NE. 0)	print*, 'OC: final DGELS exploded in period', period
 end subroutine coefocfinal
 
 subroutine coefoclate(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
