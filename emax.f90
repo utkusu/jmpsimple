@@ -1613,7 +1613,6 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 	llmsvec=llmsvec*0.1d0    ! 10% unemployment rate max.
 	mu=0.0d0
 	counter=1
-
 	do p=1,sveca1 											! A1
 !		do q=1,sveca2										! A2 
 			do r=1,svecE									! E
@@ -1641,8 +1640,18 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 			end do
 		!end do
 	end do
-
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space 
+!	open(rank, file = 'a.txt')
+	!do k=1,nintpoc
+		!write(rank, 900)  (tmss(k,j) , j=1,Gsizeoc+1)
+	!end do
+	!900 format(16f20.10)
+!	close(12)
+!	open(13, file = 'b.txt')
+	!write(rank, "(f20.10)")  (vemax(k) , k=1,nintpoc)
+!	close(13)
+!close(rank)
+
 	call DGELS('N',nintpoc,Gsizeoc+1,tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
 	if (info .NE. 0)	print*, 'OC: final DGELS exploded in period', period
 	coef=vemax(1:Gsizeoc+1)
@@ -1929,6 +1938,7 @@ subroutine vsolver(solv,ftype,parA,parW,parH,parU,parBmat,beta,Sigma, wcoef,type
 
 	! THE DIFFERENCE: ftype has zero for the second child's A. It is as (mu1,0.0d0, mum, alpha, alpha1)
 	! locals
+	
 	integer period, delta
 	real(dble) coef(Gsizeoc+1)
 	real(dble) coefnew(Gsizeoc+1)
@@ -1942,7 +1952,6 @@ subroutine vsolver(solv,ftype,parA,parW,parH,parU,parBmat,beta,Sigma, wcoef,type
 	paractualU(2:3)=ftype(4:5)
 	! first get the final coefficient.
 	call coefocfinal(coef,22.0d0,ftype(1:3),parA,paractualU,parW,parH,beta,sigma)
-	print*, 'CRAZY', coef
 	! store these guys
 	solv(:,22)=coef
 	do period=21,1, -1

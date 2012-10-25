@@ -22,7 +22,7 @@ weightmat=1.0d0
 
 call distance(dist, parameters, targetvec, weightmat)
 
-print*,dist
+!print*,dist
 
 
 
@@ -98,7 +98,9 @@ contains
 
 		integer status(MPI_STATUS_SIZE)
 		real(dble) difft(1,MomentSize), diff(MomentSize,1), middlestep(1,MomentSize), laststep(1,1)
-			
+		
+		! delete me
+		real(dble) coef(Gsizeoc+1)
 		
 		! break up parameters for two types
 		part1_parA=parameters(1:3)
@@ -122,6 +124,10 @@ contains
 		! ---------------------------------------MASTER----------------------------------
 		if (rank==0) then
 		!------------------- MASTER: W SOLVER -----------------
+	
+			call coefocfinal(coef, 22.0d0, (/gctype,0.d0,gmtype/),parA, parU, gparW, gparH, beta,sigma)
+			print*, 'COEF', coef
+		
 			! send order numbers to workers
 			number_sent=0
 			do i=1,min(nproc-1,nftype)
@@ -155,7 +161,9 @@ contains
 			print*, '----MASTER: FINISHED THE SOLUTION OF THE WCOEF, NOW SWITCHING TO THE V-----'
 			print*,'--------------------------------------------------------------------------------'
 			
-			
+
+
+
 			open(77,file='wcoef.txt')
 			do l=1,2
 				write(77,*) "-------------- type order=",l,"------------" 
@@ -167,13 +175,13 @@ contains
 			70 format(22F26.9)
 			close(77)
 
-
+			
 			call MPI_BCAST(solwall, (Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+1)*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 			print*, 'master broadcasted last stage results to workers successfully'
 		
 			! ------------MASTER: Solution for V----------------
 			number_sent=0
-			do i=1,min(nproc-1,nttypes)
+			do i=1,min(nproc-1,na1type)
 				order=i
 				call MPI_SEND(order, 1, MPI_INTEGER,i ,11, MPI_COMM_WORLD, ier)
 				number_sent=number_sent+1
@@ -216,13 +224,15 @@ contains
 			! --------------Workers: SOLVING FOR V COEFFICIENTS-------------
 			! receive all the coefficients from the master-from the w stage
 			call MPI_BCAST(solwall, (Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+1)*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
-			if(rank<3) then
+			
+			if( (rank==1) .OR. (rank==2) ) then
 			do
 				call MPI_RECV(order, 1, MPI_INTEGER, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, ier)
 				tag=status(MPI_TAG)
 				if(tag>10) then
 					! get the correct mother type from solwall
 					wcoef(:,:,:,1)=solwall(:,:,:,order)
+					print*, rank, 'getting ready to solve'
 					call vsolver(solv,(/gctype,gctype,gmtype,gatype,a1type(order)/), parA,gparW,gparH(5:6),parU,gparBmat, beta,sigma,wcoef,(/gctype/),(/1.0d0/),grho)
 					print*, solv
 					rorder=order   ! returning the order
