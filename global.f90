@@ -28,7 +28,7 @@ integer, parameter:: Bsizeexo=4			!< the number of regressors in the birth proba
 ! estimation stuff 
 integer,parameter::Npaths=500 			!<number of simulated paths for each family.
 integer,parameter::simvecsize=10 		!<the size of the simulated data vector for each period. obviosly very related to ss.
-integer, parameter::SampleSize=1000 		!< Size of the estimation sample
+integer, parameter::SampleSize=200 		!< Size of the estimation sample
 integer, parameter:: Ntestage=10 		!< number of ages in which we have test scores. start at 5, end in 14.
 integer, parameter:: testminage=5 		!< earliest test scores
 integer, parameter:: testmaxage=14 		!< latest test scores
@@ -223,6 +223,5 @@ contains
 				& meantestscore(age2)+SQRT(variancetestscores(age2)),meantestscore(age2)+2*SQRT(variancetestscores(age2)) /) 
 		end if
 	end subroutine setvecAs
-
 
 end module global

@@ -3,27 +3,37 @@ program act
 use global
 use randomgen
 use emax
-use opt
+use optu
 USE IFPORT ! for intel fortran only
 implicit none
 include 'mpif.h'
+include 'nlopt.f'
 real(dble) parameters(parsize), dist, targetvec(MomentSize), weightmat(MomentSize,MomentSize)
+! nlopt stuff
+integer*8 opt
+
+
+opt=0
 
 
 call MPI_INIT(ier)
 call MPI_COMM_SIZE(MPI_COMM_WORLD, nproc, ier)
 call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ier)
 
-call readdata()	
-call readsomeparam()
-parameters=0.01d0
-targetvec=0.0d0
-weightmat=1.0d0
+!if (rank==0) then 
+	call readdata()	
+	call readsomeparam()
+	parameters=0.01d0
+	targetvec=0.0d0
+	weightmat=1.0d0
+!end if 
+! broadcast all these
 
-call distance(dist, parameters, targetvec, weightmat)
+!call distance(dist, parameters, targetvec, weightmat)
+! print*, dist
+call nlo_create(opt, NLOPT_LD_MMA,parsize)
 
-print*,dist
-
+call nlo_destroy(opt)	
 
 
 
@@ -66,7 +76,7 @@ contains
 		real(dble) solvall(Gsizeoc+1,nperiods, nttypes)
 		real(dble) wcoef(Gsize+1, nperiods-deltamin+2, deltamax-deltamin+1,nctype) 		! for the vsolver trial
 		real(dble) ftypemat(2,na1type*(deltamax-deltamin+1))
-		real(dble) start,endtime, vtime
+		real(dble) starttime,endtime, soltime
 		real(dble) parA(parAsize)
 		real(dble) parU(parUsize)
 		
@@ -125,6 +135,7 @@ contains
 		
 		! ---------------------------------------MASTER----------------------------------
 		if (rank==0) then
+			starttime=MPI_WTIME()
 		!------------------- MASTER: W SOLVER -----------------
 			! send order numbers to workers
 			number_sent=0
@@ -150,14 +161,14 @@ contains
 					number_sent=number_sent+1
 				else 
 					call MPI_SEND(order, 1, MPI_INTEGER,sender ,0, MPI_COMM_WORLD, ier)
-					print*, 'MASTER: finalizing two child solution for worker',sender
+					!print*, 'MASTER: finalizing two child solution for worker',sender
 					
 				end if
 			end do
 			
-			print*,'--------------------------------------------------------------------------------'
-			print*, '----MASTER: FINISHED THE SOLUTION OF THE WCOEF, NOW SWITCHING TO THE V-----'
-			print*,'--------------------------------------------------------------------------------'
+			!print*,'--------------------------------------------------------------------------------'
+			!print*, '----MASTER: FINISHED THE SOLUTION OF THE WCOEF, NOW SWITCHING TO THE V-----'
+			!print*,'--------------------------------------------------------------------------------'
 			
 
 
@@ -165,6 +176,7 @@ contains
 			open(77,file='wcoef.txt')
 			do l=1,2
 				write(77,*) "-------------- type order=",l,"------------" 
+
 				do m=1,deltamax-deltamin+1
 					write(77,*) "########   delta type=",m,"------------"
 					write(77,70) ((solwall(j,k,m,l),k=1,nperiods-deltamin+2),j=1,Gsize+1)
@@ -175,7 +187,6 @@ contains
 
 			
 			call MPI_BCAST(solwall, (Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+1)*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
-			print*, 'master broadcasted last stage results to workers successfully'
 		
 			! ------------MASTER: Solution for V----------------
 			number_sent=0
@@ -190,7 +201,7 @@ contains
 				call MPI_RECV(rorder, 1, MPI_INTEGER, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, status, ier)
 				sender=status(MPI_SOURCE)	
 				call MPI_RECV(solv,(Gsizeoc+1)*nperiods,MPI_DOUBLE_PRECISION,sender,MPI_ANY_TAG,MPI_COMM_WORLD,status,ier)
-				print*,'Master recieved one child solution', solv
+				!print*,'Master recieved one child solution', solv
 				solvall(:,:,rorder)=solv
 				number_received=number_received+1
 				! this version has two types, so it is always less than no processors, there is no second round sending.
@@ -208,7 +219,7 @@ contains
 				if (tag>0) then
 					call wsolver(solw,ftypemat(2,order),(/gctype,gctype,gmtype,gatype,ftypemat(1,order)/),parA,gparW,gparH(5:6),parU, beta,sigma,grho)
 					!print*, ftypemat(1,:)
-					print*,  '___worker',rank,'order=',order, 'calculated for', ftypemat(2,order), ftypemat(1,order), solw(10,10)
+					!print*,  '___worker',rank,'order=',order, 'calculated for', ftypemat(2,order), ftypemat(1,order)
 					rorder=order
 					call MPI_SEND(rorder, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, ier)
 					call MPI_SEND(solw,(Gsize+1)*(nperiods-deltamin+2),MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
@@ -217,7 +228,6 @@ contains
 				end if
 			end do
 
-			print*, 'WORKERS DONE WITH W'
 
 			! --------------Workers: SOLVING FOR V COEFFICIENTS-------------
 			! receive all the coefficients from the master-from the w stage
@@ -230,13 +240,12 @@ contains
 				if(tag>10) then
 					! get the correct mother type from solwall
 					wcoef(:,:,:,1)=solwall(:,:,:,order)
-					print*, rank, 'getting ready to solve'
 					call vsolver(solv,(/gctype,gctype,gmtype,gatype,a1type(order)/), parA,gparW,gparH(5:6),parU,gparBmat, beta,sigma,wcoef,(/gctype/),(/1.0d0/),grho)
-					print*, solv
+					!print*, solv
 					rorder=order   ! returning the order
 					call MPI_SEND(rorder, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, ier)
 					call MPI_SEND(solv,(Gsizeoc+1)*nperiods,MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
-					print*, 'worker',rank, 'sent back order', rorder
+					!print*, 'worker',rank, 'sent back order', rorder
 				else
 					EXIT
 				end if
@@ -244,17 +253,18 @@ contains
 			end if
 		end if
 		
-		print*, 'MODEL SOLVED, MOVING ONTO SIMULATIONS'
-		open(66,file='vcoef.txt')
-		do l=1,2
-			write(66,*) "-------------- type order=",l,"------------" 
-			write(66,60) ((solvall(j,k,l),k=1,nperiods),j=1,Gsizeoc+1)
-		end do
-		60 format(22F46.9)
-		close(66)
-			! now that we have the solwall and solvall (the coeffiecients for the interpolation, it is time to simulate data from these.
+		! now that we have the solwall and solvall (the coeffiecients for the interpolation, it is time to simulate data from these.
 		! it is only master who should do this.
 		if (rank==0) then
+			print*, 'MODEL SOLVED, MOVING ONTO SIMULATIONS'
+			soltime=MPI_WTIME()
+			open(66,file='vcoef.txt')
+			do l=1,2
+				write(66,*) "-------------- type order=",l,"------------" 
+				write(66,60) ((solvall(j,k,l),k=1,nperiods),j=1,Gsizeoc+1)
+			end do
+			60 format(22F46.9)
+			close(66)
 
 			do id=1,SampleSize
 				call simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoices, smexperience, smAs, smtestoutcomes,gomega3data(:,id),(/gctype,gmtype/),parA,parU,gparW,gparH,beta,sigma,a1type,pa1type,gparBmat,solvall,solwall,llmsmat(:,id),id,grho,glambdas,gsigmaetas, gsmpar)
@@ -263,15 +273,19 @@ contains
 				smchoicescollect(:,:,:,id)=smchoices
 				smexperiencecollect(:,:,id)=smexperience
 				smtestoutcomescollect(:,:,:,id)=smtestoutcomes
-				print*, 'simulations complete for individual', id
+				!print*, 'simulations complete for individual', id
 			end do
 			call moments(momentvec, SScollect, smtestoutcomescollect,  birthhistcollect, smchoicescollect, smexperiencecollect, gomega3data,glfpperiods, gexpperiods, gtsperiods, gidmat)
-				print*, 'moments calculated'
 			difft(1,:)=momentvec-targetvec
 			diff(:,1)=momentvec-targetvec
 			middlestep=matmul(difft,weightmat)
 			laststep=matmul(middlestep,diff)
 			dist=laststep(1,1)
+			endtime=MPI_WTIME()
+			print*, '----------------------- SUMMARY ---------------------'
+			print*, 'solution calc took', soltime-starttime
+			print*, 'simulation and moments', endtime-soltime
+			print*, 'whole thing took', endtime-starttime
 		end if
 	end subroutine distance
 
@@ -280,13 +294,14 @@ contains
 	subroutine objfunc(val, n, xvec, grad, need_gradient, fmat)
 	implicit none
 	integer n, need_gradient
-	real(dble) val, xvec(n), grad(n), fmat
-	
-
-	! locals
-
-	! separate out the x  
-	val=0.d0
+	integer fmat
+	real(dble) val, xvec(n), grad(n)
+	real(dble) dist 
+	if ( need_gradient .NE. 0 ) then
+		grad=0.0d0
+	end if
+	call distance(dist, parameters, targetvec, weightmat)
+	val=dist
 end subroutine objfunc
 
 

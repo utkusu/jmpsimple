@@ -1,5 +1,5 @@
 !> holds optimization related routines
-module opt
+module optu
 use global 
 use randomgen
 use emax
@@ -1376,5 +1376,5 @@ end subroutine moments
 
 
 
-end module opt
+end module optu
 

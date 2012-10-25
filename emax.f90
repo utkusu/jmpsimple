@@ -1829,6 +1829,8 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
  	integer info
 	! setting up the A1, A2, and E vecs and veclagh
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
+	! TODO for earlier periods, I have too many E points, and at period=1, it actually explodes, need to fix this.
+	if (nint(period)==1) vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(2-1)/5.d0
 	call setvecAs(period, 0.0d0,1)
 	! get a set of llms, which are fixed
 	call random_seed(put=(/nint(1000*period+1),1/))
@@ -1865,8 +1867,18 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 		!end do
 	end do
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space troc_late
+	!if (nint(period)==1) then
+		!print*, rank,	size(tmss,1), size(tmss,2)
+		!do k=1,nintpoc
+			!write(rank, 900)  (tmss(k,j) , j=1,Gsizeoc+1)
+		!end do
+	!end if
+	!900 format(16f20.10)
+	
 	call DGELS('N',nintpoc,Gsizeoc+1,1,tmss, nintpoc, vemax, nintp,work, Gsizeoc+(Gsizeoc)*blocksize,info)
-	if (info .NE. 0)	print*, 'OC: hcb DGELS exploded in period', period
+	if (info .NE. 0) then
+		print*, 'OC: hcb DGELS exploded in period', period
+	end if
 	coef=vemax(1:Gsizeoc+1)
 end subroutine coefochcb
 
