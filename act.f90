@@ -45,8 +45,8 @@ call nlo_create(opt, NLOPT_LN_NELDERMEAD,parsize)
 !call nlo_set_lower_bounds(ires, opt, lb)
 !call nlo_set_upper_bounds(ires, opt, ub)
 call nlo_set_min_objective(ires, opt, objfunc, fmat)
-!call nlo_set_maxeval(10,opt)
-call nlo_set_xtol_rel(ires, opt, 0.0001d0)
+call nlo_set_maxeval(ires,opt,30)
+!call nlo_set_xtol_rel(ires, opt, 0.0001d0)
 
 call nlo_optimize(ires, opt, parameters, minf)
 print*, ires
