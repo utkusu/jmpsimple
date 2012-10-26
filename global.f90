@@ -171,6 +171,8 @@ integer,parameter:: glfpperiods(lfpsize)=(/3,5,7,9/)
 integer,parameter:: gtsperiods(expsize)=(/2,4,6,8/) 				
 
 
+integer itercounter
+
 ! ------------ initialize variables---------------------
 
 

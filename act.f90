@@ -6,16 +6,18 @@ use emax
 use optu
 USE IFPORT ! for intel fortran only
 implicit none
+!external objfunc
 include 'mpif.h'
 include 'nlopt.f'
-real(dble) parameters(parsize), dist, targetvec(MomentSize), weightmat(MomentSize,MomentSize)
+real(dble) parameters(parsize), dist, targetvec(MomentSize), weightmat(MomentSize,MomentSize), fakeg(parsize)
 ! nlopt stuff
 integer*8 opt
-
-
+integer ires
+real(dble) minf, lb(parsize), ub(parsize)
+real(dble)  fmat
 opt=0
 
-
+fmat=1.0d0
 call MPI_INIT(ier)
 call MPI_COMM_SIZE(MPI_COMM_WORLD, nproc, ier)
 call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ier)
@@ -23,16 +25,32 @@ call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ier)
 !if (rank==0) then 
 	call readdata()	
 	call readsomeparam()
+	! read these
 	parameters=0.01d0
 	targetvec=0.0d0
 	weightmat=1.0d0
+	! set lower - upper bound
+	lb=0.0d0
+	ub=5.0d0
+	itercounter=1
 !end if 
 ! broadcast all these
 
 !call distance(dist, parameters, targetvec, weightmat)
-! print*, dist
-call nlo_create(opt, NLOPT_LD_MMA,parsize)
+ !print*, dist
 
+ !call objfunc(minf, parsize, parameters, fakeg, 0, 0)
+ 
+call nlo_create(opt, NLOPT_LN_NELDERMEAD,parsize)
+!call nlo_set_lower_bounds(ires, opt, lb)
+!call nlo_set_upper_bounds(ires, opt, ub)
+call nlo_set_min_objective(ires, opt, objfunc, fmat)
+!call nlo_set_maxeval(10,opt)
+call nlo_set_xtol_rel(ires, opt, 0.0001d0)
+
+call nlo_optimize(ires, opt, parameters, minf)
+print*, ires
+print*, minf
 call nlo_destroy(opt)	
 
 
@@ -136,6 +154,7 @@ contains
 		! ---------------------------------------MASTER----------------------------------
 		if (rank==0) then
 			starttime=MPI_WTIME()
+			print*, 'starting iteration', itercounter
 		!------------------- MASTER: W SOLVER -----------------
 			! send order numbers to workers
 			number_sent=0
@@ -219,7 +238,7 @@ contains
 				if (tag>0) then
 					call wsolver(solw,ftypemat(2,order),(/gctype,gctype,gmtype,gatype,ftypemat(1,order)/),parA,gparW,gparH(5:6),parU, beta,sigma,grho)
 					!print*, ftypemat(1,:)
-					!print*,  '___worker',rank,'order=',order, 'calculated for', ftypemat(2,order), ftypemat(1,order)
+					print*,  '___worker',rank,'order=',order, 'calculated for', ftypemat(2,order), ftypemat(1,order)
 					rorder=order
 					call MPI_SEND(rorder, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, ier)
 					call MPI_SEND(solw,(Gsize+1)*(nperiods-deltamin+2),MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
@@ -256,7 +275,7 @@ contains
 		! now that we have the solwall and solvall (the coeffiecients for the interpolation, it is time to simulate data from these.
 		! it is only master who should do this.
 		if (rank==0) then
-			print*, 'MODEL SOLVED, MOVING ONTO SIMULATIONS'
+			!print*, 'MODEL SOLVED, MOVING ONTO SIMULATIONS'
 			soltime=MPI_WTIME()
 			open(66,file='vcoef.txt')
 			do l=1,2
@@ -282,10 +301,14 @@ contains
 			laststep=matmul(middlestep,diff)
 			dist=laststep(1,1)
 			endtime=MPI_WTIME()
-			print*, '----------------------- SUMMARY ---------------------'
+			print*, '-------------- ITERATION SUMMARY ----------------'
+			print*, 'This is iteration', itercounter
+			print*, 'Distance is', dist
 			print*, 'solution calc took', soltime-starttime
 			print*, 'simulation and moments', endtime-soltime
 			print*, 'whole thing took', endtime-starttime
+			print*, '-------------------------------------------------'
+			itercounter=itercounter+1
 		end if
 	end subroutine distance
 
@@ -294,15 +317,14 @@ contains
 	subroutine objfunc(val, n, xvec, grad, need_gradient, fmat)
 	implicit none
 	integer n, need_gradient
-	integer fmat
 	real(dble) val, xvec(n), grad(n)
-	real(dble) dist 
+	real(dble) dist, fmat 
 	if ( need_gradient .NE. 0 ) then
 		grad=0.0d0
 	end if
 	call distance(dist, parameters, targetvec, weightmat)
 	val=dist
-end subroutine objfunc
+	end subroutine objfunc
 
 
 
