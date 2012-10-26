@@ -45,7 +45,7 @@ integer, parameter:: nreglfp=6 			!< number of regressors in labor force partici
 integer, parameter:: nregtsdiff=13 		!> number of regressors in tsdiff equations. intercept not included.
 
 integer, parameter:: MomentSize= (2*nreglfp+2) + (3*expsize-1) + (tssize) + (nregtsdiff+1) 		!< number of moments to be matched
-
+integer, parameter::idmatsize=lfpsize+expsize+expsize-1+tssize+Ntestage 						!< idmat's second dimension
 
 ! parameter vector sizes
 
@@ -126,15 +126,12 @@ integer nproc, rank, ier, sender, position, number_sent, number_received, order,
 ! parameter globals
 integer, parameter:: parsize=20
 
-! space for target vec
-real(dble) btargetvec(MomentSize)
 
 ! wage parameters
 real(dble), parameter::gparW(parWsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 /)*0.10d0
 real(dble), parameter::gparH(parHsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01  /) *0.00110d0
 real(dble) , parameter:: gpart2_parA(9)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01 /)*1.0d0
 real(dble) gparBmat(Bsizeexo+1,nfert)
-
 
 ! parameters of other kind
 real(dble), parameter:: grho=1.0d0
@@ -171,28 +168,77 @@ integer,parameter:: glfpperiods(lfpsize)=(/3,5,7,9/)
 integer,parameter:: gtsperiods(expsize)=(/2,4,6,8/) 				
 
 
+real(dble) parameters(parsize), lb(parsize), ub(parsize), targetvec(MomentSize), weightmat(MomentSize,MomentSize)
+
+
 integer itercounter
 
 ! ------------ initialize variables---------------------
 
-
+! THIS IS THE AREA WHERE WE READ SOME EXTERNAL FILES. HERE IS A LIST OF FILES THAT ARE REQUIRED
+! rest of the parameters are manually set above. 
+! 1- idmat.dat (Sample Size x idmatsize): Integer values, used in the moments calculation. 
+! 	Indicates which members of the sample enters which calculation.  See explanation in moments routine
+! 2- omega3.dat (o3size x Sample): holds the omega3 values for the sample. double precision.
+! 3- llms.dat: holds llms data for the sample, double.
+! 4- factorpar.dat (3 x Ntestage) : holds the factor analysis results. First row hold factor loading for the second measurement equation
+! 	2 and 3 holds measurement error variance for the first and second equations, double
+! 5- optim.dat (3 x parsize): holds initial values, lower and upper bounds for the optimization in its rows. double
+! 6- setii.dat ( MomentSize+1 x MomentSize): first row holds target moments, the rest of it is the optimal weighting matrix for the
+!    indirect inference.
 
 contains 
 
 	subroutine readdata()
 		implicit none
-		integer i
+		integer i,j,l
 		! read idmat and omega3 -NEED TO MAKE THESE READING FROM THE ACTUAL DATA FILES.
+		
+		open(unit=12, file="idmat.dat")
+
+		do i=1, SampleSize
+			read(12,*) (gidmat(i,j),j=1,idmatsize)
+		end do
+		close(12)
+		
+		open(unit=13, file="omega3.dat")
+		do i=1, o3size
+			read (13,*) (gomega3data(i,j),j=1,SampleSize)
+		end do
+		close(13)
+
+		open(unit=14, file="llms.dat")
+		do i=1, nperiods
+			read (14,*) (llmsmat(i,j),j=1,SampleSize)
+		end do
+		close(14)
+
+
+
+		!TODO DON'T FORGET THE DELETE US ONCE DONE WITH DATA FILES	
 		gidmat=1
 		gomega3data=20.0d0
-		llmsmat=0.5d0
+		llmsmat=0.05d0
 	end subroutine readdata
 
 	subroutine readsomeparam()
 		implicit none
 		! read some of the complicated members of the parameters space
-		glambdas=1.0d0
-		gsigmaetas=1.d0
+		real(dble) factormat(3,Ntestage)
+		! first line lambdas
+		! second line variance for first equation, 3rd variance of second.
+		integer i,j
+
+		open(unit=12, file="factorpar.dat")
+		do i=1, 3
+			read(12,*) (factormat(i,j),j=1,Ntestage)
+		end do
+		close(12)	
+		glambdas=factormat(1,:)
+		gsigmaetas(1,:)=factormat(2,:)
+		gsigmaetas(2,:)=factormat(3,:)
+		
+		! also assign gparBmat by hand.	
 		gparBmat(:,1)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
 		gparBmat(:,2)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
 		gparBmat(:,3)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
@@ -219,11 +265,40 @@ contains
 
 		veca1=(/ meantestscore(age1)-2*SQRT(variancetestscores(age1)),meantestscore(age1)-SQRT(variancetestscores(age1)), &
 			& meantestscore(age1)+SQRT(variancetestscores(age1)),meantestscore(age1)+2*SQRT(variancetestscores(age1)) /) 
-	
 		if (noc==2) then		
 			veca2=(/ meantestscore(age2)-2*SQRT(variancetestscores(age2)),meantestscore(age2)-SQRT(variancetestscores(age2)) ,&
 				& meantestscore(age2)+SQRT(variancetestscores(age2)),meantestscore(age2)+2*SQRT(variancetestscores(age2)) /) 
 		end if
 	end subroutine setvecAs
 
+	! set initial parameters and bounds for optimization
+	subroutine setoptimstuff()
+		implicit none 
+		real(dble) parmat(3,parsize)
+		! first row initial value, then lb, then ub
+		integer i,j
+		open(unit=15, file="optim.dat")
+		do i=1,3
+			read(15,*) (parmat(i,j),j=1,parsize)
+		end do
+		close(15)	
+		parameters=parmat(1,:)
+		lb=parmat(2,:)
+		ub=parmat(3,:)
+	end subroutine setoptimstuff
+
+	! set indirect inference things, first
+	subroutine setii()
+		implicit none
+		! first lline=targetvec the rest is the weight matrix
+		real(dble) setiimat(MomentSize+1,MomentSize)
+		integer i,j
+		open(unit=16, file="setii.dat")
+		do i=1,MomentSize+1
+			read(16,*) (setiimat(i,j),j=1,MomentSize)
+		end do
+		close(16)	
+		targetvec=setiimat(1,:)
+		weightmat=setiimat(2:MomentSize+1,:)
+	end subroutine setii
 end module global

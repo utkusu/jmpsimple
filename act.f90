@@ -9,32 +9,43 @@ implicit none
 !external objfunc
 include 'mpif.h'
 include 'nlopt.f'
-real(dble) parameters(parsize), dist, targetvec(MomentSize), weightmat(MomentSize,MomentSize), fakeg(parsize)
+real(dble)  dist, fakeg(parsize)
 ! nlopt stuff
 integer*8 opt
 integer ires
-real(dble) minf, lb(parsize), ub(parsize)
+real(dble) minf
 real(dble)  fmat
-opt=0
-
-fmat=1.0d0
+opt=0; fmat=1.0d0
 call MPI_INIT(ier)
 call MPI_COMM_SIZE(MPI_COMM_WORLD, nproc, ier)
 call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ier)
 
-!if (rank==0) then 
-	call readdata()	
-	call readsomeparam()
+if (rank==0) then 
+	call readdata() ! read some data	
+	call readsomeparam() ! read some external parameters
 	! read these
-	parameters=0.01d0
-	targetvec=0.0d0
-	weightmat=1.0d0
+	call setoptimstuff() ! read and set initial values and boundaries
+	call setii()  ! set target vec and weighting matrix for indirect inference
 	! set lower - upper bound
-	lb=0.0d0
-	ub=5.0d0
 	itercounter=1
-!end if 
+end if
 ! broadcast all these
+call MPI_BCAST(gidmat, SampleSize*idmatsize, MPI_INTEGER, 0, MPI_COMM_WORLD, ier)
+call MPI_BCAST(gomega3data, o3size*SampleSize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+call MPI_BCAST(llmsmat, nperiods*SampleSize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+call MPI_BCAST(glambdas, Ntestage, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+call MPI_BCAST(gsigmaetas, 2*Ntestage, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+call MPI_BCAST(gparBmat, (Bsizeexo+1)*nfert, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+call MPI_BCAST(parameters, parsize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+call MPI_BCAST(lb, parsize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+call MPI_BCAST(ub, parsize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+call MPI_BCAST(targetvec, MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+call MPI_BCAST(weightmat, MomentSize*MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
+
+
+
+
+
 
 !call distance(dist, parameters, targetvec, weightmat)
  !print*, dist
@@ -49,8 +60,10 @@ call nlo_set_maxeval(ires,opt,30)
 !call nlo_set_xtol_rel(ires, opt, 0.0001d0)
 
 call nlo_optimize(ires, opt, parameters, minf)
-print*, ires
-print*, minf
+if (rank==0) then 
+	print*, ires
+	print*, minf
+end if
 call nlo_destroy(opt)	
 
 

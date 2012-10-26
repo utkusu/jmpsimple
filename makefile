@@ -2,7 +2,7 @@
 #          MPI MAKEFILE
 # ----------------------------------
 #FORTRAN_COMPILER=mpif90
-objects= global.o randomgen.o emax.o opt.o act.o
+objects= global.o randomgen.o emax.o optu.o act.o
 
 ifeq ($(ifortran),1)
 	FORTRAN_COMPILER=ifort
@@ -33,11 +33,11 @@ emax.mod: emax.o emax.f90
 	$(FORTRAN_COMPILER) $(switch)  -c emax.f90
 emax.o: emax.f90
 	$(FORTRAN_COMPILER) $(switch) -c emax.f90
-opt.mod: opt.o opt.f90
-	$(FORTRAN_COMPILER) $(switch)  -c opt.f90
-opt.o: opt.f90
-	$(FORTRAN_COMPILER) $(switch) -c opt.f90
-act.o: global.mod randomgen.mod emax.mod opt.mod act.f90
+optu.mod: optu.o optu.f90
+	$(FORTRAN_COMPILER) $(switch)  -c optu.f90
+optu.o: optu.f90
+	$(FORTRAN_COMPILER) $(switch) -c optu.f90
+act.o: global.mod randomgen.mod emax.mod optu.mod act.f90
 	$(FORTRAN_COMPILER) $(switch) -c act.f90
 clean:
 	rm *.mod *.o

@@ -1021,7 +1021,7 @@ subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperie
 	integer, intent(in):: expperiods(expsize) 		!< the array that holds the ages of mom for which experience moments calculated
 	integer, intent(in):: lfpperiods(lfpsize) 			!< the array that holds the period numbers for which labor for particapation equations are estimated.
 	integer, intent(in):: tsperiods(expsize) 		!< the array that holds the ages for which test score averages are calculated. 
-	integer, intent(in):: idmat(SampleSize,MomentSize) 	   		!<indicates the which sample units are in the jth columnth moment
+	integer, intent(in):: idmat(SampleSize,idmatsize) 	   		!<indicates the which sample units are in the jth columnth moment
 														!<calculation
 	real(dble), intent(out) :: momentvec(MomentSize) 	!< The set of moments produced by the simulated data
 		
@@ -1031,7 +1031,9 @@ subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperie
 	! * following size(expperiods)-1 is for the cov(E_t,E_t+1) calculations. marking the exp pairs. 
 	! * Next is the test score averages. We will deals with tsperiods of them. And stick only to one of the tests.
 	!   idmat has a column for each tsperiod. It takes 4 VALUES. 0=not in the data, 1= first child 2=second child 3=both children
-	!	so we can figure out for which kid(s) to add the test score data into the series (to calculate average). 
+	!	so we can figure out for which kid(s) to add the test score data into the series (to calculate average).
+	! * last we have one each period in each testminage, .., testmaxage
+	! SO IDMAT HAS A SIZE = SAMPLE SIZE  x ( lfpsize + expsize + expsize-1 + tsperiods + Ntestage )
 
 
 
