@@ -16,6 +16,7 @@ integer ires
 real(dble) minf
 real(dble)  fmat
 opt=0; fmat=1.0d0
+
 call MPI_INIT(ier)
 call MPI_COMM_SIZE(MPI_COMM_WORLD, nproc, ier)
 call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ier)
@@ -45,18 +46,13 @@ call MPI_BCAST(weightmat, MomentSize*MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_CO
 
 
 
+if (rank==0) print*, minf
 
-
-!call distance(dist, parameters, targetvec, weightmat)
- !print*, dist
-
- !call objfunc(minf, parsize, parameters, fakeg, 0, 0)
- 
 call nlo_create(opt, NLOPT_LN_NELDERMEAD,parsize)
-!call nlo_set_lower_bounds(ires, opt, lb)
-!call nlo_set_upper_bounds(ires, opt, ub)
+call nlo_set_lower_bounds(ires, opt, lb)
+call nlo_set_upper_bounds(ires, opt, ub)
 call nlo_set_min_objective(ires, opt, objfunc, fmat)
-call nlo_set_maxeval(ires,opt,30)
+call nlo_set_maxeval(ires,opt,20)
 !call nlo_set_xtol_rel(ires, opt, 0.0001d0)
 
 call nlo_optimize(ires, opt, parameters, minf)
@@ -141,7 +137,7 @@ contains
 		integer status(MPI_STATUS_SIZE)
 		real(dble) difft(1,MomentSize), diff(MomentSize,1), middlestep(1,MomentSize), laststep(1,1)
 		
-		! delete me
+		! delete me =why?
 		real(dble) coef(Gsizeoc+1)
 		
 		! break up parameters for two types
@@ -251,7 +247,7 @@ contains
 				if (tag>0) then
 					call wsolver(solw,ftypemat(2,order),(/gctype,gctype,gmtype,gatype,ftypemat(1,order)/),parA,gparW,gparH(5:6),parU, beta,sigma,grho)
 					!print*, ftypemat(1,:)
-					print*,  '___worker',rank,'order=',order, 'calculated for', ftypemat(2,order), ftypemat(1,order)
+					!print*,  '___worker',rank,'order=',order, 'calculated for', ftypemat(2,order), ftypemat(1,order)
 					rorder=order
 					call MPI_SEND(rorder, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, ier)
 					call MPI_SEND(solw,(Gsize+1)*(nperiods-deltamin+2),MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
@@ -260,11 +256,10 @@ contains
 				end if
 			end do
 
-
+			
 			! --------------Workers: SOLVING FOR V COEFFICIENTS-------------
 			! receive all the coefficients from the master-from the w stage
 			call MPI_BCAST(solwall, (Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+1)*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
-			
 			if( (rank==1) .OR. (rank==2) ) then
 			do
 				call MPI_RECV(order, 1, MPI_INTEGER, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, ier)
@@ -288,7 +283,7 @@ contains
 		! now that we have the solwall and solvall (the coeffiecients for the interpolation, it is time to simulate data from these.
 		! it is only master who should do this.
 		if (rank==0) then
-			!print*, 'MODEL SOLVED, MOVING ONTO SIMULATIONS'
+			print*, 'MODEL SOLVED, MOVING ONTO SIMULATIONS'
 			soltime=MPI_WTIME()
 			open(66,file='vcoef.txt')
 			do l=1,2
@@ -307,6 +302,7 @@ contains
 				smtestoutcomescollect(:,:,:,id)=smtestoutcomes
 				!print*, 'simulations complete for individual', id
 			end do
+			print*, 'Simulations Complete, Now Calculating Moments'
 			call moments(momentvec, SScollect, smtestoutcomescollect,  birthhistcollect, smchoicescollect, smexperiencecollect, gomega3data,glfpperiods, gexpperiods, gtsperiods, gidmat)
 			difft(1,:)=momentvec-targetvec
 			diff(:,1)=momentvec-targetvec

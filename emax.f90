@@ -206,7 +206,6 @@ implicit none
 	real(dble) mult, power
 	power=(finalage/timeperiod)-(agem)
 	mult=beta*(1.0d0-beta**power)/(1.0d0-beta)
-
 	TV(:,1)=(uh0+uct)*mult
 	TV(:,2)=(uhp+uct)*mult
 	TV(:,3)=(uhf+uct)*mult
@@ -982,19 +981,17 @@ function emaxocfinal(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta)
 	wage=wagef(omega1(3),omega2(1), omega2(4), omega3(1), omega3(2), omega3(3),eps(:,4),omega4(3),parW(5:7),parW(1:4))  
 	! same with husband income
 	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) 
-
-	
-	! uh's for each h choice 
+		! uh's for each h choice 
 	uh0=uh(0.0d0,(wageh),omega2(1:2),parU(3:7))
 	uhp=uh(0.5d0,(wage*0.50d0+wageh),omega2(1:2),parU(3:7))
 	uhf=uh(1.0d0,(wage+wageh),omega2(1:2),parU(3:7))
 	! terminal values calcuted, for now using a very simple thing
 	call termvaltemp(TV,uc,uh0,uhp,uhf,beta,omega2(3))
 	! distribute choice specific current returns to a Nmcx3 matrix
+	
 	umat(:,1)=uc+uh0+eps(:,1)
 	umat(:,2)=uc+uhp+eps(:,2)
 	umat(:,3)=uc+uhf+eps(:,3)
-
 	! add up the TV
 	umat=umat+beta*TV
 
@@ -1608,7 +1605,6 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 	vecE=(/1.0d0,2.0d0,3.0d0,4.0d0,5.0d0/)*(period-1)/5.d0
 
 	call setvecAs(period, 0.0d0,1)
-!a1vec=(/1,2,3,4,5/)
 ! get a set of llms, which are fixed
 	call random_seed(put=(/nint(1000*period+1),1/))
 	call random_number(llmsvec)
@@ -1630,6 +1626,15 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
 										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+1),counter/))
 										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
+										!if  ((rank==1) .AND. (counter==1)) then
+											!print*, '--------------CORE------------------'
+											!print*, omega1
+											!print*, omega2
+											!print*, omega3
+											!print*, mu
+											!print*, eps(1:10,1)
+											!print*, '--------------CORE------------------'
+										!end if
 										vemax(counter)=emaxocfinal(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
 										!print *, 'counter at', counter, 'calculated', vemax(counter)
@@ -1644,17 +1649,21 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 		!end do
 	end do
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space 
-!	open(rank, file = 'a.txt')
-	!do k=1,nintpoc
-		!write(rank, 900)  (tmss(k,j) , j=1,Gsizeoc+1)
-	!end do
-	!900 format(16f20.10)
-!	close(12)
-!	open(13, file = 'b.txt')
-	!write(rank, "(f20.10)")  (vemax(k) , k=1,nintpoc)
-!	close(13)
-!close(rank)
-
+	!if (rank==1) then
+		!open(22, file = 'a.txt')
+		!do k=1,nintpoc
+			!write(22, 900)  (tmss(k,j) , j=1,Gsizeoc+1)
+		!end do
+		!close(22)
+		!open(23, file = 'b.txt')
+		!do k=1,nintpoc
+			!write(23, 900)  vemax(k)
+		!end do
+		!900 format(16f20.10)
+		!close(23)
+	!end if
+close(rank)
+	
 	call DGELS('N',nintpoc,Gsizeoc+1,1, tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
 	coef=vemax(1:Gsizeoc+1)
 	if (info .NE. 0)	print*, 'OC: final DGELS exploded in period', period

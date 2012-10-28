@@ -424,8 +424,6 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 	power=(finalage/timeperiod)-omega3(3)
 	mult=beta*(1.0d0-beta**power)/(1.0d0-beta)
 	
-	
-	! ----------------------------------------FIRST PERIOD---------------------------------------------
 	eps= randmnv(Npaths,5,mu,sigma,3,1,(/1,id*1/))
 	! initialize omegas
 	SS(1,1,:)=Ainit 	!A1
@@ -481,7 +479,6 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 		smnext(1,i)=pfone((/SS(1,period,i),smh,0.5d0*(wageh(i)+wage(i)*smh)/), omega3(1:3), period*1.0d0,parA(4:12),rho) 
 		smnext(2,i)=SS(2,period,i)
 		smnext(3,i)=SS(3,period,i)+smh
-
 			
 	end do
 	!                            -----------------LOOOOOP TO THE FUTURE-----------------
@@ -505,7 +502,6 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 		wageh=wagehfquick(omega3(4),period*1.0d0,eps(:,5),parH(5:6))	
 		outcomes(1,period,:)=wage
 		outcomes(2,period,:)=wageh
-		
 		smexperience(period,:)=smnext(3,:)
 		smAs(:,period,:)=smnext(1:2,:)
 		
@@ -1072,15 +1068,13 @@ subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperie
 	real(dble) work(nreglfp+1+(nreglfp+1)*blocksize)
 	real(dble) worktsdiff(nregtsdiff+1+(nregtsdiff+1)*blocksize)
 	integer info, infotsdiff
-	
-	
+		
 	! initalize stuff
 	regsample=sum(idmat(:,1:lfpsize))*Npaths ! participation equation big sample size
 	counter=1
 	
 	! INDICATOR MATRIX IDMAT SHOULD FOLLOW THIS ORDER
 	! STARTING OUT WITH 6A and 6B in jmpsimple document. 
-
 
 	!---------------------------------PARTICIPATION EQUATIONS------------------------------------------
 	! linear regressions with work status, where regressor vector is [1 schooling AFQT agem baby E 2child]

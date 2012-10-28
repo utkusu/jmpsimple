@@ -78,7 +78,7 @@ real(dble), parameter::onescxgrid(cxgridsize)=1.0d0
 real(dble), parameter::onescgridwithbirth(cgridsize*2)=1.0d0
 
 ! emax interpolation parameters
-integer, parameter:: Nmc=50		!<monte carlo integration draw size
+integer, parameter:: Nmc=20		!<monte carlo integration draw size
 
 integer, parameter::svecage0m=4
 integer, parameter::svecsch0m=4
@@ -177,14 +177,14 @@ integer itercounter
 
 ! THIS IS THE AREA WHERE WE READ SOME EXTERNAL FILES. HERE IS A LIST OF FILES THAT ARE REQUIRED
 ! rest of the parameters are manually set above. 
-! 1- idmat.dat (Sample Size x idmatsize): Integer values, used in the moments calculation. 
+! 1- idmat.csv (Sample Size x idmatsize): Integer values, used in the moments calculation. 
 ! 	Indicates which members of the sample enters which calculation.  See explanation in moments routine
-! 2- omega3.dat (o3size x Sample): holds the omega3 values for the sample. double precision.
-! 3- llms.dat: holds llms data for the sample, double.
-! 4- factorpar.dat (3 x Ntestage) : holds the factor analysis results. First row hold factor loading for the second measurement equation
+! 2- omega3.csv (o3size x Sample): holds the omega3 values for the sample. double precision.
+! 3- llms.csv: holds llms data for the sample, double.
+! 4- factorpar.csv (3 x Ntestage) : holds the factor analysis results. First row hold factor loading for the second measurement equation
 ! 	2 and 3 holds measurement error variance for the first and second equations, double
-! 5- optim.dat (3 x parsize): holds initial values, lower and upper bounds for the optimization in its rows. double
-! 6- setii.dat ( MomentSize+1 x MomentSize): first row holds target moments, the rest of it is the optimal weighting matrix for the
+! 5- optim.csv (3 x parsize): holds initial values, lower and upper bounds for the optimization in its rows. double
+! 6- setii.csv ( MomentSize+1 x MomentSize): first row holds target moments, the rest of it is the optimal weighting matrix for the
 !    indirect inference.
 
 contains 
@@ -194,25 +194,24 @@ contains
 		integer i,j,l
 		! read idmat and omega3 -NEED TO MAKE THESE READING FROM THE ACTUAL DATA FILES.
 		
-		open(unit=12, file="idmat.dat")
+		!open(unit=12, file="idmat.csv")
 
-		do i=1, SampleSize
-			read(12,*) (gidmat(i,j),j=1,idmatsize)
-		end do
-		close(12)
+		!do i=1, SampleSize
+			!read(12,*) (gidmat(i,j),j=1,idmatsize)
+		!end do
+		!close(12)
 		
-		open(unit=13, file="omega3.dat")
-		do i=1, o3size
-			read (13,*) (gomega3data(i,j),j=1,SampleSize)
-		end do
-		close(13)
+		!open(unit=13, file="omega3.csv")
+		!do i=1, o3size
+			!read (13,*) (gomega3data(i,j),j=1,SampleSize)
+		!end do
+		!close(13)
 
-		open(unit=14, file="llms.dat")
-		do i=1, nperiods
-			read (14,*) (llmsmat(i,j),j=1,SampleSize)
-		end do
-		close(14)
-
+		!open(unit=14, file="llms.csv")
+		!do i=1, nperiods
+			!read (14,*) (llmsmat(i,j),j=1,SampleSize)
+		!end do
+		!close(14)
 
 
 		!TODO DON'T FORGET THE DELETE US ONCE DONE WITH DATA FILES	
@@ -229,15 +228,19 @@ contains
 		! second line variance for first equation, 3rd variance of second.
 		integer i,j
 
-		open(unit=12, file="factorpar.dat")
-		do i=1, 3
-			read(12,*) (factormat(i,j),j=1,Ntestage)
-		end do
-		close(12)	
+		!open(unit=12, file="factorpar.csv")
+		!do i=1, 3
+			!read(12,*) (factormat(i,j),j=1,Ntestage)
+		!end do
+		!close(12)	
 		glambdas=factormat(1,:)
 		gsigmaetas(1,:)=factormat(2,:)
 		gsigmaetas(2,:)=factormat(3,:)
 		
+		! TODO ERASE ME
+		glambdas=1.0d0
+		gsigmaetas=0.1d0
+
 		! also assign gparBmat by hand.	
 		gparBmat(:,1)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
 		gparBmat(:,2)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
@@ -257,7 +260,7 @@ contains
 		integer i, j, age1, age2
 		! insert data here!!!
 		meantestscore=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01, 0.01 /)*1000.0d0
-		variancetestscores=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01, 0.01 /)*1.0d0
+		variancetestscores=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01, 0.01 /)*10.0d0
 		
 		! to understand this later: if age1
 		age1=max(min(nint(period)-testminage+1,Ntestage),1)
@@ -275,16 +278,22 @@ contains
 	subroutine setoptimstuff()
 		implicit none 
 		real(dble) parmat(3,parsize)
-		! first row initial value, then lb, then ub
+		! first row initial value, then lb, then u2
 		integer i,j
-		open(unit=15, file="optim.dat")
-		do i=1,3
-			read(15,*) (parmat(i,j),j=1,parsize)
-		end do
-		close(15)	
-		parameters=parmat(1,:)
-		lb=parmat(2,:)
-		ub=parmat(3,:)
+		!open(unit=15, file="optim.csv")
+		!do i=1,3
+			!read(15,*) (parmat(i,j),j=1,parsize)
+		!end do
+		!close(15)	
+		!parameters=parmat(1,:)
+		!lb=parmat(2,:)
+		!ub=parmat(3,:)
+
+		! TODO ERASE ME
+		parameters=1.0d0
+		parameters(parsize)=0.95 		! special for beta
+		lb=0.0d0
+		ub=5.0d0
 	end subroutine setoptimstuff
 
 	! set indirect inference things, first
@@ -293,12 +302,18 @@ contains
 		! first lline=targetvec the rest is the weight matrix
 		real(dble) setiimat(MomentSize+1,MomentSize)
 		integer i,j
-		open(unit=16, file="setii.dat")
-		do i=1,MomentSize+1
-			read(16,*) (setiimat(i,j),j=1,MomentSize)
-		end do
-		close(16)	
-		targetvec=setiimat(1,:)
-		weightmat=setiimat(2:MomentSize+1,:)
+		open(unit=16, file="setii.csv")
+		!do i=1,MomentSize+1
+			!read(16,*) (setiimat(i,j),j=1,MomentSize)
+		!end do
+		!close(16)	
+		!targetvec=setiimat(1,:)
+		!weightmat=setiimat(2:MomentSize+1,:)
+
+		! TODO ERASE ME
+		targetvec=0.0d0
+		weightmat=1.0d0
+
+
 	end subroutine setii
 end module global
