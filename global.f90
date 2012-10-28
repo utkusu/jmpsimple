@@ -171,7 +171,7 @@ integer,parameter:: gtsperiods(expsize)=(/2,4,6,8/)
 real(dble) parameters(parsize), lb(parsize), ub(parsize), targetvec(MomentSize), weightmat(MomentSize,MomentSize)
 
 
-integer itercounter
+integer itercounter, evaliter
 
 ! ------------ initialize variables---------------------
 

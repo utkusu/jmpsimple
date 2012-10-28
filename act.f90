@@ -21,14 +21,14 @@ call MPI_INIT(ier)
 call MPI_COMM_SIZE(MPI_COMM_WORLD, nproc, ier)
 call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ier)
 
-if (rank==0) then 
+if (rank==0) then
 	call readdata() ! read some data	
 	call readsomeparam() ! read some external parameters
 	! read these
 	call setoptimstuff() ! read and set initial values and boundaries
 	call setii()  ! set target vec and weighting matrix for indirect inference
 	! set lower - upper bound
-	itercounter=1
+	itercounter=1; evaliter=1
 end if
 ! broadcast all these
 call MPI_BCAST(gidmat, SampleSize*idmatsize, MPI_INTEGER, 0, MPI_COMM_WORLD, ier)
@@ -45,14 +45,13 @@ call MPI_BCAST(weightmat, MomentSize*MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_CO
 
 
 
-
 if (rank==0) print*, minf
 
-call nlo_create(opt, NLOPT_LN_NELDERMEAD,parsize)
+call nlo_create(opt, NLOPT_LD_MMA,parsize)
 call nlo_set_lower_bounds(ires, opt, lb)
 call nlo_set_upper_bounds(ires, opt, ub)
 call nlo_set_min_objective(ires, opt, objfunc, fmat)
-call nlo_set_maxeval(ires,opt,20)
+call nlo_set_maxeval(ires,opt,40)
 !call nlo_set_xtol_rel(ires, opt, 0.0001d0)
 
 call nlo_optimize(ires, opt, parameters, minf)
@@ -312,6 +311,7 @@ contains
 			endtime=MPI_WTIME()
 			print*, '-------------- ITERATION SUMMARY ----------------'
 			print*, 'This is iteration', itercounter
+			print*, 'Number of Evaluated Points', evaliter
 			print*, 'Distance is', dist
 			print*, 'solution calc took', soltime-starttime
 			print*, 'simulation and moments', endtime-soltime
@@ -326,17 +326,38 @@ contains
 	subroutine objfunc(val, n, xvec, grad, need_gradient, fmat)
 	implicit none
 	integer n, need_gradient
-	real(dble) val, xvec(n), grad(n)
+	real(dble) val, xvec(n), grad(n), jacobian(n)
 	real(dble) dist, fmat 
-	if ( need_gradient .NE. 0 ) then
-		grad=0.0d0
-	end if
-	call distance(dist, parameters, targetvec, weightmat)
+		call distance(dist, parameters, targetvec, weightmat)
+		evaliter=evaliter+1
 	val=dist
+	if ( need_gradient .NE. 0 ) then
+		call diffdistance(jacobian,parameters,targetvec, weightmat, dist)
+		grad=jacobian
+	end if
 	end subroutine objfunc
+	! takes the forward numerical derivative of the distance function, using already calculated f0
 
 
-
+	subroutine diffdistance(jacobian, parameters,targetvec,weightmat,f0)
+		implicit none
+		real(dble) jacobian(parsize)
+		real(dble) parameters(parsize), targetvec(MomentSize), weightmat(MomentSize,MomentSize)
+		real(dble) f0
+		real(dble) f1
+		real(dble) h(parsize),hbar(parsize),xh(parsize), fakeparameters(parsize)
+		integer i
+		
+		hbar=(0.00000001)*max(abs(parameters),1.0d0)
+		xh=parameters+hbar
+		h=xh-parameters
+		do i=1,parsize
+			fakeparameters=parameters; fakeparameters(i)=xh(i)
+			call distance(f1,fakeparameters,targetvec,weightmat)
+			jacobian(i)=(f1-f0)/h(i)
+			if (rank==0) print*, 'jacobian in direction', i
+		end do
+	end subroutine diffdistance
 
 
 end program act
