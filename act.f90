@@ -45,7 +45,6 @@ call MPI_BCAST(weightmat, MomentSize*MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_CO
 
 
 
-if (rank==0) print*, minf
 
 call nlo_create(opt, NLOPT_LD_MMA,parsize)
 call nlo_set_lower_bounds(ires, opt, lb)

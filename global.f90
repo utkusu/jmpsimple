@@ -78,7 +78,7 @@ real(dble), parameter::onescxgrid(cxgridsize)=1.0d0
 real(dble), parameter::onescgridwithbirth(cgridsize*2)=1.0d0
 
 ! emax interpolation parameters
-integer, parameter:: Nmc=20		!<monte carlo integration draw size
+integer, parameter:: Nmc=200		!<monte carlo integration draw size
 
 integer, parameter::svecage0m=4
 integer, parameter::svecsch0m=4
@@ -130,7 +130,7 @@ integer, parameter:: parsize=19
 ! wage parameters
 real(dble), parameter::gparW(parWsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 /)*0.10d0
 real(dble), parameter::gparH(parHsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01  /) *0.00110d0
-real(dble) , parameter:: gpart2_parA(9)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01 /)*1.0d0
+real(dble) , parameter:: gpart2_parA(9)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01 /)*0.10d0
 real(dble) gparBmat(Bsizeexo+1,nfert)
 
 ! parameters of other kind
@@ -147,9 +147,9 @@ real(dble) , parameter:: gsmpar=0.5d0
 
 
 ! intercepts - later on these will be types, too
-real(dble) , parameter:: gctype=0.1d0
-real(dble) , parameter:: gmtype=0.1d0
-real(dble) , parameter:: gatype=0.1d0
+real(dble) , parameter:: gctype=0.0001d0
+real(dble) , parameter:: gmtype=0.01d0
+real(dble) , parameter:: gatype=0.01d0
 
 
 
@@ -195,30 +195,30 @@ contains
 		integer i,j,l
 		! read idmat and omega3 -NEED TO MAKE THESE READING FROM THE ACTUAL DATA FILES.
 		
-		!open(unit=12, file="idmat.csv")
+		open(unit=12, file="idmat.csv")
 
-		!do i=1, SampleSize
-			!read(12,*) (gidmat(i,j),j=1,idmatsize)
-		!end do
-		!close(12)
+		do i=1, SampleSize
+			read(12,*) (gidmat(i,j),j=1,idmatsize)
+		end do
+		close(12)
 		
-		!open(unit=13, file="omega3.csv")
-		!do i=1, o3size
-			!read (13,*) (gomega3data(i,j),j=1,SampleSize)
-		!end do
-		!close(13)
+		open(unit=13, file="omega3.csv")
+		do i=1, o3size
+			read (13,*) (gomega3data(i,j),j=1,SampleSize)
+		end do
+		close(13)
 
-		!open(unit=14, file="llms.csv")
-		!do i=1, nperiods
-			!read (14,*) (llmsmat(i,j),j=1,SampleSize)
-		!end do
-		!close(14)
+		open(unit=14, file="llms.csv")
+		do i=1, nperiods
+			read (14,*) (llmsmat(i,j),j=1,SampleSize)
+		end do
+		close(14)
 
 
 		!TODO DON'T FORGET THE DELETE US ONCE DONE WITH DATA FILES	
-		gidmat=1
-		gomega3data=20.0d0
-		llmsmat=0.05d0
+		!gidmat=1
+		!gomega3data=20.0d0
+		!llmsmat=0.05d0
 	end subroutine readdata
 
 	subroutine readsomeparam()
@@ -234,9 +234,9 @@ contains
 			!read(12,*) (factormat(i,j),j=1,Ntestage)
 		!end do
 		!close(12)	
-		glambdas=factormat(1,:)
-		gsigmaetas(1,:)=factormat(2,:)
-		gsigmaetas(2,:)=factormat(3,:)
+		!glambdas=factormat(1,:)
+		!gsigmaetas(1,:)=factormat(2,:)
+		!gsigmaetas(2,:)=factormat(3,:)
 		
 
 		! also assign gparBmat by hand.	
@@ -289,20 +289,20 @@ contains
 		real(dble) parmat(3,parsize)
 		! first row initial value, then lb, then u2
 		integer i,j
-		!open(unit=15, file="optim.csv")
-		!do i=1,3
-			!read(15,*) (parmat(i,j),j=1,parsize)
-		!end do
-		!close(15)	
-		!parameters=parmat(1,:)
-		!lb=parmat(2,:)
-		!ub=parmat(3,:)
+		open(unit=15, file="optim.csv")
+		do i=1,3
+			read(15,*) (parmat(i,j),j=1,parsize)
+		end do
+		close(15)	
+		parameters=parmat(1,:)
+		lb=parmat(2,:)
+		ub=parmat(3,:)
 
 		! TODO ERASE ME
-		parameters=1.0d0
-		parameters(parsize)=0.95 		! special for beta
-		lb=0.0d0
-		ub=5.0d0
+		!parameters=1.0d0
+		!parameters(parsize)=0.95 		! special for beta
+		!lb=0.0d0
+		!ub=5.0d0
 	end subroutine setoptimstuff
 
 	! set indirect inference things, first
