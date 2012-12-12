@@ -124,7 +124,7 @@ integer, parameter:: blocksize=64
 integer nproc, rank, ier, sender, position, number_sent, number_received, order, tag, rorder, order3, order4
 
 ! parameter globals
-integer, parameter:: parsize=20
+integer, parameter:: parsize=19
 
 
 ! wage parameters
@@ -186,6 +186,7 @@ integer itercounter, evaliter
 ! 5- optim.csv (3 x parsize): holds initial values, lower and upper bounds for the optimization in its rows. double
 ! 6- setii.csv ( MomentSize+1 x MomentSize): first row holds target moments, the rest of it is the optimal weighting matrix for the
 !    indirect inference.
+! 7- NEW: parBmat (Bsizeexo+1,nfert): columns hold the the parameters of bprob 
 
 contains 
 
@@ -237,17 +238,25 @@ contains
 		gsigmaetas(1,:)=factormat(2,:)
 		gsigmaetas(2,:)=factormat(3,:)
 		
+
+		! also assign gparBmat by hand.	
+		open(unit=19,file="parBmat.csv")
+		do i=1,Bsizeexo+1
+			read(19,*) (gparBmat(i,j),j=1,nfert)
+		end do
+		close(19)
+		
+		!gparBmat(:,1)=(/ -0.05, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		!gparBmat(:,2)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		!gparBmat(:,3)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		!gparBmat(:,4)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		!gparBmat(:,5)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		!gparBmat(:,6)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
+		
+		
 		! TODO ERASE ME
 		glambdas=1.0d0
 		gsigmaetas=0.1d0
-
-		! also assign gparBmat by hand.	
-		gparBmat(:,1)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		gparBmat(:,2)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		gparBmat(:,3)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		gparBmat(:,4)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		gparBmat(:,5)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		gparBmat(:,6)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
  	end subroutine readsomeparam
 	
 	! use the the mean test scores and their variance to set up grid points for veca1 and veca2

@@ -141,15 +141,15 @@ contains
 		
 		! break up parameters for two types
 		part1_parA=parameters(1:3)
-		parUpart= parameters(5:10)
-		a1type=parameters(11:12)
-		pa1typepart=parameters(13)
+		parUpart= parameters(4:9)
+		a1type=parameters(10:11)
+		pa1typepart=parameters(12)
 		pa1type=(/pa1typepart,1-sum(pa1typepart)/)
-		sigma(1,1)=parameters(14); sigma(2,2)=parameters(15); sigma(3,3)=parameters(16)
-		sigma(2,1)=parameters(17); sigma(1,2)=parameters(17)
-		sigma(3,1)=parameters(18); sigma(1,3)=parameters(18)
-		sigma(3,2)=parameters(19); sigma(2,3)=parameters(19)
-		beta=parameters(20)	
+		sigma(1,1)=parameters(13); sigma(2,2)=parameters(14); sigma(3,3)=parameters(15)
+		sigma(2,1)=parameters(16); sigma(1,2)=parameters(16)
+		sigma(3,1)=parameters(17); sigma(1,3)=parameters(17)
+		sigma(3,2)=parameters(18); sigma(2,3)=parameters(18)
+		beta=parameters(19)	
 
 		parA=(/part1_parA,gpart2_parA/)
 		parU=(/parUpart(1:2), 1.0d0, parUpart(3:6)/) ! put a number in there,a1 will come from a1 distribution but wsolver handles that
