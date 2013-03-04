@@ -317,7 +317,10 @@ implicit none
 	end do
 end function cumx
 
-
+!> simulate histories of choice, experience, test scores, birth from a given
+!> parameter trial, approximate solution parameters. Also produces smoothed
+!> histories a la Keane and Smith. This is for one person. It needs to be called
+!>for each person in the sample with the correct unique sample ID.
 subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoices, smexperience, smAs, smtestoutcomes,omega3,intercepts,parA,parU,parW,parH,beta,sigma,a1type,pa1type,parBmat,vcoef,wcoef,llmsvec,id,rho,lambdas,sigmaetas,smpar)
 	implicit none
 	real(dble), intent(in) :: omega3(:) 		!< observed family type
