@@ -1075,12 +1075,13 @@ subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperie
 	! initalize stuff
 	regsample=sum(idmat(:,1:lfpsize))*Npaths ! participation equation big sample size
 	counter=1
-	
+	baby=0
+	twochild=0	
 	! INDICATOR MATRIX IDMAT SHOULD FOLLOW THIS ORDER
 	! STARTING OUT WITH 6A and 6B in jmpsimple document. 
 
 	!---------------------------------PARTICIPATION EQUATIONS------------------------------------------
-	! linear regressions with work status, where regressor vector is [1 schooling AFQT agem baby E 2child]
+	! linear regressions with work status, where regressor vector is [schooling AFQT agem baby E 2child 1]
 	
 	! first fill in 1.0d0 s to the last column. 	
 	lfpmat(:,nreglfp+1)=1.d0
@@ -1113,7 +1114,7 @@ subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperie
 	call DGELS('N', regsample, nreglfp+1,1,lfpmat,regsample, fulltimevec, regsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
 	fulltimecoef=fulltimevec(1:nreglfp+1)
 	call DGELS('N', regsample, nreglfp+1,1,lfpmat,regsample, parttimevec, regsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
-	fulltimecoef=parttimevec(1:nreglfp+1)
+	parttimecoef=parttimevec(1:nreglfp+1)
 	! NOTE: Do I need to go for the variance of error term? 
 	
 
