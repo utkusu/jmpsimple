@@ -6,7 +6,7 @@ save
 integer, parameter:: dble=kind(1d0)		!< double precision
 ! parameters of the model
 integer, parameter:: timeperiod=1 				!< parameter for frequency of data, 1 is yearly, 0.5 half a year, 0.25 quarterly
-integer, parameter:: abar=7*(1/timeperiod)		!< when switch to old child- at abar, the child is old.
+integer, parameter:: abar=9*(1/timeperiod)		!< when switch to old child- at abar, the child is old.
 integer, parameter:: astar=15*(1/timeperiod)	!< childhood ends
 integer, parameter:: deltamax=7*(1/timeperiod)	!< maximum birth of second child
 integer, parameter:: deltamin=2*(1/timeperiod)		!< minimum birth timing for second, set to 1 to allow twins

@@ -1026,7 +1026,7 @@ subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperie
 		
 	! NOTE  					 ------------ON IDMAT---------------
 	! * first size(lfpperiods) of the idmat is for the periods at which participation equations are estimated.
-	! * next 2*size(expperiods) is for the mean and variance calculations of experience levels.
+	! * next size(expperiods) is for the mean and variance calculations of experience levels.
 	! * following size(expperiods)-1 is for the cov(E_t,E_t+1) calculations. marking the exp pairs. 
 	! * Next is the test score averages. We will deals with tsperiods of them. And stick only to one of the tests.
 	! idmat has a column for each tsperiod. It takes 4 VALUES. 0=not in the data, 1= first child 2=second child 3=both children
