@@ -267,7 +267,7 @@ contains
 		real(dble) meantestscore(Ntestage)
 		real(dble) variancetestscores(Ntestage)
 		integer i, j, age1, age2
-		! insert data here!!!
+		! TODO: insert data here!!!
 		meantestscore=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01, 0.01 /)*1000.0d0
 		variancetestscores=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01, 0.01 /)*10.0d0
 		
