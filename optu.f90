@@ -1313,7 +1313,7 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	! lfpperiods=(/3,6,9,12/), the first four columns of idmat holds the indicators for the data for these periods. By summing
 	! up all the columns, we count the total number sample points that should be entering this regressions, including the time
 	! dimension. Each of these will be associated with Npaths simulated observations
-	integer regsample
+	integer regsample, aregsample
 	real(dble) lfpmat(sum(idmat(:,1:lfpsize))*Npaths,nreglfp+1) 	
 	real(dble) fulltimevec(sum(idmat(:,1:lfpsize))*Npaths)
 	real(dble) parttimevec(sum(idmat(:,1:lfpsize))*Npaths)
@@ -1343,6 +1343,8 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 		
 	! initalize stuff
 	regsample=sum(idmat(:,1:lfpsize))*Npaths ! participation equation big sample size
+	aregsample=sum(idmat(:,1:lfpsize)) 		 ! participation equation small non stacked
+	
 	counter=1
 	baby=0
 	twochild=0	
@@ -1351,39 +1353,78 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 
 	!---------------------------------PARTICIPATION EQUATIONS------------------------------------------
 	! linear regressions with work status, where regressor vector is [schooling AFQT agem baby E 2child 1]
-	
-	! first fill in 1.0d0 s to the last column. 	
-	lfpmat(:,nreglfp+1)=1.d0
-	do k=1, lfpsize
-		do l=1,SampleSize
-			if ( idmat(l,k) == 1 ) then
-				do i=1, Npaths
+
+	do i=1, Npaths
+		counter=1
+		! first fill in 1.0d0 s to the last column. 	
+		alfpmat(:,nregflp+1)=1.0d0
+		do k=1, lfpsize
+			do l=1, lfpsize
+				if (idmat(l,k)==1) then
 					if ((SS(4,lfpperiods(k),i,l)<3.1) .OR. (SS(5,lfpperiods(k),i,l)<3.1)) baby=1
 					if (SS(5,lfpperiods(k),i,l)>0.1) twochild=1
 					! fill in the regressor matrix
-					lfpmat(counter,1:2)=omega3data(1:2,l)
-					lfpmat(counter,3)=omega3data(3,l)+lfpperiods(k)
-					lfpmat(counter,4)=baby*1.0d0
+					alfpmat(counter,1:2)=omega3data(1:2,l)
+					alfpmat(counter,3)=omega3data(3,l)+lfpperiods(k)
+					alfpmat(counter,4)=baby*1.0d0
 					!lfpmat(counter,5)=SS(3,lfpperiods(k),i,l)
-					lfpmat(counter,5)=smexperience(lfpperiods(k),i,l)
-					lfpmat(counter,6)=twochild*1.0d0
+					alfpmat(counter,5)=smexperience(lfpperiods(k),i,l)
+					alfpmat(counter,6)=twochild*1.0d0
 					! fill in the dependent variable	
 					!if (choices(1,lfpperiods(k),i,l) > 2.5) fulltimevec(counter)=1.0d0
 					!if ( (choices(1,lfpperiods(k),i,l) < 2.5) .AND. (choices(1,lfpperiods(k),i,l) > 1.5) ) parttimevec(counter)=1.0d0
-					fulltimevec(counter)=smchoices(3,lfpperiods(k),i,l)
-					parttimevec(counter)=smchoices(2,lfpperiods(k),i,l)
+					afulltimevec(counter)=smchoices(3,lfpperiods(k),i,l)
+					aparttimevec(counter)=smchoices(2,lfpperiods(k),i,l)
 					counter=counter+1
-				end do
-			end if
+				end if
+			end do
 		end do
-	end do
+		call DGELS('N', aregsample, nreglfp+1,1,alfpmat,aregsample, afulltimevec, aregsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
+		fulltimecoefvec(i,:)=afulltimevec(1:nreglfp+1)
+		call DGELS('N', aregsample, nreglfp+1,1,alfpmat,aregsample, aparttimevec, aregsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
+		parttimecoefvec(i,:)=aparttimevec(1:nreglfp+1)
+		fulltimecoef=sum(fulltimecoefvec,1)	
+		parttimecoef=sum(parttimecoefvec,1)	
 
-	! now run the lapack to get the regression coefficients
 
-	call DGELS('N', regsample, nreglfp+1,1,lfpmat,regsample, fulltimevec, regsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
-	fulltimecoef=fulltimevec(1:nreglfp+1)
-	call DGELS('N', regsample, nreglfp+1,1,lfpmat,regsample, parttimevec, regsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
-	parttimecoef=parttimevec(1:nreglfp+1)
+
+	!! first fill in 1.0d0 s to the last column. 	
+	!lfpmat(:,nreglfp+1)=1.d0
+	!do k=1, lfpsize
+		!do l=1,SampleSize
+			!if ( idmat(l,k) == 1 ) then
+				!do i=1, Npaths
+					!if ((SS(4,lfpperiods(k),i,l)<3.1) .OR. (SS(5,lfpperiods(k),i,l)<3.1)) baby=1
+					!if (SS(5,lfpperiods(k),i,l)>0.1) twochild=1
+					!! fill in the regressor matrix
+					!lfpmat(counter,1:2)=omega3data(1:2,l)
+					!lfpmat(counter,3)=omega3data(3,l)+lfpperiods(k)
+					!lfpmat(counter,4)=baby*1.0d0
+					!!lfpmat(counter,5)=SS(3,lfpperiods(k),i,l)
+					!lfpmat(counter,5)=smexperience(lfpperiods(k),i,l)
+					!lfpmat(counter,6)=twochild*1.0d0
+					!! fill in the dependent variable	
+					!!if (choices(1,lfpperiods(k),i,l) > 2.5) fulltimevec(counter)=1.0d0
+					!!if ( (choices(1,lfpperiods(k),i,l) < 2.5) .AND. (choices(1,lfpperiods(k),i,l) > 1.5) ) parttimevec(counter)=1.0d0
+					!fulltimevec(counter)=smchoices(3,lfpperiods(k),i,l)
+					!parttimevec(counter)=smchoices(2,lfpperiods(k),i,l)
+					!counter=counter+1
+				!end do
+			!end if
+		!end do
+	!end do
+
+	!! now run the lapack to get the regression coefficients
+
+	!call DGELS('N', regsample, nreglfp+1,1,lfpmat,regsample, fulltimevec, regsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
+	!fulltimecoef=fulltimevec(1:nreglfp+1)
+	!call DGELS('N', regsample, nreglfp+1,1,lfpmat,regsample, parttimevec, regsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
+	!parttimecoef=parttimevec(1:nreglfp+1)
+
+	
+	
+	
+	
 	! NOTE: Do I need to go for the variance of error term? 
 	
 
