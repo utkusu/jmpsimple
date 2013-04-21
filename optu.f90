@@ -1315,10 +1315,19 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	! dimension. Each of these will be associated with Npaths simulated observations
 	integer regsample, aregsample
 	real(dble) lfpmat(sum(idmat(:,1:lfpsize))*Npaths,nreglfp+1) 	
+	! new: Smaller matrix
+	real(dble) alfpmat(sum(idmat(:,1:lfpsize)),nreglfp+1) 	
+	
 	real(dble) fulltimevec(sum(idmat(:,1:lfpsize))*Npaths)
 	real(dble) parttimevec(sum(idmat(:,1:lfpsize))*Npaths)
+	
+	real(dble) afulltimevec(sum(idmat(:,1:lfpsize)))
+	real(dble) aparttimevec(sum(idmat(:,1:lfpsize)))
+	
 	real(dble) parttimecoef(nreglfp+1)
 	real(dble) fulltimecoef(nreglfp+1)
+	real(dble) parttimecoefvec(Npaths,nreglfp+1)
+	real(dble) fulltimecoefvec(Npaths,nreglfp+1)
 	
 	! for experience calculations, create a matrix that will hold the relevant experience observations
 	real(dble),allocatable:: experience(:), dualexperience(:,:)
@@ -1383,8 +1392,10 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 		fulltimecoefvec(i,:)=afulltimevec(1:nreglfp+1)
 		call DGELS('N', aregsample, nreglfp+1,1,alfpmat,aregsample, aparttimevec, aregsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
 		parttimecoefvec(i,:)=aparttimevec(1:nreglfp+1)
-		fulltimecoef=sum(fulltimecoefvec,1)	
-		parttimecoef=sum(parttimecoefvec,1)	
+	end do
+	
+		fulltimecoef=sum(fulltimecoefvec,1)/Npaths	
+		parttimecoef=sum(parttimecoefvec,1)/Npaths	
 
 
 
