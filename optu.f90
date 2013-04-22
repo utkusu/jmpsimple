@@ -1435,8 +1435,7 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	
 	
 	
-	
-	! NOTE: Do I need to go for the variance of error term? 
+! NOTE: Do I need to go for the variance of error term? 
 	
 
 	!-----------------------------EXPERIENCE-----------------------------
@@ -1446,7 +1445,6 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	
 
 	! New Way: calculating everything for each path and then averaging them out.
-
 	do i=1, Npaths
 		! THE EXPPERIODS ARE AGES OF THE MOTHER, NOT PERIODS, SO WE NEED TO PICK THE CORRECT PERIOD with OMEGA3(3)
 		do k=1, expsize
@@ -1455,55 +1453,82 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 			do l=1, SampleSize
 				if (idmat(l,lfpsize+k)==1) then
 					do i=1,Npaths
-								!experience(counter)=SS(3,expperiods(k)+omega3data(3,l),i,l)
-								experience(counter)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
-								counter=counter+1
-							end do
-						end if
+						!experience(counter)=SS(3,expperiods(k)+omega3data(3,l),i,l)
+						experience(counter)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
+						counter=counter+1
 					end do
-
-
-
-	! THE EXPPERIODS ARE AGES OF THE MOTHER, NOT PERIODS, SO WE NEED TO PICK THE CORRECT PERIOD with OMEGA3(3)
-	do k=1, expsize
-		counter=1
-		allocate( experience ( sum (idmat(:,lfpsize+k)*Npaths ) ) )
-		do l=1, SampleSize
-			if (idmat(l,lfpsize+k)==1) then
-				do i=1,Npaths
-					!experience(counter)=SS(3,expperiods(k)+omega3data(3,l),i,l)
-					experience(counter)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
-					counter=counter+1
-				end do
-			end if
+				end if
+			end do
+			! calculate the mean and the variance for the ith path and kth experience level. 
+			call mv(experience,mvvec) 
+			expestmat(i,(k-1)*2+1:2*k)=mvvec
+			deallocate (experience)
 		end do
-		! now we have the correct experience vector, calculate mean and the variance.
-		call mv(experience,mvvec) 
-		expest((k-1)*2+1:2*k)=mvvec
-		deallocate (experience)
-	end do
-
-	! now covariance of experiences.
-	do k=1, expsize-1
-		counter=1
-		allocate ( dualexperience( sum(idmat(:,lfpsize+expsize+k))*Npaths,2 ) )
-		do l=1, SampleSize
-			if (idmat(l,lfpsize+expsize+k)==1) then
-				do i=1, Npaths
+		
+		! now the covariances
+		do k=1, expsize-1
+			counter=1
+			allocate ( dualexperience( sum(idmat(:,lfpsize+expsize+k)),2 ) )
+			do l=1, SampleSize
+				if (idmat(l,lfpsize+expsize+k)==1) then
 					!dualexperience(counter,1)=SS(3,expperiods(k)+omega3data(3,l),i,l)
 					!dualexperience(counter,2)=SS(3,expperiods(k+1)+omega3data(3,l),i,l)
 					dualexperience(counter,1)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
 					dualexperience(counter,2)=smexperience(expperiods(k+1)-nint(omega3data(3,l)+1),i,l)
 					counter=counter+1
-				end do
-			end if
+				end if
+			end do
+			! calculate covariance
+			call concov(dualexperience,covexp)
+			expestmat(i,(2*expsize+k))=covexp	
+			! deallocate
+			deallocate (dualexperience)
 		end do
-		! calculate covariance
-		call concov(dualexperience,covexp)
-		expest((2*expsize+k))=covexp	
-		! deallocate
-		deallocate (dualexperience)
 	end do
+
+	! now averaging it out.
+	expest=sum(expestmat,1)/Npaths
+	
+   ! ! THE EXPPERIODS ARE AGES OF THE MOTHER, NOT PERIODS, SO WE NEED TO PICK THE CORRECT PERIOD with OMEGA3(3)
+	!do k=1, expsize
+		!counter=1
+		!allocate( experience ( sum (idmat(:,lfpsize+k)*Npaths ) ) )
+		!do l=1, SampleSize
+			!if (idmat(l,lfpsize+k)==1) then
+				!do i=1,Npaths
+					!!experience(counter)=SS(3,expperiods(k)+omega3data(3,l),i,l)
+					!experience(counter)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
+					!counter=counter+1
+				!end do
+			!end if
+		!end do
+		!! now we have the correct experience vector, calculate mean and the variance.
+		!call mv(experience,mvvec) 
+		!expest((k-1)*2+1:2*k)=mvvec
+		!deallocate (experience)
+	!end do
+
+	!! now covariance of experiences.
+	!do k=1, expsize-1
+		!counter=1
+		!allocate ( dualexperience( sum(idmat(:,lfpsize+expsize+k))*Npaths,2 ) )
+		!do l=1, SampleSize
+			!if (idmat(l,lfpsize+expsize+k)==1) then
+				!do i=1, Npaths
+					!!dualexperience(counter,1)=SS(3,expperiods(k)+omega3data(3,l),i,l)
+					!!dualexperience(counter,2)=SS(3,expperiods(k+1)+omega3data(3,l),i,l)
+					!dualexperience(counter,1)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
+					!dualexperience(counter,2)=smexperience(expperiods(k+1)-nint(omega3data(3,l)+1),i,l)
+					!counter=counter+1
+				!end do
+			!end if
+		!end do
+		!! calculate covariance
+		!call concov(dualexperience,covexp)
+		!expest((2*expsize+k))=covexp	
+		!! deallocate
+		!deallocate (dualexperience)
+	!end do
 	
 	!-------------------------- TEST SCORE LEVELS -----------------------------------
 	! test score levels will help to pin down gammahat parameters. match levels at different ages.  
@@ -1512,6 +1537,8 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	! need to enter tsperiods=(/2,4,6,12/). this is because testoutcome matrices start from has a lower dim than SS, just enough
 	! for test scores
 
+	! I WILL NOT CHANGE THIS: (1) It is just the average, so it does not matter how you sum it up. (2) I am not even sure I will be
+	! using this as a moment condition.
 	do k=1, tssize
 		counter=1
 		nspots=0
