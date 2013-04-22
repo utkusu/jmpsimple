@@ -1394,8 +1394,8 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 		parttimecoefvec(i,:)=aparttimevec(1:nreglfp+1)
 	end do
 	
-		fulltimecoef=sum(fulltimecoefvec,1)/Npaths	
-		parttimecoef=sum(parttimecoefvec,1)/Npaths	
+	fulltimecoef=sum(fulltimecoefvec,1)/Npaths	
+	parttimecoef=sum(parttimecoefvec,1)/Npaths	
 
 
 
@@ -1444,6 +1444,26 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	! 30,35 and 35,40 wages.
 	! prepare the vectors first. idmat's following 4 columns mark the people who entered into these calculations. 
 	
+
+	! New Way: calculating everything for each path and then averaging them out.
+
+	do i=1, Npaths
+		! THE EXPPERIODS ARE AGES OF THE MOTHER, NOT PERIODS, SO WE NEED TO PICK THE CORRECT PERIOD with OMEGA3(3)
+		do k=1, expsize
+			counter=1
+			allocate( experience ( sum (idmat(:,lfpsize+k) ) ) )
+			do l=1, SampleSize
+				if (idmat(l,lfpsize+k)==1) then
+					do i=1,Npaths
+								!experience(counter)=SS(3,expperiods(k)+omega3data(3,l),i,l)
+								experience(counter)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
+								counter=counter+1
+							end do
+						end if
+					end do
+
+
+
 	! THE EXPPERIODS ARE AGES OF THE MOTHER, NOT PERIODS, SO WE NEED TO PICK THE CORRECT PERIOD with OMEGA3(3)
 	do k=1, expsize
 		counter=1
