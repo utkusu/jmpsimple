@@ -1577,7 +1577,13 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	! we will go through the number of test periods one by one. Starting from age period 6 (because this is the earliest we can have
 	! test scores for a pair of kids. Maximum is testmaxage-2. So idmat should have testmaxage-testminage elements showing us who
 	! are in the calculation for each period.
-	
+
+
+	! NEW version: take the average of the coefficients.
+
+
+
+
 	! first count the simulated observations that will go into this
 	nspots=0
 	
@@ -1638,10 +1644,6 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	momentvec=(/fulltimecoef, parttimecoef, expest, tsest,tsdiffest/)
 
 end subroutine momentsalt
-
-
-
-
 
 
 
