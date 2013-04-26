@@ -1332,6 +1332,7 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	! for experience calculations, create a matrix that will hold the relevant experience observations
 	real(dble),allocatable:: experience(:), dualexperience(:,:)
 	real(dble) expest(expsize*2+expsize-1) 	! hold the mean and variances of experience levels. mean1,var1, mean2, var2,.. then covariances
+	real(dble) expestmat(Npaths,expsize*2+expsize-1) 	! matrix to hold the calculations for each simulation
 	real(dble) mvvec(2), covexp
 	
 	! for average test scores
@@ -1342,7 +1343,9 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	! for test score difference equations
 	real(dble), allocatable:: tsdiffmat(:,:)
 	real(dble), allocatable:: tsdiffvec(:)
-	real(dble) tsdiffest(nregtsdiff+1)
+	real(dble) tsdiffest(nregtsdiff+1), tsdiffestmat(Npaths,nregtsdiff+1)
+
+
 	real(dble) smh, smhnext, A1, A2, A1F, A2F
 
 	! lapack stuff
@@ -1578,37 +1581,30 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	! test scores for a pair of kids. Maximum is testmaxage-2. So idmat should have testmaxage-testminage elements showing us who
 	! are in the calculation for each period.
 
+	do i=1,Npaths
 
-	! NEW version: take the average of the coefficients.
-
-
-
-
-	! first count the simulated observations that will go into this
-	nspots=0
-	
-	do k=testminage+1,testmaxage-2
-		do l=1, SampleSize
-			if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
-				do i=1,Npaths 	! ... go through simulated outcomes for that mom and figure which ones have test scores for both kids at that period.
+		nspots=0
+		do k=testminage+1,testmaxage-2
+			do l=1, SampleSize
+				if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
 					! if kid 2 is older than 5, then create a spot
 					if (SS(5,k,i,l) > 4.8)  nspots=nspots+1
-				end do
-			end if
+				end if
+			end do
 		end do
-	end do
 
-	! now we can allocate data matrix and dependent variable vectors
-	allocate(tsdiffmat (nspots, nregtsdiff+1) )
-	allocate(tsdiffvec (nspots) )
+
+		! now we can allocate data matrix and dependent variable vectors
+		allocate(tsdiffmat (nspots, nregtsdiff+1) )
+		allocate(tsdiffvec (nspots) )
 	
-	tsdiffmat(:,nregtsdiff+1)=1.0d0
-	! another loop to fill in these guys
-	counter=1
-	do k=testminage+1,testmaxage-2
-		do l=1, SampleSize
-			if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
-				do i=1,Npaths 	! ... go through simulated outcomes for that mom and pick the right ones
+	
+		tsdiffmat(:,nregtsdiff+1)=1.0d0
+		! another loop to fill in these guys
+		counter=1
+		do k=testminage+1,testmaxage-2
+			do l=1, SampleSize
+				if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
 					! 1. fill in the labor supply related parts (smh)
 					!if ( smtestoutcomes(3, k-testminage+1,i,l) > -1.0d0 )   then ! if the second kid is old enough to have a testscore (first is kid is already at most testmaxage-2
 					if (SS(5,k,i,l)>4.8) then 
@@ -1627,23 +1623,89 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 						tsdiffvec(counter)= A1f-A1+A2f-A2
 						counter=counter+1
 					end if
-				end do
-			end if
+				end if
+			end do
 		end do
-	end do
-	!print*, tsdiffmat(:,3:5)
 
 
-	! lapack
-	call DGELS('N', nspots, nregtsdiff+1,1,tsdiffmat,nspots, tsdiffvec, nspots,worktsdiff,nregtsdiff+1+(nregtsdiff+1)*blocksize,infotsdiff)
-	tsdiffest=tsdiffvec(1:nregtsdiff+1)
-	! deallocate
-	deallocate(tsdiffvec)
-	deallocate(tsdiffmat)
+		! lapack
+		call DGELS('N', nspots, nregtsdiff+1,1,tsdiffmat,nspots, tsdiffvec, nspots,worktsdiff,nregtsdiff+1+(nregtsdiff+1)*blocksize,infotsdiff)
+		tsdiffestmat(i,1)=tsdiffvec(1:nregtsdiff+1)
+		! deallocate
+		deallocate(tsdiffvec)
+		deallocate(tsdiffmat)
+	end do 
+	tsdiffest=sum(tsdiffestmat,1)/Npaths
+
+
+
+
+	!! first count the simulated observations that will go into this
+	
+	!nspots=0
+	!do k=testminage+1,testmaxage-2
+		!do l=1, SampleSize
+			!if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
+				!do i=1,Npaths 	! ... go through simulated outcomes for that mom and figure which ones have test scores for both kids at that period.
+					!! if kid 2 is older than 5, then create a spot
+					!if (SS(5,k,i,l) > 4.8)  nspots=nspots+1
+				!end do
+			!end if
+		!end do
+	!end do
+
+	!! now we can allocate data matrix and dependent variable vectors
+	!allocate(tsdiffmat (nspots, nregtsdiff+1) )
+	!allocate(tsdiffvec (nspots) )
+	
+	!tsdiffmat(:,nregtsdiff+1)=1.0d0
+	!! another loop to fill in these guys
+	!counter=1
+	!do k=testminage+1,testmaxage-2
+		!do l=1, SampleSize
+			!if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
+				!do i=1,Npaths 	! ... go through simulated outcomes for that mom and pick the right ones
+					!! 1. fill in the labor supply related parts (smh)
+					!!if ( smtestoutcomes(3, k-testminage+1,i,l) > -1.0d0 )   then ! if the second kid is old enough to have a testscore (first is kid is already at most testmaxage-2
+					!if (SS(5,k,i,l)>4.8) then 
+						!smh=sum(smchoices(:,k,i,l)*(/0.0d0,0.5d0,1.0d0/))
+						!smhnext=sum(smchoices(:,k+1,i,l)*(/0.0d0,0.5d0,1.0d0/))
+						!tsdiffmat(counter, 1:2)=(/smh,smhnext/)
+						!tsdiffmat(counter, 3:5)=smh*omega3data(1:3,l)
+						!tsdiffmat(counter, 6:8)=smhnext*omega3data(1:3,l)
+						!tsdiffmat(counter,9:11)=omega3data(1:3,l)
+						!tsdiffmat(counter,12:13)=SS(4:5,k,i,l)
+						!! now fillin the tsdiffmat vec
+						!A1=smtestoutcomes(1,k-testminage+1,i,l)
+						!A2=smtestoutcomes(3,k-testminage+1,i,l)
+						!A1f=smtestoutcomes(1,k-testminage+3,i,l)
+						!A2f=smtestoutcomes(3,k-testminage+3,i,l)
+						!tsdiffvec(counter)= A1f-A1+A2f-A2
+						!counter=counter+1
+					!end if
+				!end do
+			!end if
+		!end do
+	!end do
+	!!print*, tsdiffmat(:,3:5)
+
+
+	!! lapack
+	!call DGELS('N', nspots, nregtsdiff+1,1,tsdiffmat,nspots, tsdiffvec, nspots,worktsdiff,nregtsdiff+1+(nregtsdiff+1)*blocksize,infotsdiff)
+	!tsdiffest=tsdiffvec(1:nregtsdiff+1)
+	!! deallocate
+	!deallocate(tsdiffvec)
+	!deallocate(tsdiffmat)
 	! put all the vecs together
+
+	
 	momentvec=(/fulltimecoef, parttimecoef, expest, tsest,tsdiffest/)
 
 end subroutine momentsalt
+
+
+
+
 
 
 
