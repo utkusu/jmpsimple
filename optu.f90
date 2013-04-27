@@ -1369,7 +1369,7 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	do i=1, Npaths
 		counter=1
 		! first fill in 1.0d0 s to the last column. 	
-		alfpmat(:,nregflp+1)=1.0d0
+		alfpmat(:,nreglfp+1)=1.0d0
 		do k=1, lfpsize
 			do l=1, lfpsize
 				if (idmat(l,k)==1) then
@@ -1455,11 +1455,9 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 			allocate( experience ( sum (idmat(:,lfpsize+k) ) ) )
 			do l=1, SampleSize
 				if (idmat(l,lfpsize+k)==1) then
-					do i=1,Npaths
-						!experience(counter)=SS(3,expperiods(k)+omega3data(3,l),i,l)
-						experience(counter)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
-						counter=counter+1
-					end do
+					!experience(counter)=SS(3,expperiods(k)+omega3data(3,l),i,l)
+					experience(counter)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
+					counter=counter+1
 				end if
 			end do
 			! calculate the mean and the variance for the ith path and kth experience level. 
@@ -1630,7 +1628,7 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 
 		! lapack
 		call DGELS('N', nspots, nregtsdiff+1,1,tsdiffmat,nspots, tsdiffvec, nspots,worktsdiff,nregtsdiff+1+(nregtsdiff+1)*blocksize,infotsdiff)
-		tsdiffestmat(i,1)=tsdiffvec(1:nregtsdiff+1)
+		tsdiffestmat(i,:)=tsdiffvec(1:nregtsdiff+1)
 		! deallocate
 		deallocate(tsdiffvec)
 		deallocate(tsdiffmat)
