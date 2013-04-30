@@ -29,8 +29,8 @@ integer, parameter:: Bsizeexo=4			!< the number of regressors in the birth proba
 integer,parameter::Npaths=500 			!<number of simulated paths for each family.
 integer,parameter::simvecsize=10 		!<the size of the simulated data vector for each period. obviosly very related to ss.
 integer, parameter::SampleSize=200 		!< Size of the estimation sample
-integer, parameter:: Ntestage=10 		!< number of ages in which we have test scores. start at 5, end in 14.
-integer, parameter:: testminage=5 		!< earliest test scores
+integer, parameter:: Ntestage=88888888 		!< number of ages in which we have test scores. start at 5, end in 14.
+integer, parameter:: testminage=7 		!< earliest test scores
 integer, parameter:: testmaxage=14 		!< latest test scores
 integer, parameter::o1size=3 			!< size of omega1
 integer, parameter::o2size=4			!< size of omega2
@@ -128,6 +128,7 @@ integer, parameter:: parsize=19
 
 
 ! wage parameters
+! put the betaf and betam here
 real(dble), parameter::gparW(parWsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 /)*0.10d0
 real(dble), parameter::gparH(parHsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01  /) *0.00110d0
 real(dble) , parameter:: gpart2_parA(9)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01 /)*0.10d0
@@ -179,8 +180,8 @@ integer itercounter, evaliter
 ! rest of the parameters are manually set above. 
 ! 1- idmat.csv (Sample Size x idmatsize): Integer values, used in the moments calculation. 
 ! 	Indicates which members of the sample enters which calculation.  See explanation in moments routine
-! 2- omega3.csv (o3size x Sample): holds the omega3 values for the sample. double precision.
-! 3- llms.csv: holds llms data for the sample, double.
+! 2- omega3mat.csv (o3size x Sample): holds the omega3 values for the sample. double precision.
+! 3- llms.csv: holds llms data for the sample, double. T x Nsample
 ! 4- factorpar.csv (3 x Ntestage) : holds the factor analysis results. First row hold factor loading for the second measurement equation
 ! 	2 and 3 holds measurement error variance for the first and second equations, double
 ! 5- optim.csv (3 x parsize): holds initial values, lower and upper bounds for the optimization in its rows. double
@@ -202,7 +203,7 @@ contains
 		end do
 		close(12)
 		
-		open(unit=13, file="omega3.csv")
+		open(unit=13, file="omega3mat.csv")
 		do i=1, o3size
 			read (13,*) (gomega3data(i,j),j=1,SampleSize)
 		end do
