@@ -439,6 +439,7 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 	smexperience=0.0d0
 	! initialize test scores
 	testoutcomes=-9999.0d0
+	smtestoutcomes=-9999.0d0
 	wage=wagef(0.d0,1.0d0,llmsvec(1),omega3(1),omega3(2),omega3(3),eps(:,4),intercepts(2),parW(5:7),parW(1:4))
 	wageh=wagehfquick(omega3(4),1.0d0,eps(:,5),parH(5:6))	
 	outcomes(1,1,:)=wage
