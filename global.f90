@@ -124,7 +124,7 @@ integer, parameter:: blocksize=64
 integer nproc, rank, ier, sender, position, number_sent, number_received, order, tag, rorder, order3, order4
 
 ! parameter globals
-integer, parameter:: parsize=19
+integer, parameter:: parsize=20
 
 
 ! wage parameters
@@ -148,7 +148,6 @@ real(dble) , parameter:: gsmpar=0.5d0
 
 
 ! intercepts - later on these will be types, too
-real(dble) , parameter:: gctype=0.0001d0
 real(dble) , parameter:: gmtype=0.01d0
 real(dble) , parameter:: gatype=0.01d0
 

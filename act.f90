@@ -137,7 +137,10 @@ contains
 		
 		! delete me =why?
 		real(dble) coef(Gsizeoc+1)
-		
+	
+		! late addition: I forgot to parameterze mu_c
+		real(dble) nctype
+
 		! break up parameters for two types
 		part1_parA=parameters(1:3)
 		parUpart= parameters(4:9)
@@ -149,6 +152,10 @@ contains
 		sigma(3,1)=parameters(17); sigma(1,3)=parameters(17)
 		sigma(3,2)=parameters(18); sigma(2,3)=parameters(18)
 		beta=parameters(19)	
+		! the following is supposed to come in a distribution in a model, but simple model does not allow heterogeneity.
+		! I forgot about this intercept, it needs to estimated inside the model.
+		nctype=parameters(20)
+
 
 		parA=(/part1_parA,gpart2_parA/)
 		parU=(/parUpart(1:2), 1.0d0, parUpart(3:6)/) ! put a number in there,a1 will come from a1 distribution but wsolver handles that
@@ -243,7 +250,7 @@ contains
 				call MPI_RECV(order, 1, MPI_INTEGER, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, ier)
 				tag=status(MPI_TAG)
 				if (tag>0) then
-					call wsolver(solw,ftypemat(2,order),(/gctype,gctype,gmtype,gatype,ftypemat(1,order)/),parA,gparW,gparH(5:6),parU, beta,sigma,grho)
+					call wsolver(solw,ftypemat(2,order),(/nctype,nctype,gmtype,parUpart(2),ftypemat(1,order)/),parA,gparW,gparH(5:6),parU, beta,sigma,grho)
 					!print*, ftypemat(1,:)
 					!print*,  '___worker',rank,'order=',order, 'calculated for', ftypemat(2,order), ftypemat(1,order)
 					rorder=order
@@ -265,7 +272,7 @@ contains
 				if(tag>10) then
 					! get the correct mother type from solwall
 					wcoef(:,:,:,1)=solwall(:,:,:,order)
-					call vsolver(solv,(/gctype,gctype,gmtype,gatype,a1type(order)/), parA,gparW,gparH(5:6),parU,gparBmat, beta,sigma,wcoef,(/gctype/),(/1.0d0/),grho)
+					call vsolver(solv,(/nctype,nctype,gmtype,parUpart(2),a1type(order)/), parA,gparW,gparH(5:6),parU,gparBmat, beta,sigma,wcoef,(/nctype/),(/1.0d0/),grho)
 					!print*, solv
 					rorder=order   ! returning the order
 					call MPI_SEND(rorder, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, ier)
