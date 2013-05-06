@@ -148,6 +148,9 @@ real(dble) , parameter:: gsmpar=0.5d0
 
 
 ! intercepts - later on these will be types, too
+
+! the constant estimate from the estimation of logwage regression needs to be entered here
+! the code is like this, because it helps to facilitate to make this hetero. later.
 real(dble) , parameter:: gmtype=0.01d0
 real(dble) , parameter:: gatype=0.01d0
 
@@ -268,8 +271,8 @@ contains
 		real(dble) variancetestscores(Ntestage)
 		integer i, j, age1, age2
 		! TODO: insert data here!!!
-		meantestscore=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01, 0.01 /)*1000.0d0
-		variancetestscores=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01, 0.01 /)*10.0d0
+		meantestscore=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01  /)*1000.0d0
+		variancetestscores=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01 /)*10.0d0
 		
 		! to understand this later: if age1
 		age1=max(min(nint(period)-testminage+1,Ntestage),1)

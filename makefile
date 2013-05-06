@@ -14,9 +14,10 @@ ifeq ($(ifortran),1)
 else
 	FORTRAN_COMPILER=mpif90
 	ifeq ($(f),1)
-		switch= -llapack -O2 
+		switch= -llapack -O2 -I/home/utkusu/nlopt/include -L/home/utkusu/nlopt/lib 
 	else
-		switch= -llapack -debug -heap-arrays -CB 
+		switch= -llapack -debug -heap-arrays -CB -I/home/utkusu/nlopt/include -L/home/utkusu/nlopt/lib 
+
 	endif
 endif
 exec: $(objects)
