@@ -14,14 +14,14 @@ ifeq ($(ifortran),1)
 else
 	FORTRAN_COMPILER=mpif90
 	ifeq ($(f),1)
-		switch= -llapack -O2 -I/home/utkusu/nlopt/include -L/home/utkusu/nlopt/lib 
+		switch= -llapack -O2 
 	else
-		switch= -llapack -debug -heap-arrays -CB -I/home/utkusu/nlopt/include -L/home/utkusu/nlopt/lib 
+		switch= -llapack -debug -heap-arrays 
 
 	endif
 endif
 exec: $(objects)
-	$(FORTRAN_COMPILER) $(switch) -o exec $(objects)
+	$(FORTRAN_COMPILER) $(switch)-o exec $(objects)  -I/home/utkusu/nlopt/include -L/home/utkusu/nlopt/lib -lnlopt -lm 
 global.mod: global.o global.f90
 	$(FORTRAN_COMPILER) $(switch) -c global.f90
 global.o: global.f90
@@ -39,7 +39,7 @@ optu.mod: optu.o optu.f90
 optu.o: optu.f90
 	$(FORTRAN_COMPILER) $(switch) -c optu.f90
 act.o: global.mod randomgen.mod emax.mod optu.mod act.f90
-	$(FORTRAN_COMPILER) $(switch) -c act.f90
+	$(FORTRAN_COMPILER) $(switch) act.f90 -I/home/utkusu/nlopt/include -L/home/utkusu/nlopt/lib -lnlopt -lm -c 
 clean:
 	rm *.mod *.o
 
