@@ -26,11 +26,11 @@ integer, parameter:: Bsize=2			!< the number of regressors in the birth probabil
 integer, parameter:: Bsizeexo=4			!< the number of regressors in the birth probability function other than the contraception
 
 ! estimation stuff 
-integer,parameter::Npaths=500 			!<number of simulated paths for each family.
+integer,parameter::Npaths=50 			!<number of simulated paths for each family.
 integer,parameter::simvecsize=10 		!<the size of the simulated data vector for each period. obviosly very related to ss.
-integer, parameter::SampleSize=200 		!< Size of the estimation sample
-integer, parameter:: Ntestage=9 		!< number of ages in which we have test scores. start at 5, end in 14.
-integer, parameter:: testminage=6 		!< earliest test scores
+integer, parameter::SampleSize=635 		!< Size of the estimation sample
+integer, parameter:: Ntestage=10 		!< number of ages in which we have test scores. start at 5, end in 14.
+integer, parameter:: testminage=5 		!< earliest test scores
 integer, parameter:: testmaxage=14 		!< latest test scores
 integer, parameter::o1size=3 			!< size of omega1
 integer, parameter::o2size=4			!< size of omega2
@@ -45,7 +45,7 @@ integer, parameter:: nreglfp=6 			!< number of regressors in labor force partici
 integer, parameter:: nregtsdiff=13 		!> number of regressors in tsdiff equations. intercept not included.
 
 integer, parameter:: MomentSize= (2*nreglfp+2) + (3*expsize-1) + (tssize) + (nregtsdiff+1) 		!< number of moments to be matched
-integer, parameter::idmatsize=lfpsize+expsize+expsize-1+tssize+Ntestage 						!< idmat's second dimension
+integer, parameter::idmatsize=lfpsize+(2*expsize)+expsize-1+tssize+Ntestage 						!< idmat's second dimension
 
 ! parameter vector sizes
 
@@ -78,7 +78,7 @@ real(dble), parameter::onescxgrid(cxgridsize)=1.0d0
 real(dble), parameter::onescgridwithbirth(cgridsize*2)=1.0d0
 
 ! emax interpolation parameters
-integer, parameter:: Nmc=200		!<monte carlo integration draw size
+integer, parameter:: Nmc=10		!<monte carlo integration draw size
 
 integer, parameter::svecage0m=4
 integer, parameter::svecsch0m=4
@@ -128,7 +128,7 @@ integer, parameter:: parsize=20
 
 
 ! wage parameters
-! put the betaf and betam here
+! >>>>>>>>>>>>>  put the betaf and betam here <<<<<<<<<<<<<<<<<<<<<<<<<
 real(dble), parameter::gparW(parWsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 /)*0.10d0
 real(dble), parameter::gparH(parHsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01  /) *0.00110d0
 real(dble) , parameter:: gpart2_parA(9)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01 /)*0.10d0
@@ -151,8 +151,10 @@ real(dble) , parameter:: gsmpar=0.5d0
 
 ! the constant estimate from the estimation of logwage regression needs to be entered here
 ! the code is like this, because it helps to facilitate to make this hetero. later.
+!>>>>>>>>>>>>>>>>>> INTERCEPT HERE<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 real(dble) , parameter:: gmtype=0.01d0
-real(dble) , parameter:: gatype=0.01d0
+
+!real(dble) , parameter:: gatype=0.01d0
 
 
 
