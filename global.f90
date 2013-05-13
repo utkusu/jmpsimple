@@ -42,7 +42,7 @@ integer, parameter:: lfpsize=4 			!< number of periods for the participation equ
 integer, parameter:: expsize=4 			!< number of mother's ages at which the experieence level distributions are matched
 integer, parameter:: tssize=4 			!< number of ages for which the children's test score averages to be calculated.
 integer, parameter:: nreglfp=6 			!< number of regressors in labor force participation equations. intercept not included.
-integer, parameter:: nregtsdiff=13 		!> number of regressors in tsdiff equations. intercept not included.
+integer, parameter:: nregtsdiff=14 		!> number of regressors in tsdiff equations. intercept not included.
 
 integer, parameter:: MomentSize= (2*nreglfp+2) + (3*expsize-1) + (tssize) + (nregtsdiff+1) 		!< number of moments to be matched
 integer, parameter::idmatsize=lfpsize+(2*expsize)+expsize-1+tssize+Ntestage 						!< idmat's second dimension
