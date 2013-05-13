@@ -146,6 +146,9 @@ real(dble) gsigmaetas(2,Ntestage)
 ! smoothing parameter for the smoothing
 real(dble) , parameter:: gsmpar=0.5d0
 
+! estimated shock variances for wages
+real(dble), parameter:: gwshock=0.1d0
+real(dble), parameter:: gwfathershock=200.0d0
 
 ! intercepts - later on these will be types, too
 

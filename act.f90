@@ -147,10 +147,17 @@ contains
 		a1type=parameters(10:11)
 		pa1typepart=parameters(12)
 		pa1type=(/pa1typepart,1-sum(pa1typepart)/)
+		
+		sigma=0.0d0
 		sigma(1,1)=parameters(13); sigma(2,2)=parameters(14); sigma(3,3)=parameters(15)
 		sigma(2,1)=parameters(16); sigma(1,2)=parameters(16)
 		sigma(3,1)=parameters(17); sigma(1,3)=parameters(17)
 		sigma(3,2)=parameters(18); sigma(2,3)=parameters(18)
+		! remainder of sigma is the diagonal elements of wage shocks. Covariance
+		! of the wage shock with others and each other is assumed 0.
+		sigma(4,4)=gwshock
+		sigma(5,5)=gwfathershock
+		
 		beta=parameters(19)	
 		! the following is supposed to come in a distribution in a model, but simple model does not allow heterogeneity.
 		! I forgot about this intercept, it needs to estimated inside the model.
