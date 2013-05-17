@@ -28,7 +28,7 @@ integer, parameter:: Bsizeexo=4			!< the number of regressors in the birth proba
 ! estimation stuff 
 integer,parameter::Npaths=50 			!<number of simulated paths for each family.
 integer,parameter::simvecsize=10 		!<the size of the simulated data vector for each period. obviosly very related to ss.
-integer, parameter::SampleSize=635 		!< Size of the estimation sample
+integer, parameter::SampleSize=301 		!< Size of the estimation sample
 integer, parameter:: Ntestage=10 		!< number of ages in which we have test scores. start at 5, end in 14.
 integer, parameter:: testminage=5 		!< earliest test scores
 integer, parameter:: testmaxage=14 		!< latest test scores
@@ -129,8 +129,8 @@ integer, parameter:: parsize=20
 
 ! wage parameters
 ! >>>>>>>>>>>>>  put the betaf and betam here <<<<<<<<<<<<<<<<<<<<<<<<<
-real(dble), parameter::gparW(parWsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 /)*0.10d0
-real(dble), parameter::gparH(parHsize)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01  /) *0.00110d0
+real(dble), parameter::gparW(parWsize)=(/ 0.0315141d0 , 0.22902d0 , 0.31238d0 , -0.0053421d0 , 0.0568242d0 , -0.026432d0 , -0.4756638d0 /)
+real(dble), parameter::gparH(parHsize)=(/ 0.066522d0 , 0.037802d0 , -0.0004797d0 , 0.0549845d0 , -0.0013848d0 , 8.865523d0  /)
 real(dble) , parameter:: gpart2_parA(9)=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01 /)*0.10d0
 real(dble) gparBmat(Bsizeexo+1,nfert)
 
@@ -147,22 +147,22 @@ real(dble) gsigmaetas(2,Ntestage)
 real(dble) , parameter:: gsmpar=0.5d0
 
 ! estimated shock variances for wages
-real(dble), parameter:: gwshock=0.1d0
-real(dble), parameter:: gwfathershock=200.0d0
+real(dble), parameter:: gwshock=0.25068398d0
+real(dble), parameter:: gwfathershock=0.467246870d0
 
 ! intercepts - later on these will be types, too
 
 ! the constant estimate from the estimation of logwage regression needs to be entered here
 ! the code is like this, because it helps to facilitate to make this hetero. later.
 !>>>>>>>>>>>>>>>>>> INTERCEPT HERE<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-real(dble) , parameter:: gmtype=0.01d0
+real(dble) , parameter:: gmtype=-2.340616d0
 
 !real(dble) , parameter:: gatype=0.01d0
 
 
 
 ! data to read
-integer gidmat(SampleSize, MomentSize)
+integer gidmat(SampleSize,idmatsize)
 real(dble) gomega3data(o3size, SampleSize)
 real(dble) llmsmat(nperiods, SampleSize)
 
@@ -237,14 +237,14 @@ contains
 		! second line variance for first equation, 3rd variance of second.
 		integer i,j
 
-		!open(unit=12, file="factorpar.csv")
-		!do i=1, 3
-			!read(12,*) (factormat(i,j),j=1,Ntestage)
-		!end do
-		!close(12)	
-		!glambdas=factormat(1,:)
-		!gsigmaetas(1,:)=factormat(2,:)
-		!gsigmaetas(2,:)=factormat(3,:)
+		open(unit=12, file="factorpar.csv")
+		do i=1, 3
+			read(12,*) (factormat(i,j),j=1,Ntestage)
+		end do
+		close(12)	
+		glambdas=factormat(1,:)
+		gsigmaetas(1,:)=factormat(2,:)
+		gsigmaetas(2,:)=factormat(3,:)
 		
 
 		! also assign gparBmat by hand.	
@@ -263,8 +263,8 @@ contains
 		
 		
 		! TODO ERASE ME
-		glambdas=1.0d0
-		gsigmaetas=0.1d0
+		!glambdas=1.0d0
+		!gsigmaetas=0.1d0
  	end subroutine readsomeparam
 	
 	! use the the mean test scores and their variance to set up grid points for veca1 and veca2
@@ -276,8 +276,8 @@ contains
 		real(dble) variancetestscores(Ntestage)
 		integer i, j, age1, age2
 		! TODO: insert data here!!!
-		meantestscore=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01  /)*1000.0d0
-		variancetestscores=(/ 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01 , 0.01, 0.01, 0.01 /)*10.0d0
+		meantestscore=(/ 14.48d0, 17.8d0 , 25.5d0 , 35.38d0, 40.28d0,46.28d0, 50.27d0, 53.67d0, 56.06d0, 58.87d0  /)
+		variancetestscores=(/16.0d0, 25.0d0, 64.0d0, 81.0d0, 81.0d0,81.0d0, 100.0d0, 121.0d0, 100.0d0,121.0d0 /)
 		
 		! to understand this later: if age1
 		age1=max(min(nint(period)-testminage+1,Ntestage),1)
@@ -320,16 +320,16 @@ contains
 		real(dble) setiimat(MomentSize+1,MomentSize)
 		integer i,j
 		open(unit=16, file="setii.csv")
-		!do i=1,MomentSize+1
-			!read(16,*) (setiimat(i,j),j=1,MomentSize)
-		!end do
-		!close(16)	
-		!targetvec=setiimat(1,:)
-		!weightmat=setiimat(2:MomentSize+1,:)
+		do i=1,MomentSize+1
+			read(16,*) (setiimat(i,j),j=1,MomentSize)
+		end do
+		close(16)	
+		targetvec=setiimat(1,:)
+		weightmat=setiimat(2:MomentSize+1,:)
 
 		! TODO ERASE ME
-		targetvec=0.0d0
-		weightmat=1.0d0
+		!targetvec=0.0d0
+		!weightmat=1.0d0
 
 
 	end subroutine setii
