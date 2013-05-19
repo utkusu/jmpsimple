@@ -16,12 +16,15 @@ integer ires
 real(dble) minf
 real(dble)  fmat
 opt=0; fmat=1.0d0
-
 call MPI_INIT(ier)
 call MPI_COMM_SIZE(MPI_COMM_WORLD, nproc, ier)
 call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ier)
 
 if (rank==0) then
+	print*,'Master Reading Data'
+	print*, 'Sample Size:', SampleSize
+	print*, 'Parameters to be estimated', parsize
+	print*, 'Moments to match:', MomentSize
 	call readdata() ! read some data	
 	call readsomeparam() ! read some external parameters
 	! read these
