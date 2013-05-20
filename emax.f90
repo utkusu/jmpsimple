@@ -177,8 +177,6 @@ function wagehfquick(omegaf,t,eps,parquick)
 	real(dble) wagehfquick(size(eps))
 	real(dble) logwh
 	logwh=omegaf+parquick(1)*t+parquick(2)*t*t
-		print*, 'omegaf=', omegaf
-		print*,parquick
 	wagehfquick=exp(logwh+eps)
 end function wagehfquick
 

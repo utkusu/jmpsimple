@@ -483,8 +483,9 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 		smnext(1,i)=pfone((/SS(1,period,i),smh,0.5d0*(wageh(i)+wage(i)*smh)/), omega3(1:3), period*1.0d0,parA(4:12),rho) 
 		smnext(2,i)=SS(2,period,i)
 		smnext(3,i)=SS(3,period,i)+smh
-			
 	end do
+	
+
 	!                            -----------------LOOOOOP TO THE FUTURE-----------------
 	
 	do period=2,nperiods
@@ -597,6 +598,8 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					smnext(2,i)=SS(2,period,i)
 					smnext(3,i)=smexperience(period,i)+smh
 					
+					if (id==1) print*, period, '------------'
+					if (id==1) print*,smnext(:,1:50)
 				!-------------------------- PERIOD<7: 1.b TWO CHILDREN ------------------------------
 				else
 					do k=1,nttypes
@@ -986,8 +989,11 @@ subroutine mv(datamat,outputvec)
 	real(dble), intent(out) :: outputvec(2) 	!< output vec: first means, then variances
 	integer n,k,i
 	n=size(datamat,1)
-		outputvec(1)=sum(datamat)/n
-		outputvec(2)= sum((datamat-outputvec(1))**2)/(n-1)
+	!do i=1,n
+		!print*, i, datamat(i)
+	!end do
+	outputvec(1)=sum(datamat)/n
+	outputvec(2)= sum((datamat-outputvec(1))**2)/(n-1)
 	!	if (i<k) outputvec(2*k+i)=sum((datamat(:,i)-outputvec(i))*(datamat(:,i+1)-outputvec(i+1)))/(n-1)
 end subroutine mv
 
@@ -1393,8 +1399,10 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 				end if
 			end do
 		end do
+		
 		call DGELS('N', aregsample, nreglfp+1,1,alfpmat,aregsample, afulltimevec, aregsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
 		fulltimecoefvec(i,:)=afulltimevec(1:nreglfp+1)
+
 		call DGELS('N', aregsample, nreglfp+1,1,alfpmat,aregsample, aparttimevec, aregsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
 		parttimecoefvec(i,:)=aparttimevec(1:nreglfp+1)
 	end do
@@ -1450,7 +1458,6 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 			deallocate (dualexperience)
 		end do
 	end do
-
 	! now averaging it out.
 	expest=sum(expestmat,1)/Npaths
 

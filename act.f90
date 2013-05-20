@@ -260,7 +260,7 @@ contains
 				call MPI_RECV(order, 1, MPI_INTEGER, 0, MPI_ANY_TAG, MPI_COMM_WORLD, status, ier)
 				tag=status(MPI_TAG)
 				if (tag>0) then
-					call wsolver(solw,ftypemat(2,order),(/nctype,nctype,gmtype,parUpart(2),ftypemat(1,order)/),parA,gparW,gparH(5:6),parU, beta,sigma,grho)
+					call wsolver(solw,ftypemat(2,order),(/nctype,nctype,gmtype,parUpart(2),ftypemat(1,order)/),parA,gparW,gparH(4:5),parU, beta,sigma,grho)
 					!print*, ftypemat(1,:)
 					!print*,  '___worker',rank,'order=',order, 'calculated for', ftypemat(2,order), ftypemat(1,order)
 					rorder=order
@@ -282,7 +282,7 @@ contains
 				if(tag>10) then
 					! get the correct mother type from solwall
 					wcoef(:,:,:,1)=solwall(:,:,:,order)
-					call vsolver(solv,(/nctype,nctype,gmtype,parUpart(2),a1type(order)/), parA,gparW,gparH(5:6),parU,gparBmat, beta,sigma,wcoef,(/nctype/),(/1.0d0/),grho)
+					call vsolver(solv,(/nctype,nctype,gmtype,parUpart(2),a1type(order)/), parA,gparW,gparH(4:5),parU,gparBmat, beta,sigma,wcoef,(/nctype/),(/1.0d0/),grho)
 					!print*, solv
 					rorder=order   ! returning the order
 					call MPI_SEND(rorder, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, ier)
@@ -318,6 +318,9 @@ contains
 				!print*, 'simulations complete for individual', id
 			end do
 			print*, 'Simulations Complete, Now Calculating Moments'
+				!do i=1, nperiods 
+					!print*, i, SScollect(3,i,1,1), smexperiencecollect(i,1,1)
+				!end do
 			call momentsalt(momentvec, SScollect, smtestoutcomescollect,  birthhistcollect, smchoicescollect, smexperiencecollect, gomega3data,glfpperiods, gexpperiods, gtsperiods, gidmat)
 			difft(1,:)=momentvec-targetvec
 			diff(:,1)=momentvec-targetvec
