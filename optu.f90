@@ -406,7 +406,7 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 	
 	counter=0
 	! first draw Npaths alternative folks to assign a1 values.	
-	mainseed=id*(/2,2/)
+	mainseed=id*(/3,2/)
 	call random_seed(put=mainseed)
 	call random_number(pa1)
 	a1order=(/(i,i=1, nttypes)/)
@@ -529,7 +529,7 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 
 			! determine the prob of a child birth. this part is constant all the Npaths
 			pbirth=bprobexo(omegaB,parBmat(:,period-1))	
-			call random_seed(put=mainseed*(period*10)+period) 
+			call random_seed(put=mainseed*((period+1)*10)+period+2) 
 			call random_number(birthdraw)
 			! FIRST FIGURE OUT WHO HAD BIRTH
 			
@@ -1353,7 +1353,8 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	real(dble) work(nreglfp+1+(nreglfp+1)*blocksize)
 	real(dble) worktsdiff(nregtsdiff+1+(nregtsdiff+1)*blocksize)
 	integer info, infotsdiff
-		
+
+
 	! initalize stuff
 	regsample=sum(idmat(:,1:lfpsize))*Npaths ! participation equation big sample size
 	aregsample=sum(idmat(:,1:lfpsize)) 		 ! participation equation small non stacked
@@ -1400,44 +1401,6 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	
 	fulltimecoef=sum(fulltimecoefvec,1)/Npaths	
 	parttimecoef=sum(parttimecoefvec,1)/Npaths	
-
-
-
-	!! first fill in 1.0d0 s to the last column. 	
-	!lfpmat(:,nreglfp+1)=1.d0
-	!do k=1, lfpsize
-		!do l=1,SampleSize
-			!if ( idmat(l,k) == 1 ) then
-				!do i=1, Npaths
-					!if ((SS(4,lfpperiods(k),i,l)<3.1) .OR. (SS(5,lfpperiods(k),i,l)<3.1)) baby=1
-					!if (SS(5,lfpperiods(k),i,l)>0.1) twochild=1
-					!! fill in the regressor matrix
-					!lfpmat(counter,1:2)=omega3data(1:2,l)
-					!lfpmat(counter,3)=omega3data(3,l)+lfpperiods(k)
-					!lfpmat(counter,4)=baby*1.0d0
-					!!lfpmat(counter,5)=SS(3,lfpperiods(k),i,l)
-					!lfpmat(counter,5)=smexperience(lfpperiods(k),i,l)
-					!lfpmat(counter,6)=twochild*1.0d0
-					!! fill in the dependent variable	
-					!!if (choices(1,lfpperiods(k),i,l) > 2.5) fulltimevec(counter)=1.0d0
-					!!if ( (choices(1,lfpperiods(k),i,l) < 2.5) .AND. (choices(1,lfpperiods(k),i,l) > 1.5) ) parttimevec(counter)=1.0d0
-					!fulltimevec(counter)=smchoices(3,lfpperiods(k),i,l)
-					!parttimevec(counter)=smchoices(2,lfpperiods(k),i,l)
-					!counter=counter+1
-				!end do
-			!end if
-		!end do
-	!end do
-
-	!! now run the lapack to get the regression coefficients
-
-	!call DGELS('N', regsample, nreglfp+1,1,lfpmat,regsample, fulltimevec, regsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
-	!fulltimecoef=fulltimevec(1:nreglfp+1)
-	!call DGELS('N', regsample, nreglfp+1,1,lfpmat,regsample, parttimevec, regsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
-	!parttimecoef=parttimevec(1:nreglfp+1)
-
-	
-	
 	
 ! NOTE: Do I need to go for the variance of error term? 
 	
@@ -1490,48 +1453,7 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 
 	! now averaging it out.
 	expest=sum(expestmat,1)/Npaths
-	
-   ! ! THE EXPPERIODS ARE AGES OF THE MOTHER, NOT PERIODS, SO WE NEED TO PICK THE CORRECT PERIOD with OMEGA3(3)
-	!do k=1, expsize
-		!counter=1
-		!allocate( experience ( sum (idmat(:,lfpsize+k)*Npaths ) ) )
-		!do l=1, SampleSize
-			!if (idmat(l,lfpsize+k)==1) then
-				!do i=1,Npaths
-					!!experience(counter)=SS(3,expperiods(k)+omega3data(3,l),i,l)
-					!experience(counter)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
-					!counter=counter+1
-				!end do
-			!end if
-		!end do
-		!! now we have the correct experience vector, calculate mean and the variance.
-		!call mv(experience,mvvec) 
-		!expest((k-1)*2+1:2*k)=mvvec
-		!deallocate (experience)
-	!end do
 
-	!! now covariance of experiences.
-	!do k=1, expsize-1
-		!counter=1
-		!allocate ( dualexperience( sum(idmat(:,lfpsize+expsize+k))*Npaths,2 ) )
-		!do l=1, SampleSize
-			!if (idmat(l,lfpsize+expsize+k)==1) then
-				!do i=1, Npaths
-					!!dualexperience(counter,1)=SS(3,expperiods(k)+omega3data(3,l),i,l)
-					!!dualexperience(counter,2)=SS(3,expperiods(k+1)+omega3data(3,l),i,l)
-					!dualexperience(counter,1)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
-					!dualexperience(counter,2)=smexperience(expperiods(k+1)-nint(omega3data(3,l)+1),i,l)
-					!counter=counter+1
-				!end do
-			!end if
-		!end do
-		!! calculate covariance
-		!call concov(dualexperience,covexp)
-		!expest((2*expsize+k))=covexp	
-		!! deallocate
-		!deallocate (dualexperience)
-	!end do
-	
 	!-------------------------- TEST SCORE LEVELS -----------------------------------
 	! test score levels will help to pin down gammahat parameters. match levels at different ages.  
 	! NOTE: CONTENT OF THE tsperiods is the test score numbers. For example, if first test score is at 5 years old, and the last one
@@ -1579,15 +1501,14 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	! we will go through the number of test periods one by one. Starting from age period 6 (because this is the earliest we can have
 	! test scores for a pair of kids. Maximum is testmaxage-2. So idmat should have testmaxage-testminage elements showing us who
 	! are in the calculation for each period.
-
 	do i=1,Npaths
-
 		nspots=0
-		do k=testminage+1,testmaxage-2
+		do k=1,Noldtest
 			do l=1, SampleSize
+				!if (l<10) print*, 'midreport:', l, lfpsize+2*expsize-1+tssize+k, idmat(l,lfpsize+2*expsize-1+tssize+k), SS(5,k+10,i,l)   
 				if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
 					! if kid 2 is older than 5, then create a spot
-					if (SS(5,k,i,l) > 4.8)  nspots=nspots+1
+					if (SS(5,k+10,i,l) > 4.8) nspots=nspots+1
 				end if
 			end do
 		end do
@@ -1626,7 +1547,8 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 			end do
 		end do
 
-
+!print*, 'LAPACK PRINT'
+!print*, nspots, nregtsdiff+1,  blocksize
 		! lapack
 		call DGELS('N', nspots, nregtsdiff+1,1,tsdiffmat,nspots, tsdiffvec, nspots,worktsdiff,nregtsdiff+1+(nregtsdiff+1)*blocksize,infotsdiff)
 		tsdiffestmat(i,:)=tsdiffvec(1:nregtsdiff+1)

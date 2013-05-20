@@ -177,9 +177,9 @@ function wagehfquick(omegaf,t,eps,parquick)
 	real(dble) wagehfquick(size(eps))
 	real(dble) logwh
 	logwh=omegaf+parquick(1)*t+parquick(2)*t*t
-
+		print*, 'omegaf=', omegaf
+		print*,parquick
 	wagehfquick=exp(logwh+eps)
-	
 end function wagehfquick
 
 !-------------------------------------------Future and Terminal Values--------------------------------------------------
@@ -924,7 +924,6 @@ function emaxhcx(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV,
 	! same with husband income
 	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH)  
 
-
 	! calculate utility levels associated with each of the h,c,x bundles. And fill Nmc x cgridsize*xgridsize matrices
 	do i=1,cgridsize  
 		do j=1,xgridsize
@@ -1549,7 +1548,7 @@ subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parF
 			end do
 		end do
 	end do
-
+	 
 
 	call tr_late(tmss,mss,nintp) 			! transform the state space 
 	!if ((nint(period)==7) .AND. (nint(delta)==4)) then
@@ -1563,7 +1562,6 @@ subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parF
 		!write(13, "(f30.10)")  (vemax(k) , k=1,nintp)
 		!close(13)
 	!end if 
-
 call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
 	coef=vemax(1:Gsize+1)
 

@@ -318,7 +318,7 @@ contains
 				!print*, 'simulations complete for individual', id
 			end do
 			print*, 'Simulations Complete, Now Calculating Moments'
-			call moments(momentvec, SScollect, smtestoutcomescollect,  birthhistcollect, smchoicescollect, smexperiencecollect, gomega3data,glfpperiods, gexpperiods, gtsperiods, gidmat)
+			call momentsalt(momentvec, SScollect, smtestoutcomescollect,  birthhistcollect, smchoicescollect, smexperiencecollect, gomega3data,glfpperiods, gexpperiods, gtsperiods, gidmat)
 			difft(1,:)=momentvec-targetvec
 			diff(:,1)=momentvec-targetvec
 			middlestep=matmul(difft,weightmat)
