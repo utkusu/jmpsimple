@@ -441,7 +441,7 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 	testoutcomes=-9999.0d0
 	smtestoutcomes=-9999.0d0
 	wage=wagef(0.d0,1.0d0,llmsvec(1),omega3(1),omega3(2),omega3(3),eps(:,4),intercepts(2),parW(5:7),parW(1:4))
-	wageh=wagehfquick(omega3(4),1.0d0,eps(:,5),parH(5:6))	
+	wageh=wagehfquick(omega3(4),1.0d0,eps(:,5),parH(4:5))	
 	outcomes(1,1,:)=wage
 	outcomes(2,1,:)=wageh
 	! current utilities
@@ -504,7 +504,7 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 		!SS(3,period,:)=SS(3,period-1,:)+(choices(1,period-1,:)*1.0d0-1.0d0)/2.0d0
 		! these are all at vector level, i.e., for all Npaths 
 		wage=wagefsim(SS(3,period,:),period*1.0d0,llmsvec(period),logw0,parW(5:7),eps(:,4))	
-		wageh=wagehfquick(omega3(4),period*1.0d0,eps(:,5),parH(5:6))	
+		wageh=wagehfquick(omega3(4),period*1.0d0,eps(:,5),parH(4:5))	
 		outcomes(1,period,:)=wage
 		outcomes(2,period,:)=wageh
 		smexperience(period,:)=smnext(3,:)

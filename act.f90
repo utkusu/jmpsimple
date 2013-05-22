@@ -113,7 +113,7 @@ contains
 		!real(dble) outcomescollect(2,nperiods,Npaths,SampleSize) ! outcomes: wages of the father and mother.
 		!integer choicescollect(1,nperiods,Npaths,SampleSize) 	! choices : the choice history of h.
 		integer birthhistcollect(Npaths,SampleSize)  		    ! the birth timing vec, 0 if one child throughout.
-		real(dble) omega3data(o3size, SampleSize) 	! holds the omega3 data for Sample people
+		!real(dble) omega3data(o3size, SampleSize) 	! holds the omega3 data for Sample people
 		real(dble) smtestoutcomescollect(4,Ntestage,Npaths,SampleSize)  ! holds test scores for two children 
 		real(dble) smchoicescollect(3,nperiods,Npaths,SampleSize)
 		real(dble) smexperiencecollect(nperiods,Npaths,SampleSize)
