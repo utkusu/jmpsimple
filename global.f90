@@ -79,7 +79,7 @@ real(dble), parameter::onescxgrid(cxgridsize)=1.0d0
 real(dble), parameter::onescgridwithbirth(cgridsize*2)=1.0d0
 
 ! emax interpolation parameters
-integer, parameter:: Nmc=10		!<monte carlo integration draw size
+integer, parameter:: Nmc=100	!<monte carlo integration draw size
 
 integer, parameter::svecage0m=4
 integer, parameter::svecsch0m=4

@@ -215,18 +215,19 @@ contains
 			
 
 
+ 			if (itercounter==1) then
+				open(77,file='wcoef.txt')
+				do l=1,2
+					!write(77,*) "-------------- type order=",l,"------------" 
 
-			open(77,file='wcoef.txt')
-			do l=1,2
-				!write(77,*) "-------------- type order=",l,"------------" 
-
-				do m=1,deltamax-deltamin+1
-					!write(77,*) "########   delta type=",m,"------------"
-					write(77,70) ((solwall(j,k,m,l),k=1,nperiods-deltamin+2),j=1,Gsize+1)
+					do m=1,deltamax-deltamin+1
+						!write(77,*) "########   delta type=",m,"------------"
+						write(77,70) ((solwall(j,k,m,l),k=1,nperiods-deltamin+2),j=1,Gsize+1)
+					end do
 				end do
-			end do
-			70 format(22F26.9)
-			close(77)
+				70 format(22F26.9)
+				close(77)
+			end if
 
 			
 			call MPI_BCAST(solwall, (Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+1)*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
@@ -300,13 +301,16 @@ contains
 		if (rank==0) then
 			print*, 'MODEL SOLVED, MOVING ONTO SIMULATIONS'
 			soltime=MPI_WTIME()
-			open(66,file='vcoef.txt')
-			do l=1,2
-				!write(66,*) "-------------- type order=",l,"------------" 
-				write(66,60) ((solvall(j,k,l),k=1,nperiods),j=1,Gsizeoc+1)
-			end do
-			60 format(22F46.9)
-			close(66)
+			
+			if (itercounter==1) then	
+				open(66,file='vcoef.txt')
+				do l=1,2
+					!write(66,*) "-------------- type order=",l,"------------" 
+					write(66,60) ((solvall(j,k,l),k=1,nperiods),j=1,Gsizeoc+1)
+				end do
+				60 format(22F46.9)
+				close(66)
+			end if
 
 			do id=1,SampleSize
 				call simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoices, smexperience, smAs, smtestoutcomes,gomega3data(:,id),(/nctype,gmtype/),parA,parU,gparW,gparH,beta,sigma,a1type,pa1type,gparBmat,solvall,solwall,llmsmat(:,id),id,grho,glambdas,gsigmaetas, gsmpar)
