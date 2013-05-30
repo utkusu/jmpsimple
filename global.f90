@@ -26,7 +26,7 @@ integer, parameter:: Bsize=2			!< the number of regressors in the birth probabil
 integer, parameter:: Bsizeexo=4			!< the number of regressors in the birth probability function other than the contraception
 
 ! estimation stuff 
-integer,parameter::Npaths=50 			!<number of simulated paths for each family.
+integer,parameter::Npaths=50			!<number of simulated paths for each family.
 integer,parameter::simvecsize=10 		!<the size of the simulated data vector for each period. obviosly very related to ss.
 integer, parameter::SampleSize=301 		!< Size of the estimation sample
 integer, parameter:: Ntestage=10 		!< number of ages in which we have test scores. start at 5, end in 14.
@@ -132,7 +132,7 @@ integer, parameter:: parsize=20
 ! >>>>>>>>>>>>>  put the betaf and betam here <<<<<<<<<<<<<<<<<<<<<<<<<
 real(dble), parameter::gparW(parWsize)=(/ 0.0315141d0 , 0.22902d0 , 0.31238d0 , -0.0053421d0 , 0.0568242d0 , -0.026432d0 , -0.4756638d0 /)
 real(dble), parameter::gparH(parHsize)=(/ 0.066522d0 , 0.037802d0 , -0.0004797d0 , 0.0549845d0 , -0.0013848d0 , 8.865523d0  /)
-real(dble) , parameter:: gpart2_parA(9)=(/ 9.9107d0 , 0.0127697d0 , 3.361842d0 , -0.07951778d0 ,  4.8295807d0 , 0.22579117d0, -1.8741083d0, -0.11462243d0, 0.0160622d0 /)
+real(dble) , parameter:: gpart2_parA(9)=(/ 9.9107d0 , 0.0127697d0 , 3.361842d0 , -0.07951778d0 ,  4.8295807d0 , 0.22579117d0, -1.8741083d0, -0.11462243d0, 0.0000160622d0 /)
 real(dble) gparBmat(Bsizeexo+1,nfert)
 
 ! parameters of other kind
@@ -145,7 +145,7 @@ real(dble) glambdas(Ntestage)
 real(dble) gsigmaetas(2,Ntestage)
 
 ! smoothing parameter for the smoothing
-real(dble) , parameter:: gsmpar=0.05d0
+real(dble) , parameter:: gsmpar=0.0005d0
 
 ! estimated shock variances for wages
 real(dble), parameter:: gwshock=0.25068398d0
@@ -181,6 +181,9 @@ real(dble) parameters(parsize), lb(parsize), ub(parsize), targetvec(MomentSize),
 
 
 integer itercounter, evaliter
+
+
+real(dble), parameter:: wm=2000.0d0  !< wage multiplier, the hours of work in a period if the mom works full time. 
 
 ! ------------ initialize variables---------------------
 

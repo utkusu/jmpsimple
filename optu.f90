@@ -358,6 +358,7 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 	real(dble) pa1(Npaths)
 	real(dble) Ainit,wage(Npaths),wageh(Npaths)
 	real(dble) mu(shocksize1)
+	real(dble) mushock(2) 
 	real(dble) eps(Npaths,shocksize1)
 	
 	real(dble) logw0
@@ -383,8 +384,11 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 	integer picker(1)
 
 	! adding Test Scores
-	real(dble) sigmafortests(2,2)
-	real(dble) etashock(Npaths,4)
+
+	real(dble) sigmafortests1(2,2)
+	real(dble) sigmafortests2(2,2)
+	real(dble) etashock1(Npaths,2) !holding shocks for old kids, for all paths (age of the first kid is not path dependent)
+	real(dble) etashock2(4,2) !holding shocks for young kids
 
 	! smoothing shit
 	real(dble) smdenom
@@ -395,8 +399,11 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 		
 	integer counter
 	
+	
+	
 	! Iniatilize some stuff
 	mu=0.0d0
+	mushock=0.0d0	
 	choices=-9999
 	xchoices=-9999 !if not chosen, be -9999.
 	smchoices=-9999
@@ -415,9 +422,9 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 	do i=1, Npaths
 		a1holder(i)=randtype(a1order,pa1type,pa1(i))
 	end do
-
+	
 	! initialize A
-	Ainit=intercepts(1)+parA(1)*omega3(1)+parA(2)*omega3(2)+parA(3)*omega3(3) 
+	Ainit=(intercepts(1)+parA(1)*omega3(1)+parA(2)*omega3(2)+parA(3)*omega3(3))/3 ! arbitrary division
 	! initialize wage	
 	logw0=intercepts(2)+parW(1)*omega3(1)+parW(2)*omega3(2)+parW(3)*omega3(3)+parW(4)*omega3(3)*omega3(3)
 	! birth prob determiner
@@ -426,7 +433,6 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 	! these are for the temp term values
 	power=(finalage/timeperiod)-omega3(3)
 	mult=beta*(1.0d0-beta**power)/(1.0d0-beta)
-	
 	eps= randmnv(Npaths,5,mu,sigma,3,1,(/1,id*1/))
 	! initialize omegas
 	SS(1,1,:)=Ainit 	!A1
@@ -440,9 +446,9 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 	! initialize test scores
 	testoutcomes=-9999.0d0
 	smtestoutcomes=-9999.0d0
-	wage=wagef(0.d0,1.0d0,llmsvec(1),omega3(1),omega3(2),omega3(3),eps(:,4),intercepts(2),parW(5:7),parW(1:4))
+	wage=wagef(0.d0,1.0d0,llmsvec(1),omega3(1),omega3(2),omega3(3),eps(:,4),intercepts(2),parW(5:7),parW(1:4))*wm
 	wageh=wagehfquick(omega3(4),1.0d0,eps(:,5),parH(4:5))	
-	outcomes(1,1,:)=wage
+	outcomes(1,1,:)=wage/wm ! back to hourly wage for record keeping
 	outcomes(2,1,:)=wageh
 	! current utilities
 	umat(1,:)=parU(2)*SS(1,1,:) 	+     parU(4)*(wageh)**parU(5)+parU(6)
@@ -484,8 +490,6 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 		smnext(2,i)=SS(2,period,i)
 		smnext(3,i)=SS(3,period,i)+smh
 	end do
-	
-
 	!                            -----------------LOOOOOP TO THE FUTURE-----------------
 	
 	do period=2,nperiods
@@ -499,24 +503,35 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 		SS(2,period,:)=next(2,:)
 		SS(3,period,:)=next(3,:)
 		SS(4,period,:)=SS(4,period-1,:)+1.0d0 	! update age1
-		SS(5,period,:)=SS(5,period-1,:) 		!  DO NOT update age2
+		do i=1,Npaths
+			if (birthhist(i)>0) SS(5,period,i)=SS(5,period-1,i)+1 		!  DO NOT update age2 if birth did not happen
+		end do
+
 		SS(6,period,:)=SS(6,period-1,:)+1.0d0 	! udpate agem
 		!SS(3,period,:)=SS(3,period-1,:)+(choices(1,period-1,:)*1.0d0-1.0d0)/2.0d0
 		! these are all at vector level, i.e., for all Npaths 
-		wage=wagefsim(SS(3,period,:),period*1.0d0,llmsvec(period),logw0,parW(5:7),eps(:,4))	
+		wage=wagefsim(SS(3,period,:),period*1.0d0,llmsvec(period),logw0,parW(5:7),eps(:,4))*wm
 		wageh=wagehfquick(omega3(4),period*1.0d0,eps(:,5),parH(4:5))	
-		outcomes(1,period,:)=wage
+		outcomes(1,period,:)=wage /wm ! back to hourly wage for record keeping
 		outcomes(2,period,:)=wageh
 		smexperience(period,:)=smnext(3,:)
 		smAs(:,period,:)=smnext(1:2,:)
-		
-		if (period>=testminage .AND. period<=testmaxage) then
-			sigmafortests=0.0d0
-			sigmafortests(1,1)=sigmaetas(1,period-testminage+1)
-			sigmafortests(2,2)=sigmaetas(2,period-testminage+1)
-			etashock=randmnv(Npaths,4,mu,sigmafortests,3,1,(/100*period+5*period+period,300*id*period+15*period+period+id/))	
-		end if
 
+
+		! Because the measurement errors for the tests are uncorrelated, I will draw those separately to save some time. 
+		! first set the off diagonal elements to zero
+		sigmafortests1=0.d0
+		sigmafortests2=0.d0
+
+		! if the first child is test age, update sigmafortests
+		if (period>=testminage .AND. period<=testmaxage) then
+			sigmafortests1(1,1)=sigmaetas(1,period-testminage+1)
+			sigmafortests1(2,2)=sigmaetas(1,period-testminage+1)
+		end if
+		! then get a measurment error vector for all histories, for the first child. 	
+		etashock1=randmnv(Npaths,2,mushock,sigmafortests1,3,1,(/100*period+5*period+period,300*id*period+15*period+period+id/))	
+		! SECOND CHILD in the loop
+		
 		! get some period specific but not path specific stuff to calculate interpolated fv
 		intcons=(/omega3(3)+period*1.0d0,llmsvec(period),omega3(1),omega3(2)/)
 		if (period<nperiods) then
@@ -535,7 +550,8 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 			! FIRST FIGURE OUT WHO HAD BIRTH
 			
 			do i=1,Npaths
-				if (SS(5,period-1,i)<0.001) then   ! they don't have a second child
+				if (birthhist(i)==0) then   ! they don't have a second child
+				! ------		
 					if (birthdraw(i)<pbirth) then
 						! record the birth time
 						birthhist(i)=period 
@@ -547,12 +563,13 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 						SS(2,period,i)=0.0d0 	! reset A2 back to zero.
 						SS(5,period,i)=0.0d0 	! reset age2 back to zero
 					end if
+				! -------	
 				end if
 			end do
 
 			! now we know who has two child in this period (<8) so we can simulate their decisions. This entails the calculation
 			! of choice specific utilities.
-
+		
 			do i=1,Npaths
 				! ----------------------------1.a PERIOD<7: ONE CHILD-----------------------------------
 			
@@ -566,7 +583,7 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					umat(1,i)=uc+parU(4)*(wageh(i))**parU(5)+parU(6)*baby
 					umat(2,i)=uc+a1type(a1holder(i))*0.5d0+ parU(4)*(wageh(i)+0.5d0*wage(i))**parU(5)+parU(6)*baby+parU(7)*0.5d0*baby
 					umat(3,i)=uc+a1type(a1holder(i))*1.0d0+ parU(4)*(wageh(i)+wage(i))**parU(5)+parU(6)*baby+parU(7)*baby
-					
+							
 					do k=1,nttypes
 						fvconsw(k)=sum(wcoef(4:7,period+1,period,k)*intcons)+wcoef(Gsize+1,period+1,period,k)
 					end do
@@ -597,16 +614,13 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					smnext(1,i)=pfone((/smAs(1,period,i),smh,0.5d0*(wageh(i)+wage(i)*smh)/), omega3(1:3), period*1.0d0,parA(4:12),rho) 
 					smnext(2,i)=SS(2,period,i)
 					smnext(3,i)=smexperience(period,i)+smh
-					
-					if (id==1) print*, period, '------------'
-					if (id==1) print*,smnext(:,1:50)
 				!-------------------------- PERIOD<7: 1.b TWO CHILDREN ------------------------------
 				else
 					do k=1,nttypes
 						fvconsw(k)=sum(wcoef(4:7,period+1,birthhist(i),k)*intcons)+wcoef(Gsize+1,period+1,birthhist(i),k)
 					end do
-					! increase the age2 by one if it is different than zero
-					SS(5,period,i)=SS(5,period,i)+1.0d0
+					! increase the age2 by one if it is different than zero or not a new born
+					!if (SS(5,period,i)>1.1d0) SS(5,period,i)=SS(5,period,i)+1.0d0
 					! is there a baby at home
 					if (SS(4,period,i)<3 .OR. SS(5,period,i)<3) then
 						baby=1
@@ -629,8 +643,17 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 						do k=1,xgridsize
 							inputs=(/SS(1,period,i),SS(2,period,i),(1-0.25*(j-1))*xgrid(k),(1-0.25*(j-1))*(1-xgrid(k)),income/)
 							Anext=pftwo(inputs,omega3(1:3),SS(4:5,period,i),parA(4:12), rho)
+							!if (i==1 .AND. k==1 .AND. period<3) then
+								!print*,  'period', period
+								!print*,  'inputs:', inputs
+								!print*,   'omega3', omega3
+								!print*,   'ages', SS(4:5,period,i)
+								!print*,   'parApart', parA(4:12)
+								!print*, 'rho', rho
+							!end if
 							A1next=Anext(1)
 							A2next=Anext(2)
+							!if (period<3 .AND. i==1) print*, i,period,k,A1next
 							intw=(/A1next,A2next,Enext,A1next**2,A2next**2,Enext**2, A1next*A2next,A1next*Enext,A2next*Enext/)
 							fvw=sum(intw*(/wcoef(1:3,period+1,birthhist(i),a1holder(i)),wcoef(9:Gsize,period+1,birthhist(i),a1holder(i))/))
 							umatbig(j,k,i)=umatbig(j,k,i)+beta*(fvw+fvconsw(a1holder(i)))
@@ -658,22 +681,35 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					
 					
 				end if  ! end of period<8 WV if
-					
+				
+				
 				if (SS(4,period,i)>=testminage) then
-					testoutcomes(1,period-testminage+1,i)=SS(1,period,i)+etashock(i,1)
-					testoutcomes(2,period-testminage+1,i)=lambdas(period-testminage+1)*SS(1,period,i)+etashock(i,1)
-					smtestoutcomes(1,period-testminage+1,i)=smAs(1,period,i)+etashock(i,1)
-					smtestoutcomes(2,period-testminage+1,i)=lambdas(period-testminage+1)*smAs(1,period,i)+etashock(i,1)
+					testoutcomes(1,period-testminage+1,i)=SS(1,period,i)+etashock1(i,1)
+					testoutcomes(2,period-testminage+1,i)=lambdas(period-testminage+1)*SS(1,period,i)+etashock1(i,2)
+					smtestoutcomes(1,period-testminage+1,i)=smAs(1,period,i)+etashock1(i,1)
+					smtestoutcomes(2,period-testminage+1,i)=lambdas(period-testminage+1)*smAs(1,period,i)+etashock1(i,2)
 				end if
 
-				if (SS(5,period,i)>=testminage) then
-					testoutcomes(3,period-testminage+1,i)=SS(2,period,i)+etashock(i,1)
-					testoutcomes(4,period-testminage+1,i)=lambdas(period-testminage+1)*SS(2,period,i)+etashock(i,1)
-					smtestoutcomes(3,period-testminage+1,i)=smAs(2,period,i)+etashock(i,1)
-					smtestoutcomes(4,period-testminage+1,i)=lambdas(period-testminage+1)*smAs(2,period,i)+etashock(i,1)
+				if (SS(5,period,i)>=testminage .AND. SS(5,period,i)<=testmaxage) then
+					sigmafortests2(1,1)=sigmaetas(1,nint(SS(5,period,i))-testminage+1)
+					sigmafortests2(2,2)=sigmaetas(2,nint(SS(5,period,i))-testminage+1)
+					etashock2=randmnv(4,2,mushock,sigmafortests2,3,1,(/2*100*period*i+5*period+period*i,300*id*period*i+15*period+period+id*i/))	
+					testoutcomes(3,nint(SS(5,period,i))-testminage+1,i)=SS(2,period,i)+etashock2(1,1)
+					testoutcomes(4,nint(SS(5,period,i))-testminage+1,i)=lambdas(nint(SS(5,period,i))-testminage+1)*SS(2,period,i)+etashock2(1,2)
+					smtestoutcomes(3,nint(SS(5,period,i))-testminage+1,i)=smAs(2,period,i)+etashock2(1,1)
+					smtestoutcomes(4,nint(SS(5,period,i))-testminage+1,i)=lambdas(nint(SS(5,period,i))-testminage+1)*smAs(2,period,i)+etashock2(1,2)
 				end if
+
+					!sigmafortests2(1,1)=sigmaetas(1,nint(SS(5,period,i)))
+					!sigmafortests2(2,2)=sigmaetas(2,nint(SS(5,period,i)))
+					!etashock2=randmnv(4,2,mushock,sigmafortests2,3,1,(/2*100*period*i+5*period+period*i,300*id*period*i+15*period+period+id*i/))	
+					!testoutcomes(3,nint(SS(5,period,i)),i)=SS(2,period,i)+etashock2(1,1)
+					!testoutcomes(4,nint(SS(5,period,i)),i)=lambdas(nint(SS(5,period,i)))*SS(2,period,i)+etashock2(1,2)
+					!smtestoutcomes(3,nint(SS(5,period,i)),i)=smAs(2,period,i)+etashock2(1,1)
+					!smtestoutcomes(4,nint(SS(5,period,i)),i)=lambdas(nint(SS(5,period,i)))*smAs(2,period,i)+etashock2(1,2)
+				!end if
+				
 			end do
-
 			! --%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%--
 			!----------------------------2. 7<period<15 NO CHANCE OF BIRTH, FIRST KID STILL IN CARE---------------------------------
 		elseif ((period>=7) .AND. (period<astar)) then
@@ -681,7 +717,7 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 				! calculations are different for V and W.
 				
 				! ---------------------------2.a PERIOD (7,15): ONE CHILD-----------------------------------
-				if (SS(5,period,i)<0.001) then 		! if still with one child. 
+				if ((SS(5,period,i)<0.001).OR. birthhist(i)==0) then 		! if still with one child. 
 					if (SS(4,period,i)<3) then
 						baby=1
 					else 
@@ -719,8 +755,8 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 				
 				!-------------------------- 2.b PERIOD(7,15): TWO CHILDREN ------------------------------
 				else
-					! increase the age2 by one if it is different than zero
-					 SS(5,period,i)=SS(5,period,i)+1.0d0
+					! increase the age2 by one if it is different than zero or not new born
+					 !if (SS(5,period,i)>1.1d0)  SS(5,period,i)=SS(5,period,i)+1.0d0
 					
 					if (SS(4,period,i)<3 .OR. SS(5,period,i)<3) then
 						baby=1
@@ -736,11 +772,9 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					umatbig(2,:,i)= uc +a1type(a1holder(i))*0.5d0+ parU(4)*(wageh(i)+0.5d0*wage(i))**parU(5)+parU(6)*baby+parU(7)*0.5d0*baby
 					umatbig(3,:,i)= uc +a1type(a1holder(i))*1.0d0+ parU(4)*(wageh(i)+wage(i))**parU(5)+parU(6)*baby+parU(7)*baby
 					! now calculate and add future values.
-				
 					do k=1,nttypes
 						fvconsw(k)=sum(wcoef(4:7,period+1,birthhist(i),k)*intcons)+wcoef(Gsize+1,period+1,birthhist(i),k)
 					end do
-					
 					do j=1,3
 						! E does not depend on x, so calculate it beforehand, also income
 						Enext=SS(3,period,i)+(j-1)*0.5d0
@@ -774,27 +808,27 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					smnext(1:2,i)=pftwo(inputs,omega3(1:3),SS(4:5,period,i),parA(4:12), rho)
 					smnext(3,i)=smexperience(period,i)+smh
 				end if  ! end of period<8 WV if
-			
 			! create test scores	
-
 				if (SS(4,period,i)>=testminage) then
-					testoutcomes(1,period-testminage+1,i)=SS(1,period,i)+etashock(i,1)
-					testoutcomes(2,period-testminage+1,i)=lambdas(period-testminage+1)*SS(1,period,i)+etashock(i,1)
-					smtestoutcomes(1,period-testminage+1,i)=smAs(1,period,i)+etashock(i,1)
-					smtestoutcomes(2,period-testminage+1,i)=lambdas(period-testminage+1)*smAs(1,period,i)+etashock(i,1)
+					testoutcomes(1,period-testminage+1,i)=SS(1,period,i)+etashock1(i,1)
+					testoutcomes(2,period-testminage+1,i)=lambdas(period-testminage+1)*SS(1,period,i)+etashock1(i,2)
+					smtestoutcomes(1,period-testminage+1,i)=smAs(1,period,i)+etashock1(i,1)
+					smtestoutcomes(2,period-testminage+1,i)=lambdas(period-testminage+1)*smAs(1,period,i)+etashock1(i,2)
 				end if
 
-				if (SS(5,period,i)>=testminage) then
-					testoutcomes(3,period-testminage+1,i)=SS(2,period,i)+etashock(i,1)
-					testoutcomes(4,period-testminage+1,i)=lambdas(period-testminage+1)*SS(2,period,i)+etashock(i,1)
-					smtestoutcomes(3,period-testminage+1,i)=smAs(2,period,i)+etashock(i,1)
-					smtestoutcomes(4,period-testminage+1,i)=lambdas(period-testminage+1)*smAs(2,period,i)+etashock(i,1)
+				if (SS(5,period,i)>=testminage .AND. SS(5,period,i)<=testmaxage) then
+					sigmafortests2(1,1)=sigmaetas(1,nint(SS(5,period,i))-testminage+1)
+					sigmafortests2(2,2)=sigmaetas(2,nint(SS(5,period,i))-testminage+1)
+					etashock2=randmnv(4,2,mushock,sigmafortests2,3,1,(/2*100*period*i+5*period+period*i,300*id*period*i+15*period+period+id*i/))	
+					testoutcomes(3,nint(SS(5,period,i))-testminage+1,i)=SS(2,period,i)+etashock2(1,1)
+					testoutcomes(4,nint(SS(5,period,i))-testminage+1,i)=lambdas(nint(SS(5,period,i))-testminage+1)*SS(2,period,i)+etashock2(1,2)
+					smtestoutcomes(3,nint(SS(5,period,i))-testminage+1,i)=smAs(2,period,i)+etashock2(1,1)
+					smtestoutcomes(4,nint(SS(5,period,i))-testminage+1,i)=lambdas(nint(SS(5,period,i))-testminage+1)*smAs(2,period,i)+etashock2(1,2)
 				end if
-			
+
+
 			end do
-			
 			!#%#%#%#%#%#%#%#%#%#%#%#%%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%%#%#%#%#%%#%#
-
 
 			! ---------------------3. Period (15,21) No x choice, because Kid 1 has grown
 		elseif ((period>=astar).AND.(period<22)) then 
@@ -803,7 +837,7 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 			
 				! ---------------------------3.a PERIOD (16,21): ONE CHILD-----------------------------------
 				! 
-				if (SS(5,period,i)<0.001) then 		! if still with one child. 
+				if ((SS(5,period,i)<0.001).OR.(birthhist(i)==0)) then 		! if still with one child. 
 					! there is no chance of having a baby at this point
 					baby=0
 					uc=parU(2)*SS(1,period,i) 
@@ -839,8 +873,8 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					smnext(3,i)=smexperience(period,i)+smh
 				!-------------------------- 3.b PERIOD(15,21): TWO CHILDREN ------------------------------
 				else
-					! increase the age2 by one if it is different than zero
-					SS(5,period,i)=SS(5,period,i)+1.0d0
+					! increase the age2 by one if it is different than zero or not new born
+					 !if (SS(5,period,i)>1.1d0)  SS(5,period,i)=SS(5,period,i)+1.0d0
 					
 					! both kids are above baby age.
 					baby=0
@@ -893,6 +927,29 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 					smnext(1,i)=smAs(1,period,i)
 					smnext(3,i)=smexperience(period,i)+smh
 				end if  ! end of period<8 WV if
+
+				! TEST SCORES FOR KID 2 if she is still under a*
+				if (SS(5,period,i)>=testminage .AND. SS(5,period,i)<=testmaxage) then
+					sigmafortests2(1,1)=sigmaetas(1,nint(SS(5,period,i))-testminage+1)
+					sigmafortests2(2,2)=sigmaetas(2,nint(SS(5,period,i))-testminage+1)
+					etashock2=randmnv(4,2,mushock,sigmafortests2,3,1,(/2*100*period*i+5*period+period*i,300*id*period*i+15*period+period+id*i/))	
+					testoutcomes(3,nint(SS(5,period,i))-testminage+1,i)=SS(2,period,i)+etashock2(1,1)
+					testoutcomes(4,nint(SS(5,period,i))-testminage+1,i)=lambdas(nint(SS(5,period,i))-testminage+1)*SS(2,period,i)+etashock2(1,2)
+					smtestoutcomes(3,nint(SS(5,period,i))-testminage+1,i)=smAs(2,period,i)+etashock2(1,1)
+					smtestoutcomes(4,nint(SS(5,period,i))-testminage+1,i)=lambdas(nint(SS(5,period,i))-testminage+1)*smAs(2,period,i)+etashock2(1,2)
+				end if
+
+
+					!sigmafortests2(1,1)=sigmaetas(1,nint(SS(5,period,i)))
+					!sigmafortests2(2,2)=sigmaetas(2,nint(SS(5,period,i)))
+					!etashock2=randmnv(4,2,mushock,sigmafortests2,3,1,(/2*100*period*i+5*period+period*i,300*id*period*i+15*period+period+id*i/))	
+					!testoutcomes(3,nint(SS(5,period,i)),i)=SS(2,period,i)+etashock2(1,1)
+					!testoutcomes(4,nint(SS(5,period,i)),i)=lambdas(nint(SS(5,period,i)))*SS(2,period,i)+etashock2(1,2)
+					!smtestoutcomes(3,nint(SS(5,period,i)),i)=smAs(2,period,i)+etashock2(1,1)
+					!smtestoutcomes(4,nint(SS(5,period,i)),i)=lambdas(nint(SS(5,period,i)))*smAs(2,period,i)+etashock2(1,2)
+				!end if
+
+
 			end do
 			!#%#%#%#%#%#%#%#%#%#%#%#%%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%#%%#%#%#%#%%#%#
 
@@ -938,8 +995,6 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 				
 				!-------------------------- 4.b PERIOD 22: TWO CHILDREN ------------------------------
 				else
-					! increase the age2 by one if it is different than zero
-					SS(5,period,i)=SS(5,period,i)+1.0d0
 					
 					! both kids are above baby age.
 					baby=0
@@ -976,7 +1031,6 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 		end if ! end of if that divides the the periods
 
 	end do !--------------- END PERIOD LOOP---------------
-	
 end subroutine simhist
 
 
@@ -989,9 +1043,6 @@ subroutine mv(datamat,outputvec)
 	real(dble), intent(out) :: outputvec(2) 	!< output vec: first means, then variances
 	integer n,k,i
 	n=size(datamat,1)
-	!do i=1,n
-		!print*, i, datamat(i)
-	!end do
 	outputvec(1)=sum(datamat)/n
 	outputvec(2)= sum((datamat-outputvec(1))**2)/(n-1)
 	!	if (i<k) outputvec(2*k+i)=sum((datamat(:,i)-outputvec(i))*(datamat(:,i+1)-outputvec(i+1)))/(n-1)
@@ -1104,6 +1155,7 @@ subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperie
 					lfpmat(counter,4)=baby*1.0d0
 					!lfpmat(counter,5)=SS(3,lfpperiods(k),i,l)
 					lfpmat(counter,5)=smexperience(lfpperiods(k),i,l)
+		
 					lfpmat(counter,6)=twochild*1.0d0
 					! fill in the dependent variable	
 					!if (choices(1,lfpperiods(k),i,l) > 2.5) fulltimevec(counter)=1.0d0
@@ -1211,7 +1263,6 @@ subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperie
 		tsest(k)=sum(ts)/nspots
 		deallocate(ts)
 	end do
-
 	!-------------------------TEST SCORE DIFFERENCE REGRESSIONS----------------------
 	! we will go through the number of test periods one by one. Starting from age period 6 (because this is the earliest we can have
 	! test scores for a pair of kids. Maximum is testmaxage-2. So idmat should have testmaxage-testminage elements showing us who
@@ -1364,10 +1415,11 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	! initalize stuff
 	regsample=sum(idmat(:,1:lfpsize))*Npaths ! participation equation big sample size
 	aregsample=sum(idmat(:,1:lfpsize)) 		 ! participation equation small non stacked
+
+! check out print
 	
+
 	counter=1
-	baby=0
-	twochild=0	
 	! INDICATOR MATRIX IDMAT SHOULD FOLLOW THIS ORDER
 	! STARTING OUT WITH 6A and 6B in jmpsimple document. 
 
@@ -1379,12 +1431,15 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 		! first fill in 1.0d0 s to the last column. 	
 		alfpmat(:,nreglfp+1)=1.0d0
 		do k=1, lfpsize
-			do l=1, lfpsize
+			do l=1, SampleSize
 				if (idmat(l,k)==1) then
+					baby=0
+					twochild=0	
 					if ((SS(4,lfpperiods(k),i,l)<3.1) .OR. (SS(5,lfpperiods(k),i,l)<3.1)) baby=1
 					if (SS(5,lfpperiods(k),i,l)>0.1) twochild=1
 					! fill in the regressor matrix
-					alfpmat(counter,1:2)=omega3data(1:2,l)
+					alfpmat(counter,1)=omega3data(1,l)
+					alfpmat(counter,2)=omega3data(2,l)
 					alfpmat(counter,3)=omega3data(3,l)+lfpperiods(k)
 					alfpmat(counter,4)=baby*1.0d0
 					!lfpmat(counter,5)=SS(3,lfpperiods(k),i,l)
@@ -1405,13 +1460,11 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 
 		call DGELS('N', aregsample, nreglfp+1,1,alfpmat,aregsample, aparttimevec, aregsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
 		parttimecoefvec(i,:)=aparttimevec(1:nreglfp+1)
-	end do
+
 	
+	end do
 	fulltimecoef=sum(fulltimecoefvec,1)/Npaths	
 	parttimecoef=sum(parttimecoefvec,1)/Npaths	
-	
-! NOTE: Do I need to go for the variance of error term? 
-	
 
 	!-----------------------------EXPERIENCE-----------------------------
 	! EXPERIENCE LEVELS: mean experience levels at age 25, 30, 35, 40. Variance at the same ages. Covariance between age 25,30,
@@ -1428,7 +1481,7 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 			do l=1, SampleSize
 				if (idmat(l,lfpsize+k)==1) then
 					!experience(counter)=SS(3,expperiods(k)+omega3data(3,l),i,l)
-					experience(counter)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
+					experience(counter)=smexperience(expperiods(k)-nint(omega3data(3,l))+1,i,l)
 					counter=counter+1
 				end if
 			end do
@@ -1437,7 +1490,6 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 			expestmat(i,(k-1)*2+1:2*k)=mvvec
 			deallocate (experience)
 		end do
-		
 		! now the covariances
 		do k=1, expsize-1
 			counter=1
@@ -1446,8 +1498,8 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 				if (idmat(l,lfpsize+expsize+k)==1) then
 					!dualexperience(counter,1)=SS(3,expperiods(k)+omega3data(3,l),i,l)
 					!dualexperience(counter,2)=SS(3,expperiods(k+1)+omega3data(3,l),i,l)
-					dualexperience(counter,1)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
-					dualexperience(counter,2)=smexperience(expperiods(k+1)-nint(omega3data(3,l)+1),i,l)
+					dualexperience(counter,1)=smexperience(expperiods(k)-nint(omega3data(3,l))+1,i,l)
+					dualexperience(counter,2)=smexperience(expperiods(k+1)-nint(omega3data(3,l))+1,i,l)
 					counter=counter+1
 				end if
 			end do
@@ -1475,27 +1527,31 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 		nspots=0
 		! figure out how many places in the test score vector you will need.
 		do l=1,SampleSize
-			if ( (idmat(l,lfpsize+2*expsize-1+k)>0)) nspots=nspots+1 ! if kids exist add one
-			if (idmat(l,lfpsize+2*expsize-1+k)==3) nspots=nspots+1 ! one more if two
+			if ( (idmat(l,lfpsize+2*expsize-1+k)==1).OR.(idmat(l,lfpsize+2*expsize-1+k)==3) ) nspots=nspots+Npaths ! if first kid is in, add a Npaths spaces
+			! for families with two children, I have to be careful with the alternative simulated birth timings	
+			! create a space only if the birth timing is the same in the simulation. 
+			do i=1, Npaths
+				if ( ( (idmat(l,lfpsize+2*expsize-1+k)==2).OR.(idmat(l,lfpsize+2*expsize-1+k)==3) ) .AND. (smtestoutcomes(3, tsperiods(k), i, l) > 0.0d0 ) ) nspots=nspots+1
+			end do
 		end do
-		
-		allocate (ts (nspots*Npaths))
-		
+		allocate (ts (nspots))
 		do l=1, SampleSize
 			if ( (idmat(l,lfpsize+2*expsize-1+k)==1) .OR. (idmat(l,lfpsize+2*expsize-1+k)==3)) then  ! first child
 				do i=1, Npaths
-					if (smtestoutcomes(1, tsperiods(k), i, l) > -1.0d0 ) ts(counter)=smtestoutcomes(1, tsperiods(k), i, l)
+					if (smtestoutcomes(1, tsperiods(k), i, l) > 0.0d0 ) ts(counter)=smtestoutcomes(1, tsperiods(k), i, l)
 					counter=counter+1
 				end do
 			end if
 			! second child: if mom has a second child with test score associated with the AGE tsperiod(k)
-			if  (idmat(l,lfpsize+2*expsize-1+k)==2) then 				
+			if  ((idmat(l,lfpsize+2*expsize-1+k)==2) .OR.  (idmat(l,lfpsize+2*expsize-1+k)==3)) then 				
 				do i=1, Npaths 
 					! check if at age2=tsperiod(k) [which corresponds to period tsperiod(k)+birthhist(i,l)-1 for mom]
 					! is a period for the ith simulation has a test score. If it does, it is the one:
 					! it is tsperiod+birthist-1 period for mom, the age of the second kid is tsperiod
-					if (smtestoutcomes(3, tsperiods(k)+birthhist(i,l)-1, i, l) > -1.0d0 ) ts(counter)=smtestoutcomes(3, tsperiods(k)+birthhist(i,l)-1, i, l)
-					counter=counter+1
+					if (smtestoutcomes(3, tsperiods(k), i, l) > 0.0d0 ) then
+						ts(counter)=smtestoutcomes(3, tsperiods(k), i, l)
+						counter=counter+1
+					end if
 				end do
 			end if
 		end do
@@ -1503,7 +1559,6 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 		tsest(k)=sum(ts)/nspots
 		deallocate(ts)
 	end do
-
 	!-------------------------TEST SCORE DIFFERENCE REGRESSIONS----------------------
 	! we will go through the number of test periods one by one. Starting from age period 6 (because this is the earliest we can have
 	! test scores for a pair of kids. Maximum is testmaxage-2. So idmat should have testmaxage-testminage elements showing us who
@@ -1515,7 +1570,7 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 				!if (l<10) print*, 'midreport:', l, lfpsize+2*expsize-1+tssize+k, idmat(l,lfpsize+2*expsize-1+tssize+k), SS(5,k+10,i,l)   
 				if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
 					! if kid 2 is older than 5, then create a spot
-					if (SS(5,k+10,i,l) > 4.8) nspots=nspots+1
+					if (SS(5,k+10,i,l) > 4.8d0) nspots=nspots+1
 				end if
 			end do
 		end do
@@ -1525,11 +1580,10 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 		allocate(tsdiffmat (nspots, nregtsdiff+1) )
 		allocate(tsdiffvec (nspots) )
 	
-	
 		tsdiffmat(:,nregtsdiff+1)=1.0d0
 		! another loop to fill in these guys
 		counter=1
-		do k=testminage+1,testmaxage-2
+		do k=1, Noldtest
 			do l=1, SampleSize
 				if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
 					! 1. fill in the labor supply related parts (smh)
@@ -1629,6 +1683,7 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	
 	momentvec=(/fulltimecoef, parttimecoef, expest, tsest,tsdiffest/)
 
+	print*, tsest
 end subroutine momentsalt
 
 

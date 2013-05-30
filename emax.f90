@@ -305,7 +305,7 @@ subroutine fvhc(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,rho)
 			do i=1,3
 				! inputs to second kid: first i=h, then g=(1-c)Y 
 				inputs(4)=1.0d0-0.5d0*((i-1.0d0)/2.0d0)
-				inputs(5)=(wage(k)*(i-1.0d0)/2+wageh(k))*(1-cgrid(j))
+				inputs(5)=(wm*wage(k)*(i-1.0d0)/2+wageh(k))*(1-cgrid(j))
 				As=pftwo(inputs, constants, ages, parameters,rho)
 				fss(2,(i-1)*cgridsize+j,k)=As(2)
 			end do
@@ -457,7 +457,7 @@ subroutine fvhcxalt(fv,omega1, omega2, omega3, omega4,wage,wageh,fvpar, parA,rho
 				do l=1,xgridsize
 					inputs(3)=(1.0d0-0.5d0*((j-1.0d0)*0.5d0))*xgrid(l)
 					inputs(4)=(1.0d0-0.5d0*((j-1.0d0)*0.5d0))*(1-xgrid(l))
-					inputs(5)=(wage(i)*(j-1.0d0)*0.5d0+wageh(i))*(1-cgrid(k))
+					inputs(5)=(wm*wage(i)*(j-1.0d0)*0.5d0+wageh(i))*(1-cgrid(k))
 					A=pftwo(inputs, constants,age,parameters,rho)
 					! now we can add the parts of the fv that are related to these.
 					fv(i,(j-1)*cxgridsize+(k-1)*xgridsize+l)=fv(i,(j-1)*cxgridsize+(k-1)*xgridsize+l) &
@@ -574,7 +574,7 @@ subroutine fvochc(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,parA,rho)
 			do i=1,3
 				! inputs to the first kid: first i=h, then g=(1-c)Y 
 				inputs(2)=1.0d0-0.5d0*((i-1.0d0)/2.0d0)
-				inputs(3)=(wage(k)*(i-1.0d0)/2+wageh(k))*(1-cgrid(j))
+				inputs(3)=(wm*wage(k)*(i-1.0d0)/2+wageh(k))*(1-cgrid(j))
 				As=pfone(inputs, constants,age,parameters,rho)
 				fss(2,(i-1)*cgridsize+j,k)=As
 			end do
@@ -704,7 +704,7 @@ subroutine fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,fvpar,fvparv,p
 			do l=1,cgridsize
 				!do m=1,1
 					inputs(2)=1.0d0-0.5d0*((k-1.0d0)/2.0d0)
-					inputs(3)=(wage(j)*(k-1.0d0)/2+wageh(j))*(1-cgrid(l))
+					inputs(3)=(wm*wage(j)*(k-1.0d0)/2+wageh(j))*(1-cgrid(l))
 					As=pfone(inputs, constants,age,parameters,rho)
 					! first staying one child
 					fvbig(j,(k-1)*cgridsize+l,1)=fvbig(j,(k-1)*cgridsize+l,1)+As*fvpar(1,i)+As*(omega1(3)+(k-1.0d0)*0.5d0)*fvpar(10,i)
@@ -771,9 +771,9 @@ function emaxfinal(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta)
 	! same with husband income
 	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH)  
 	! uh's for each h choice 
-	uh0=uh(0.0d0,(wage+wageh),omega2(1:2),parU(3:7))
-	uhp=uh(0.5d0,(wage+wageh),omega2(1:2),parU(3:7))
-	uhf=uh(1.0d0,(wage+wageh),omega2(1:2),parU(3:7))
+	uh0=uh(0.0d0,wageh,omega2(1:2),parU(3:7))
+	uhp=uh(0.5d0,0.5*wage*wm+wageh,omega2(1:2),parU(3:7))
+	uhf=uh(1.0d0,(wage*wm+wageh),omega2(1:2),parU(3:7))
 	! terminal values calcuted, for now using a very simple thing
 	call termvaltemp(TV,uc,uh0,uhp,uhf,beta,omega2(3)) ! TODO TEMP TERM VALUES
 	! distribute choice specific current returns to a Nmcx3 matrix
@@ -816,9 +816,9 @@ function emaxlate(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV
 	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) 
 	! uh's for each h choice 
 	! income=consumption
-	uh0=uh(0.0d0,(wage+wageh),omega2(1:2),parU(3:7))
-	uhp=uh(0.5d0,(wage+wageh),omega2(1:2),parU(3:7))
-	uhf=uh(1.0d0,(wage+wageh),omega2(1:2),parU(3:7))
+	uh0=uh(0.0d0,wageh,omega2(1:2),parU(3:7))
+	uhp=uh(0.5d0,(0.5d0*wage*wm+wageh),omega2(1:2),parU(3:7))
+	uhf=uh(1.0d0,(wage*wm+wageh),omega2(1:2),parU(3:7))
 	! future values needed.
 	call fvlate(FV,omega1, omega2,omega3,omega4,parFV)
 	! distribute choice specific current returns to a Nmcx3 matrix
@@ -872,8 +872,8 @@ function emaxhc(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV,r
 	! calculate utility levels associated with each of the h,c bundles.
 	do i=1,cgridsize
 		uh0(:,i)=uh(0.0d0,(wageh)*cgrid(i),omega2(1:2),parU(3:7))
-		uhp(:,i)=uh(0.50d0,(wage*0.50d0+wageh)*cgrid(i),omega2(1:2),parU(3:7))
-		uhf(:,i)=uh(1.0d0,(wage+wageh)*cgrid(i),omega2(1:2),parU(3:7))
+		uhp(:,i)=uh(0.50d0,(wm*wage*0.50d0+wageh)*cgrid(i),omega2(1:2),parU(3:7))
+		uhf(:,i)=uh(1.0d0,(wm*wage+wageh)*cgrid(i),omega2(1:2),parU(3:7))
 	end do 
 	
 	! get the future values associated with each h,c
@@ -926,8 +926,8 @@ function emaxhcx(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV,
 	do i=1,cgridsize  
 		do j=1,xgridsize
 			uh0(:,(i-1)*xgridsize+j)=uh(0.0d0,(wageh)*cgrid(i),omega2(1:2),parU(3:7))
-			uhp(:,(i-1)*xgridsize+j)=uh(0.50d0,(wage*0.50d0+wageh)*cgrid(i),omega2(1:2),parU(3:7))
-			uhf(:,(i-1)*xgridsize+j)=uh(1.0d0,(wage+wageh)*cgrid(i),omega2(1:2),parU(3:7))
+			uhp(:,(i-1)*xgridsize+j)=uh(0.50d0,(wm*wage*0.50d0+wageh)*cgrid(i),omega2(1:2),parU(3:7))
+			uhf(:,(i-1)*xgridsize+j)=uh(1.0d0,(wm*wage+wageh)*cgrid(i),omega2(1:2),parU(3:7))
 		end do
 	end do 
 	
@@ -980,8 +980,8 @@ function emaxocfinal(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta)
 	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) 
 		! uh's for each h choice 
 	uh0=uh(0.0d0,(wageh),omega2(1:2),parU(3:7))
-	uhp=uh(0.5d0,(wage*0.50d0+wageh),omega2(1:2),parU(3:7))
-	uhf=uh(1.0d0,(wage+wageh),omega2(1:2),parU(3:7))
+	uhp=uh(0.5d0,(wm*wage*0.50d0+wageh),omega2(1:2),parU(3:7))
+	uhf=uh(1.0d0,(wm*wage+wageh),omega2(1:2),parU(3:7))
 	! terminal values calcuted, for now using a very simple thing
 	call termvaltemp(TV,uc,uh0,uhp,uhf,beta,omega2(3))
 	! distribute choice specific current returns to a Nmcx3 matrix
@@ -1026,8 +1026,8 @@ function emaxoclate(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,par
 
 	! uh's for each h choice 
 	uh0=uhoc(0.0d0,(wageh),omega2(1),parU(3:7))
-	uhp=uhoc(0.5d0,(wage*0.5d0+wageh),omega2(1),parU(3:7))
-	uhf=uhoc(1.0d0,(wage+wageh),omega2(1),parU(3:7))
+	uhp=uhoc(0.5d0,(wm*wage*0.5d0+wageh),omega2(1),parU(3:7))
+	uhf=uhoc(1.0d0,(wm*wage+wageh),omega2(1),parU(3:7))
 	! future values calcuted and added.
 	call fvoclate(FV,omega1, omega2,omega3,omega4,parFV)
 	! distribute choice specific current returns to a Nmcx3 matrix
@@ -1079,8 +1079,8 @@ function emaxochc(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV
 	! calculate utility levels associated with each of the h,c bundles.
 	do i=1,cgridsize
 		uh0(:,i)=uhoc(0.0d0,(wageh)*cgrid(i),omega2(1),parU(3:7))
-		uhp(:,i)=uhoc(0.50d0,(wage*0.5d0+wageh)*cgrid(i),omega2(1),parU(3:7))
-		uhf(:,i)=uhoc(1.0d0,(wage+wageh)*cgrid(i),omega2(1),parU(3:7))
+		uhp(:,i)=uhoc(0.50d0,(wm*wage*0.5d0+wageh)*cgrid(i),omega2(1),parU(3:7))
+		uhf(:,i)=uhoc(1.0d0,(wm*wage+wageh)*cgrid(i),omega2(1),parU(3:7))
 	end do 
 	
 	! get the future values associated with each h,c
@@ -1156,8 +1156,8 @@ function emaxochcb(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parF
 	!end do
 	do i=1,cgridsize
 		uh0(:,i)=uh(0.0d0,(wageh)*cgrid(i),omega2(1:2),parU(3:7))
-		uhp(:,i)=uh(0.50d0,(wage*0.50d0+wageh)*cgrid(i),omega2(1:2),parU(3:7))
-		uhf(:,i)=uh(1.0d0,(wage+wageh)*cgrid(i),omega2(1:2),parU(3:7))
+		uhp(:,i)=uh(0.50d0,(wm*wage*0.50d0+wageh)*cgrid(i),omega2(1:2),parU(3:7))
+		uhf(:,i)=uh(1.0d0,(wm*wage+wageh)*cgrid(i),omega2(1:2),parU(3:7))
 	end do 
 
 	! now collect everything together
@@ -1167,8 +1167,6 @@ function emaxochcb(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parF
 
 	! get the future values
 	call fvochcbalt(fv,omega1, omega2,omega3, omega4,wage,wageh,parFV,parFVv,parA,parB,typevec,typeprob,rho)
-
-	
 	! add the fv
 	umat=umat+beta*fv
 	! now, take maxval of each row and then take the mean
