@@ -1334,7 +1334,7 @@ end subroutine moments
 !>Subroutine moments(momentvec, SS,outcomes, choices, testoutcomes, birthhist, smchoices, smexperience, omega3data,lfpperiods, expperiods, tsperiods, idmat)
 !>This is the alternative, because regression coefficients are estimated for
 !>non-stacked samples and then averaged.
-subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperience, omega3data,lfpperiods, expperiods, tsperiods, idmat)
+subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperience, omega3data,lfpperiods, expperiods, tsperiods, idmat, vocal)
 	implicit none
 	real(dble),intent(in):: SS(6,nperiods,Npaths,SampleSize) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
 	!real(dble),intent(in):: outcomes(2,nperiods,Npaths,SampleSize) !< outcomes: wages of the father and mother.
@@ -1349,6 +1349,7 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	integer, intent(in):: tsperiods(expsize) 		!< the array that holds the ages for which test score averages are calculated. 
 	integer, intent(in):: idmat(SampleSize,idmatsize) 	   		!<indicates the which sample units are in the jth columnth moment
 														!<calculation
+	integer, intent(in):: vocal						    !< =0 no output, =1 moments printed							
 	real(dble), intent(out) :: momentvec(MomentSize) 	!< The set of moments produced by the simulated data
 		
 	! NOTE  					 ------------ON IDMAT---------------
@@ -1477,12 +1478,13 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 		! THE EXPPERIODS ARE AGES OF THE MOTHER, NOT PERIODS, SO WE NEED TO PICK THE CORRECT PERIOD with OMEGA3(3)
 		do k=1, expsize
 			counter=1
-			allocate( experience ( sum (idmat(:,lfpsize+k) ) ) )
+			allocate( experience ( sum ( idmat(:,lfpsize+k) ) ) )
 			do l=1, SampleSize
 				if (idmat(l,lfpsize+k)==1) then
 					!experience(counter)=SS(3,expperiods(k)+omega3data(3,l),i,l)
 					experience(counter)=smexperience(expperiods(k)-nint(omega3data(3,l))+1,i,l)
 					counter=counter+1
+					!if ( (k==1) .AND. (i==1) ) print*, l, expperiods(k)-nint(omega3data(3,l))+1, smexperience(expperiods(k)-nint(omega3data(3,l))+1,i,l)
 				end if
 			end do
 			! calculate the mean and the variance for the ith path and kth experience level. 
@@ -1496,8 +1498,6 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 			allocate ( dualexperience( sum(idmat(:,lfpsize+expsize+k)),2 ) )
 			do l=1, SampleSize
 				if (idmat(l,lfpsize+expsize+k)==1) then
-					!dualexperience(counter,1)=SS(3,expperiods(k)+omega3data(3,l),i,l)
-					!dualexperience(counter,2)=SS(3,expperiods(k+1)+omega3data(3,l),i,l)
 					dualexperience(counter,1)=smexperience(expperiods(k)-nint(omega3data(3,l))+1,i,l)
 					dualexperience(counter,2)=smexperience(expperiods(k+1)-nint(omega3data(3,l))+1,i,l)
 					counter=counter+1
@@ -1579,7 +1579,6 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 		! now we can allocate data matrix and dependent variable vectors
 		allocate(tsdiffmat (nspots, nregtsdiff+1) )
 		allocate(tsdiffvec (nspots) )
-	
 		tsdiffmat(:,nregtsdiff+1)=1.0d0
 		! another loop to fill in these guys
 		counter=1
@@ -1588,7 +1587,7 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 				if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
 					! 1. fill in the labor supply related parts (smh)
 					!if ( smtestoutcomes(3, k-testminage+1,i,l) > -1.0d0 )   then ! if the second kid is old enough to have a testscore (first is kid is already at most testmaxage-2
-					if (SS(5,k,i,l)>4.8) then 
+					if (SS(5,10+Noldtest,i,l)>4.8) then 
 						smh=sum(smchoices(:,k,i,l)*(/0.0d0,0.5d0,1.0d0/))
 						smhnext=sum(smchoices(:,k+1,i,l)*(/0.0d0,0.5d0,1.0d0/))
 						tsdiffmat(counter, 1:2)=(/smh,smhnext/)
@@ -1597,19 +1596,22 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 						tsdiffmat(counter,9:11)=omega3data(1:3,l)
 						tsdiffmat(counter,12:13)=SS(4:5,k,i,l)
 						! now fillin the tsdiffmat vec
-						A1=smtestoutcomes(1,k-testminage+1,i,l)
-						A2=smtestoutcomes(3,k-testminage+1,i,l)
-						A1f=smtestoutcomes(1,k-testminage+3,i,l)
-						A2f=smtestoutcomes(3,k-testminage+3,i,l)
-						tsdiffvec(counter)= A1f-A1+A2f-A2
+						A1=smtestoutcomes(1,k,i,l)
+						A2=smtestoutcomes(3,k,i,l)
+						A1f=smtestoutcomes(1,k+2,i,l)
+						A2f=smtestoutcomes(3,k+2,i,l)
+						!if (i==1) then
+							!print*, '--', k, i, l, '--'
+							!print*, A1f, A1
+							!print*, A2f, A2
+						!end if 
+						tsdiffvec(counter)= A1f-A1-(A2f-A2)
 						counter=counter+1
 					end if
 				end if
 			end do
 		end do
-
-!print*, 'LAPACK PRINT'
-!print*, nspots, nregtsdiff+1,  blocksize
+		
 		! lapack
 		call DGELS('N', nspots, nregtsdiff+1,1,tsdiffmat,nspots, tsdiffvec, nspots,worktsdiff,nregtsdiff+1+(nregtsdiff+1)*blocksize,infotsdiff)
 		tsdiffestmat(i,:)=tsdiffvec(1:nregtsdiff+1)
@@ -1619,78 +1621,24 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	end do 
 	tsdiffest=sum(tsdiffestmat,1)/Npaths
 
-
-
-
-	!! first count the simulated observations that will go into this
-	
-	!nspots=0
-	!do k=testminage+1,testmaxage-2
-		!do l=1, SampleSize
-			!if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
-				!do i=1,Npaths 	! ... go through simulated outcomes for that mom and figure which ones have test scores for both kids at that period.
-					!! if kid 2 is older than 5, then create a spot
-					!if (SS(5,k,i,l) > 4.8)  nspots=nspots+1
-				!end do
-			!end if
-		!end do
-	!end do
-
-	!! now we can allocate data matrix and dependent variable vectors
-	!allocate(tsdiffmat (nspots, nregtsdiff+1) )
-	!allocate(tsdiffvec (nspots) )
-	
-	!tsdiffmat(:,nregtsdiff+1)=1.0d0
-	!! another loop to fill in these guys
-	!counter=1
-	!do k=testminage+1,testmaxage-2
-		!do l=1, SampleSize
-			!if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
-				!do i=1,Npaths 	! ... go through simulated outcomes for that mom and pick the right ones
-					!! 1. fill in the labor supply related parts (smh)
-					!!if ( smtestoutcomes(3, k-testminage+1,i,l) > -1.0d0 )   then ! if the second kid is old enough to have a testscore (first is kid is already at most testmaxage-2
-					!if (SS(5,k,i,l)>4.8) then 
-						!smh=sum(smchoices(:,k,i,l)*(/0.0d0,0.5d0,1.0d0/))
-						!smhnext=sum(smchoices(:,k+1,i,l)*(/0.0d0,0.5d0,1.0d0/))
-						!tsdiffmat(counter, 1:2)=(/smh,smhnext/)
-						!tsdiffmat(counter, 3:5)=smh*omega3data(1:3,l)
-						!tsdiffmat(counter, 6:8)=smhnext*omega3data(1:3,l)
-						!tsdiffmat(counter,9:11)=omega3data(1:3,l)
-						!tsdiffmat(counter,12:13)=SS(4:5,k,i,l)
-						!! now fillin the tsdiffmat vec
-						!A1=smtestoutcomes(1,k-testminage+1,i,l)
-						!A2=smtestoutcomes(3,k-testminage+1,i,l)
-						!A1f=smtestoutcomes(1,k-testminage+3,i,l)
-						!A2f=smtestoutcomes(3,k-testminage+3,i,l)
-						!tsdiffvec(counter)= A1f-A1+A2f-A2
-						!counter=counter+1
-					!end if
-				!end do
-			!end if
-		!end do
-	!end do
-	!!print*, tsdiffmat(:,3:5)
-
-
-	!! lapack
-	!call DGELS('N', nspots, nregtsdiff+1,1,tsdiffmat,nspots, tsdiffvec, nspots,worktsdiff,nregtsdiff+1+(nregtsdiff+1)*blocksize,infotsdiff)
-	!tsdiffest=tsdiffvec(1:nregtsdiff+1)
-	!! deallocate
-	!deallocate(tsdiffvec)
-	!deallocate(tsdiffmat)
-	! put all the vecs together
-
-	
+	! finally bundle the momentvec
 	momentvec=(/fulltimecoef, parttimecoef, expest, tsest,tsdiffest/)
-
-	print*, tsest
+	
+	if (vocal==1) then
+		write(6,*) '====    Moment Estimates Requested    =='
+		write(6,*) 'full time coef:' 
+		write(6,*) fulltimecoef 
+		write(6,*) 'part time coef:' 
+		write(6,*) parttimecoef 
+		write(6,*) 'experience moments' 
+		write(6,*) expest
+		write(6,*) 'test score moments' 
+		write(6,*) tsest
+		write(6,*) 'tsdiff coef:' 
+		write(6,*) tsdiffest 
+		write(6,*) '======================================='
+	end if
 end subroutine momentsalt
-
-
-
-
-
-
 
 end module optu
 

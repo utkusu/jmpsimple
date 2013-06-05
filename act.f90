@@ -325,7 +325,7 @@ contains
 				!do i=1, nperiods 
 					!print*, i, SScollect(3,i,1,1), smexperiencecollect(i,1,1)
 				!end do
-			call momentsalt(momentvec, SScollect, smtestoutcomescollect,  birthhistcollect, smchoicescollect, smexperiencecollect, gomega3data,glfpperiods, gexpperiods, gtsperiods, gidmat)
+			call momentsalt(momentvec, SScollect, smtestoutcomescollect,  birthhistcollect, smchoicescollect, smexperiencecollect, gomega3data,glfpperiods, gexpperiods, gtsperiods, gidmat, 1)
 			difft(1,:)=momentvec-targetvec
 			diff(:,1)=momentvec-targetvec
 			middlestep=matmul(difft,weightmat)
@@ -335,6 +335,7 @@ contains
 			print*, '-------------- ITERATION SUMMARY ----------------'
 			print*, 'This is iteration', itercounter
 			print*, 'Number of Evaluated Points', evaliter
+			print*, 'Evaluated Parameters', parameters 
 			print*, 'Distance is', dist
 			print*, 'solution calc took', soltime-starttime
 			print*, 'simulation and moments', endtime-soltime
