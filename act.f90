@@ -21,7 +21,7 @@ call MPI_COMM_SIZE(MPI_COMM_WORLD, nproc, ier)
 call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ier)
 
 if (rank==0) then
-	print*,'Master Reading Data'
+	print*, 'Master Reading Data'
 	print*, 'Sample Size:', SampleSize
 	print*, 'Parameters to be estimated', parsize
 	print*, 'Moments to match:', MomentSize
@@ -49,11 +49,11 @@ call MPI_BCAST(weightmat, MomentSize*MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_CO
 
 
 
-call nlo_create(opt, NLOPT_LD_MMA,parsize)
+call nlo_create(opt, NLOPT_LN_SBPLX,parsize)
 call nlo_set_lower_bounds(ires, opt, lb)
 call nlo_set_upper_bounds(ires, opt, ub)
 call nlo_set_min_objective(ires, opt, objfunc, fmat)
-call nlo_set_maxeval(ires,opt,40)
+call nlo_set_maxeval(ires,opt,400)
 !call nlo_set_xtol_rel(ires, opt, 0.0001d0)
 
 call nlo_optimize(ires, opt, parameters, minf)
@@ -335,7 +335,6 @@ contains
 			print*, '-------------- ITERATION SUMMARY ----------------'
 			print*, 'This is iteration', itercounter
 			print*, 'Number of Evaluated Points', evaliter
-			print*, 'Evaluated Parameters', parameters 
 			print*, 'Distance is', dist
 			print*, 'solution calc took', soltime-starttime
 			print*, 'simulation and moments', endtime-soltime
@@ -352,6 +351,10 @@ contains
 	integer n, need_gradient
 	real(dble) val, xvec(n), grad(n), jacobian(n)
 	real(dble) dist, fmat 
+	if( rank==0) then
+		print*, '----    Evaluated Parameters   ------'
+		print*, xvec 
+	end if
 		call distance(dist, parameters, targetvec, weightmat)
 		evaliter=evaliter+1
 	val=dist

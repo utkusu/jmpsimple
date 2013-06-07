@@ -26,7 +26,7 @@ integer, parameter:: Bsize=2			!< the number of regressors in the birth probabil
 integer, parameter:: Bsizeexo=4			!< the number of regressors in the birth probability function other than the contraception
 
 ! estimation stuff 
-integer,parameter::Npaths=50			!<number of simulated paths for each family.
+integer,parameter::Npaths=100			!<number of simulated paths for each family.
 integer,parameter::simvecsize=10 		!<the size of the simulated data vector for each period. obviosly very related to ss.
 integer, parameter::SampleSize=301 		!< Size of the estimation sample
 integer, parameter:: Ntestage=10 		!< number of ages in which we have test scores. start at 5, end in 14.
@@ -79,7 +79,7 @@ real(dble), parameter::onescxgrid(cxgridsize)=1.0d0
 real(dble), parameter::onescgridwithbirth(cgridsize*2)=1.0d0
 
 ! emax interpolation parameters
-integer, parameter:: Nmc=50	!<monte carlo integration draw size
+integer, parameter:: Nmc=100	!<monte carlo integration draw size
 
 integer, parameter::svecage0m=4
 integer, parameter::svecsch0m=4
