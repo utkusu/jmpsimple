@@ -47,9 +47,7 @@ call MPI_BCAST(targetvec, MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, i
 call MPI_BCAST(weightmat, MomentSize*MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 
 
-
-
-call nlo_create(opt, NLOPT_LN_SBPLX,parsize)
+call nlo_create(opt, NLOPT_LN_NELDERMEAD,parsize)
 call nlo_set_lower_bounds(ires, opt, lb)
 call nlo_set_upper_bounds(ires, opt, ub)
 call nlo_set_min_objective(ires, opt, objfunc, fmat)
@@ -332,14 +330,18 @@ contains
 			laststep=matmul(middlestep,diff)
 			dist=laststep(1,1)
 			endtime=MPI_WTIME()
+			print*, '=================================================='
 			print*, '-------------- ITERATION SUMMARY ----------------'
+			print*, '=================================================='
 			print*, 'This is iteration', itercounter
 			print*, 'Number of Evaluated Points', evaliter
 			print*, 'Distance is', dist
 			print*, 'solution calc took', soltime-starttime
 			print*, 'simulation and moments', endtime-soltime
 			print*, 'whole thing took', endtime-starttime
-			print*, '-------------------------------------------------'
+			write(6,*) '===='
+			print*,  'parameters:', parameters
+			print*, '=================================================='
 			itercounter=itercounter+1
 		end if
 	end subroutine distance
@@ -351,11 +353,7 @@ contains
 	integer n, need_gradient
 	real(dble) val, xvec(n), grad(n), jacobian(n)
 	real(dble) dist, fmat 
-	if( rank==0) then
-		print*, '----    Evaluated Parameters   ------'
-		print*, xvec 
-	end if
-		call distance(dist, parameters, targetvec, weightmat)
+   	call distance(dist, parameters, targetvec, weightmat)
 		evaliter=evaliter+1
 	val=dist
 	if ( need_gradient .NE. 0 ) then
@@ -381,6 +379,7 @@ contains
 		do i=1,parsize
 			fakeparameters=parameters; fakeparameters(i)=xh(i)
 			call distance(f1,fakeparameters,targetvec,weightmat)
+			evaliter=evaliter-1    ! count back the evaulated points'
 			jacobian(i)=(f1-f0)/h(i)
 			if (rank==0) print*, 'jacobian in direction', i
 		end do
