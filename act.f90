@@ -47,7 +47,7 @@ call MPI_BCAST(targetvec, MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, i
 call MPI_BCAST(weightmat, MomentSize*MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 
 
-call nlo_create(opt, NLOPT_LN_NELDERMEAD,parsize)
+call nlo_create(opt, NLOPT_LD_MMA,parsize)
 call nlo_set_lower_bounds(ires, opt, lb)
 call nlo_set_upper_bounds(ires, opt, ub)
 call nlo_set_min_objective(ires, opt, objfunc, fmat)
@@ -61,15 +61,9 @@ if (rank==0) then
 end if
 call nlo_destroy(opt)	
 
-
-
 call MPI_FINALIZE(ier)
 
-
 contains
-
-
-
 
 	subroutine distance(dist,parameters,targetvec,weightmat)
 		implicit none
@@ -78,7 +72,6 @@ contains
 		real(dble), intent(in)::weightmat(MomentSize, MomentSize) 
 		real(dble), intent(in) :: targetvec(MomentSize)
 		real(dble), intent(out) :: dist
-		
 
 		! locals
 		! first to break up the parameters
@@ -91,7 +84,6 @@ contains
 		real(dble) beta
 
 		integer id
-
 
 		! the stuff needed between steps
 		integer nftype
@@ -213,19 +205,19 @@ contains
 			
 
 
- 			if (itercounter==1) then
-				open(77,file='wcoef.txt')
-				do l=1,2
-					!write(77,*) "-------------- type order=",l,"------------" 
+             !if (itercounter==1) then
+				!open(77,file='wcoef.txt')
+				!do l=1,2
+					!!write(77,*) "-------------- type order=",l,"------------" 
 
-					do m=1,deltamax-deltamin+1
-						!write(77,*) "########   delta type=",m,"------------"
-						write(77,70) ((solwall(j,k,m,l),k=1,nperiods-deltamin+2),j=1,Gsize+1)
-					end do
-				end do
-				70 format(22F26.9)
-				close(77)
-			end if
+					!do m=1,deltamax-deltamin+1
+						!!write(77,*) "########   delta type=",m,"------------"
+						!write(77,70) ((solwall(j,k,m,l),k=1,nperiods-deltamin+2),j=1,Gsize+1)
+					!end do
+				!end do
+				!70 format(22F26.9)
+				!close(77)
+			!end if
 
 			
 			call MPI_BCAST(solwall, (Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+1)*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
@@ -300,15 +292,15 @@ contains
 			print*, 'MODEL SOLVED, MOVING ONTO SIMULATIONS'
 			soltime=MPI_WTIME()
 			
-			if (itercounter==1) then	
-				open(66,file='vcoef.txt')
-				do l=1,2
-					!write(66,*) "-------------- type order=",l,"------------" 
-					write(66,60) ((solvall(j,k,l),k=1,nperiods),j=1,Gsizeoc+1)
-				end do
-				60 format(22F46.9)
-				close(66)
-			end if
+			!if (itercounter==1) then	
+				!open(66,file='vcoef.txt')
+				!do l=1,2
+					!!write(66,*) "-------------- type order=",l,"------------" 
+					!write(66,60) ((solvall(j,k,l),k=1,nperiods),j=1,Gsizeoc+1)
+				!end do
+				!60 format(22F46.9)
+				!close(66)
+			!end if
 
 			do id=1,SampleSize
 				call simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoices, smexperience, smAs, smtestoutcomes,gomega3data(:,id),(/nctype,gmtype/),parA,parU,gparW,gparH,beta,sigma,a1type,pa1type,gparBmat,solvall,solwall,llmsmat(:,id),id,grho,glambdas,gsigmaetas, gsmpar)
@@ -349,17 +341,17 @@ contains
 
 	!> make the distance function and its numerical derivatives a function to be evaluated by the optimizer
 	subroutine objfunc(val, n, xvec, grad, need_gradient, fmat)
-	implicit none
-	integer n, need_gradient
-	real(dble) val, xvec(n), grad(n), jacobian(n)
-	real(dble) dist, fmat 
-   	call distance(dist, parameters, targetvec, weightmat)
-		evaliter=evaliter+1
-	val=dist
-	if ( need_gradient .NE. 0 ) then
-		call diffdistance(jacobian,parameters,targetvec, weightmat, dist)
-		grad=jacobian
-	end if
+		implicit none
+		integer n, need_gradient
+		real(dble) val, xvec(n), grad(n), jacobian(n)
+		real(dble) dist, fmat 
+		call distance(dist, xvec, targetvec, weightmat)
+			evaliter=evaliter+1
+		val=dist
+		if ( need_gradient .NE. 0 ) then
+			call diffdistance(jacobian,parameters,targetvec, weightmat, dist)
+			grad=jacobian
+		end if
 	end subroutine objfunc
 	! takes the forward numerical derivative of the distance function, using already calculated f0
 
