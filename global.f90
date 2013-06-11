@@ -79,7 +79,7 @@ real(dble), parameter::onescxgrid(cxgridsize)=1.0d0
 real(dble), parameter::onescgridwithbirth(cgridsize*2)=1.0d0
 
 ! emax interpolation parameters
-integer, parameter:: Nmc=10	!<monte carlo integration draw size
+integer, parameter:: Nmc=100	!<monte carlo integration draw size
 
 integer, parameter::svecage0m=4
 integer, parameter::svecsch0m=4
@@ -309,12 +309,6 @@ contains
 		parameters=parmat(1,:)
 		lb=parmat(2,:)
 		ub=parmat(3,:)
-
-		! TODO ERASE ME
-		!parameters=1.0d0
-		!parameters(parsize)=0.95 		! special for beta
-		!lb=0.0d0
-		!ub=5.0d0
 	end subroutine setoptimstuff
 
 	! set indirect inference things, first
@@ -334,7 +328,111 @@ contains
 		! TODO ERASE ME
 		!targetvec=0.0d0
 		!weightmat=1.0d0
+end subroutine setii
 
+! ---- parameter utilities------
+! utility to print variable parameters
+subroutine printpar()
+	implicit none
+		print*, '------- PARAMETERS----------'
+		print*, 'gh1=', parameters(1)
+		print*, 'gh2=', parameters(2)
+		print*, 'gh3=', parameters(3)
+		print*, 'phi=', parameters(4)
+		print*, 'alpha=', parameters(5)
+		print*, 'alpha2=', parameters(6)
+		print*, 'alpha3=', parameters(7)
+		print*, 'alpha4=', parameters(8)
+		print*, 'alpha5=', parameters(9)
+		print*, 'a1type1=', parameters(10)
+		print*, 'a1type2=', parameters(11)
+		print*, 'pa1type=', parameters(12)
+		print*, 'sigma11=', parameters(13)
+		print*, 'sigma22=', parameters(14)
+		print*, 'sigma33=', parameters(15)
+		print*, 'sigma12=', parameters(16)
+		print*, 'sigma13=', parameters(17)
+		print*, 'sigma23=', parameters(18)
+		print*, 'beta=', parameters(19)
+		print*, 'muc=', parameters(20)
+		print*, '------ End of Parameters -----'
+end subroutine printpar
 
-	end subroutine setii
+! if called (after optimstuff) sets the parameter vectors
+subroutine setparameters(mode)
+	implicit none
+	integer, intent(in):: mode ! =0 if hand written, anything else if reading from a line by line from givenpar.csv
+	real(dble) gh1, gh2, gh3, phi, alpha, alpha2, alpha3, alpha4, alpha5, a1type1 ,a1type2 ,pa1type
+	real(dble) 	sigma11 ,sigma22 ,sigma33 ,sigma12 ,sigma23, sigma13 ,beta ,muc
+integer i 	
+	gh1= 		0.5525d0 
+	gh2= 		4.75025d0
+	gh3= 		0.33825d0
+	phi= 		-9.5971d0 
+	alpha= 		-1.24d0
+	alpha2=  	0.15d0
+	alpha3= 	-9.76d0	
+	alpha4= 	-0.76d0
+	alpha5= 	-2.57d0
+	a1type1= 	0.10374625d0	
+	a1type2= 	1.14124625d0
+	pa1type= 	0.5124998d0	
+	sigma11= 	1.0374625d0
+	sigma22= 	1.0374625d0
+	sigma33= 	1.0374625d0
+	sigma12= 	0.25d0
+	sigma13= 	0.25d0
+	sigma23= 	0.25d0
+	beta= 	 	0.951874d0
+	muc= 		7.9375374d0
+	if (mode==0) then
+		parameters= (/gh1, gh2, gh3, phi, alpha, alpha2, alpha3, alpha4, alpha5, a1type1, a1type2, pa1type, sigma11, sigma22, sigma33, sigma12, sigma23, sigma13, beta, muc/)
+	else
+		open(unit=17,file="givenpar.csv")
+		do i=1, parsize 
+			read (17,*)  parameters(i)
+		end do 
+		close(17)	
+	end if 	
+end subroutine setparameters	
+
+! slightly change the existing parameter vector, it takes VECTOR values.
+subroutine twistparameters(dimvec, valvec)
+	implicit none
+	integer, intent(in) :: dimvec(:)  ! dimensions of the parameter vector you want to change
+	real(dble), intent(in) :: valvec(:)  ! values that needs to be inserted, vector of same size
+	integer n, i
+	n=size(dimvec)
+	do i=1,n
+		parameters(dimvec(i))=valvec(i)
+	end do
+end subroutine twistparameters
+
+! subroutine to write interpolation coef to files
+subroutine writeintpar(solwall, solvall)
+	implicit none
+	real(dble), intent(in):: solvall(Gsizeoc+1,nperiods, nttypes)
+	real(dble), intent(in):: solwall(Gsize+1,nperiods-deltamin+2, deltamax-deltamin+1, nttypes)
+	integer i,j,k,l, m
+	
+	open(77,file='wcoef.txt')
+	do l=1,2
+		!write(77,*) "-------------- type order=",l,"------------" 
+		do m=1,deltamax-deltamin+1
+			!write(77,*) "########   delta type=",m,"------------"
+			write(77,70) ((solwall(j,k,m,l),k=1,nperiods-deltamin+2),j=1,Gsize+1)
+		end do
+	end do
+	70 format(22F26.9)
+	close(77)
+
+	open(66,file='vcoef.txt')
+	do l=1,2
+		write(66,60) ((solvall(j,k,l),k=1,nperiods),j=1,Gsizeoc+1)
+	end do
+	60 format(22F46.9)
+	close(66)
+
+end subroutine writeintpar
+
 end module global
