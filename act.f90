@@ -47,7 +47,7 @@ call MPI_BCAST(targetvec, MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, i
 call MPI_BCAST(weightmat, MomentSize*MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 
 
-call nlo_create(opt, NLOPT_LD_MMA,parsize)
+call nlo_create(opt, NLOPT_LN_NELDERMEAD,parsize)
 call nlo_set_lower_bounds(ires, opt, lb)
 call nlo_set_upper_bounds(ires, opt, ub)
 call nlo_set_min_objective(ires, opt, objfunc, fmat)
@@ -332,7 +332,7 @@ contains
 			print*, 'simulation and moments', endtime-soltime
 			print*, 'whole thing took', endtime-starttime
 			write(6,*) '===='
-			print*,  'parameters:', parameters
+			!print*,  'parameters:', parameters
 			print*, '=================================================='
 			itercounter=itercounter+1
 		end if
@@ -348,6 +348,13 @@ contains
 		call distance(dist, xvec, targetvec, weightmat)
 			evaliter=evaliter+1
 		val=dist
+		
+		if (rank==0) then
+			print*, itercounter, evaliter
+			print*, '-----parameters------'
+			print*, xvec
+		end if
+		
 		if ( need_gradient .NE. 0 ) then
 			call diffdistance(jacobian,parameters,targetvec, weightmat, dist)
 			grad=jacobian
