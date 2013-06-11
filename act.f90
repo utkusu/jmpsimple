@@ -273,10 +273,8 @@ contains
 		if (rank==0) then
 			print*, 'MODEL SOLVED, MOVING ONTO SIMULATIONS'
 			soltime=MPI_WTIME()
-			! write up the coefficients
-			if (itercounter==45) then	
-				call writeintpar(solwall,solvall)	
-			end if
+			call writeintpar(solwall,solvall)	
+			print*, 'written int. coefficients for iteration', itercounter
 
 			do id=1,SampleSize
 				call simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoices, smexperience, smAs, smtestoutcomes,gomega3data(:,id),(/nctype,gmtype/),parA,parU,gparW,gparH,beta,sigma,a1type,pa1type,gparBmat,solvall,solwall,llmsmat(:,id),id,grho,glambdas,gsigmaetas, gsmpar)
@@ -327,7 +325,7 @@ contains
 		if (rank==0) then
 			print*, 'itercounter=', itercounter
 			print*, 'evaliter', evaliter
-			call printpar() 
+			call printpar(xvec) 
 		end if
 		
 		if ( need_gradient .NE. 0 ) then
