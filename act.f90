@@ -319,15 +319,16 @@ contains
 		integer n, need_gradient
 		real(dble) val, xvec(n), grad(n), jacobian(n)
 		real(dble) dist, fmat 
-		call distance(dist, xvec, targetvec, weightmat)
-			evaliter=evaliter+1
-		val=dist
+
 		if (rank==0) then
 			print*, 'itercounter=', itercounter
 			print*, 'evaliter', evaliter
 			call printpar(xvec) 
 		end if
 		
+		call distance(dist, xvec, targetvec, weightmat)
+			evaliter=evaliter+1
+		val=dist
 		if ( need_gradient .NE. 0 ) then
 			call diffdistance(jacobian,xvec,targetvec, weightmat, dist)
 			grad=jacobian
