@@ -424,7 +424,7 @@ subroutine writeintpar(solwall, solvall)
 			write(77,70) ((solwall(j,k,m,l),k=1,nperiods-deltamin+2),j=1,Gsize+1)
 		end do
 	end do
-	70 format(22F26.9)
+	70 format(22F46.9)
 	close(77)
 
 	open(66,file='vcoef.txt')
