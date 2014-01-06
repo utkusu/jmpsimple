@@ -169,6 +169,19 @@ contains
 		if (rank==0) then
 			starttime=MPI_WTIME()
 			print*, 'starting iteration', itercounter
+
+			! new in Jan: write the parameters to a file
+
+			if (itercounter==1) then
+				open(333,file='parrecord.txt')
+				write(333,3333) (parameters(i),i=1,parsize)
+				close(333)
+			else 
+			open(333,file='parrecord.txt',position="append")
+				write(333,3333) (parameters(i),i=1,parsize)
+				close(333)
+			end if 
+			3333 format(20F25.10)
 		!------------------- MASTER: W SOLVER -----------------
 			! send order numbers to workers
 			number_sent=0
@@ -273,7 +286,7 @@ contains
 		if (rank==0) then
 			print*, 'MODEL SOLVED, MOVING ONTO SIMULATIONS'
 			soltime=MPI_WTIME()
-			call writeintpar(solwall,solvall)	
+			if (itercounter==1) call writeintpar(solwall,solvall)	
 			print*, 'written int. coefficients for iteration', itercounter
 
 			do id=1,SampleSize
