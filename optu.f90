@@ -643,17 +643,8 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 						do k=1,xgridsize
 							inputs=(/SS(1,period,i),SS(2,period,i),(1-0.25*(j-1))*xgrid(k),(1-0.25*(j-1))*(1-xgrid(k)),income/)
 							Anext=pftwo(inputs,omega3(1:3),SS(4:5,period,i),parA(4:12), rho)
-							!if (i==1 .AND. k==1 .AND. period<3) then
-								!print*,  'period', period
-								!print*,  'inputs:', inputs
-								!print*,   'omega3', omega3
-								!print*,   'ages', SS(4:5,period,i)
-								!print*,   'parApart', parA(4:12)
-								!print*, 'rho', rho
-							!end if
 							A1next=Anext(1)
 							A2next=Anext(2)
-							!if (period<3 .AND. i==1) print*, i,period,k,A1next
 							intw=(/A1next,A2next,Enext,A1next**2,A2next**2,Enext**2, A1next*A2next,A1next*Enext,A2next*Enext/)
 							fvw=sum(intw*(/wcoef(1:3,period+1,birthhist(i),a1holder(i)),wcoef(9:Gsize,period+1,birthhist(i),a1holder(i))/))
 							umatbig(j,k,i)=umatbig(j,k,i)+beta*(fvw+fvconsw(a1holder(i)))
@@ -1315,7 +1306,6 @@ subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperie
 			end if
 		end do
 	end do
-	!print*, tsdiffmat(:,3:5)
 
 
 	! lapack
@@ -1484,7 +1474,6 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 					!experience(counter)=SS(3,expperiods(k)+omega3data(3,l),i,l)
 					experience(counter)=smexperience(expperiods(k)-nint(omega3data(3,l))+1,i,l)
 					counter=counter+1
-					!if ( (k==1) .AND. (i==1) ) print*, l, expperiods(k)-nint(omega3data(3,l))+1, smexperience(expperiods(k)-nint(omega3data(3,l))+1,i,l)
 				end if
 			end do
 			! calculate the mean and the variance for the ith path and kth experience level. 
@@ -1567,7 +1556,6 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 		nspots=0
 		do k=1,Noldtest
 			do l=1, SampleSize
-				!if (l<10) print*, 'midreport:', l, lfpsize+2*expsize-1+tssize+k, idmat(l,lfpsize+2*expsize-1+tssize+k), SS(5,k+10,i,l)   
 				if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
 					! if kid 2 is older than 5, then create a spot
 					if (SS(5,k+10,i,l) > 4.8d0) nspots=nspots+1
@@ -1600,11 +1588,6 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 						A2=smtestoutcomes(3,k,i,l)
 						A1f=smtestoutcomes(1,k+2,i,l)
 						A2f=smtestoutcomes(3,k+2,i,l)
-						!if (i==1) then
-							!print*, '--', k, i, l, '--'
-							!print*, A1f, A1
-							!print*, A2f, A2
-						!end if 
 						tsdiffvec(counter)= A1f-A1-(A2f-A2)
 						counter=counter+1
 					end if

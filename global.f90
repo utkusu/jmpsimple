@@ -132,7 +132,12 @@ integer, parameter:: parsize=20
 ! >>>>>>>>>>>>>  put the betaf and betam here <<<<<<<<<<<<<<<<<<<<<<<<<
 real(dble), parameter::gparW(parWsize)=(/ 0.0315141d0 , 0.22902d0 , 0.31238d0 , -0.0053421d0 , 0.0568242d0 , -0.026432d0 , -0.4756638d0 /)
 real(dble), parameter::gparH(parHsize)=(/ 0.066522d0 , 0.037802d0 , -0.0004797d0 , 0.0549845d0 , -0.0013848d0 , 8.865523d0  /)
-real(dble) , parameter:: gpart2_parA(9)=(/ 9.9107d0 , 0.0127697d0 , 3.361842d0 , -0.07951778d0 ,  4.8295807d0 , 0.22579117d0, -1.8741083d0, -0.11462243d0, 0.0000160622d0 /)
+! removing age0m, it had a huge negative coefficient in front of age0m x tau2, making the effect of tau2 negative, and dragging the
+! A1 and A2 to negative as the mom did work full time.
+! THIS WAS THE OLD ONE: real(dble) , parameter:: gpart2_parA(9)=(/ 9.9107d0 , 0.0127697d0 , 3.361842d0 , -0.07951778d0 ,  4.8295807d0 , 0.22579117d0, -1.8741083d0, -0.11462243d0, 0.0000160622d0 /)
+real(dble) , parameter:: gpart2_parA(9)=(/ 8.9498d0 , -0.0987d0 , 3.738713d0 , 0.0d0 ,  3.221d0 , 0.11145d0, -1.874183d0, 0.0d0, 0.0000160622d0 /)
+
+
 real(dble) gparBmat(Bsizeexo+1,nfert)
 
 ! parameters of other kind

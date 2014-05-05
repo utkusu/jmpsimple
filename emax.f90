@@ -41,7 +41,7 @@ function pfone(inputs, constants,age, parameters,rho)
 	if (age<abar) then
 		pfone=rho*inputs(1)+(parameters(1)+parameters(2)*constants(1)+parameters(3)*constants(2)+parameters(4)*constants(3))*inputs(2)+parameters(9)*inputs(3)
 	else
-		pfone=rho*inputs(1)+(parameters(5)+parameters(6)*constants(1)+parameters(7)*constants(1)+parameters(8)*constants(3))*inputs(2)+parameters(9)*inputs(3)
+		pfone=rho*inputs(1)+(parameters(5)+parameters(6)*constants(1)+parameters(7)*constants(2)+parameters(8)*constants(3))*inputs(2)+parameters(9)*inputs(3)
 	end if
 
 	if (age>=astar) pfone=inputs(1) 		! if older than a star, just stay put. 
@@ -61,7 +61,7 @@ function pftwo(inputs, constants,age,parameters,rho)
 	if (age(1)<abar) then
 		pftwo(1)=rho*inputs(1)+(parameters(1)+parameters(2)*constants(1)+parameters(3)*constants(2)+parameters(4)*constants(3))*inputs(3)+parameters(9)*inputs(5)
 	else
-		pftwo(1)= rho*inputs(1)+(parameters(5)+parameters(6)*constants(1)+parameters(7)*constants(1)+parameters(8)*constants(3))*inputs(3)+parameters(9)*inputs(5) 
+		pftwo(1)= rho*inputs(1)+(parameters(5)+parameters(6)*constants(1)+parameters(7)*constants(2)+parameters(8)*constants(3))*inputs(3)+parameters(9)*inputs(5) 
 	end if
 	! second kid
 	if (age(2)<abar) then
