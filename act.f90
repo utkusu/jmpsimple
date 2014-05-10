@@ -65,13 +65,14 @@ call MPI_FINALIZE(ier)
 
 contains
 
-	subroutine distance(dist,parameters,targetvec,weightmat)
+	subroutine distance(dist, momentvec, parameters,targetvec,weightmat)
 		implicit none
 		include 'mpif.h'
 		real(dble), intent(in)::parameters(parsize)
 		real(dble), intent(in)::weightmat(MomentSize, MomentSize) 
 		real(dble), intent(in) :: targetvec(MomentSize)
 		real(dble), intent(out) :: dist
+		real(dble), intent(out) :: momentvec(MomentSize)
 
 		! locals
 		! first to break up the parameters
@@ -123,7 +124,6 @@ contains
 		real(dble) omega3(o3size) 
 		
 		!calculation
-		real(dble) momentvec(MomentSize) 	!
 
 		integer status(MPI_STATUS_SIZE)
 		real(dble) difft(1,MomentSize), diff(MomentSize,1), middlestep(1,MomentSize), laststep(1,1)
@@ -286,7 +286,7 @@ contains
 		if (rank==0) then
 			print*, 'MODEL SOLVED, MOVING ONTO SIMULATIONS'
 			soltime=MPI_WTIME()
-			if (itercounter==1) call writeintpar(solwall,solvall)	
+			call writeintpar(solwall,solvall)	
 			print*, 'written int. coefficients for iteration', itercounter
 
 			do id=1,SampleSize
@@ -313,7 +313,7 @@ contains
 			print*, '-------------- ITERATION SUMMARY ----------------'
 			print*, '=================================================='
 			print*, 'This is iteration', itercounter
-			print*, 'Number of Evaluated Points', evaliter
+			print*, 'Number of Evaluated Points', evaliter ! for gradient methods.
 			print*, 'Distance is', dist
 			print*, 'solution calc took', soltime-starttime
 			print*, 'simulation and moments', endtime-soltime
@@ -339,21 +339,25 @@ contains
 			call printpar(xvec) 
 		end if
 		
-		call distance(dist, xvec, targetvec, weightmat)
+		call distance(dist, momentvec, xvec, targetvec, weightmat)
+		if (rank==0) then 
+			call writemomentvec(momentvec)
+			call writeresults(dist, xvec)
+		end if 
 			evaliter=evaliter+1
 		val=dist
 		if ( need_gradient .NE. 0 ) then
-			call diffdistance(jacobian,xvec,targetvec, weightmat, dist)
+			call diffdistance(jacobian,xvec, dist)
 			grad=jacobian
 		end if
 	end subroutine objfunc
 	! takes the forward numerical derivative of the distance function, using already calculated f0
 
 
-	subroutine diffdistance(jacobian, parameters,targetvec,weightmat,f0)
+	subroutine diffdistance(jacobian, parameters,f0)
 		implicit none
 		real(dble) jacobian(parsize)
-		real(dble) parameters(parsize), targetvec(MomentSize), weightmat(MomentSize,MomentSize)
+		real(dble) parameters(parsize)
 		real(dble) f0
 		real(dble) f1
 		real(dble) h(parsize),hbar(parsize),xh(parsize), fakeparameters(parsize)
@@ -364,7 +368,7 @@ contains
 		h=xh-parameters
 		do i=1,parsize
 			fakeparameters=parameters; fakeparameters(i)=xh(i)
-			call distance(f1,fakeparameters,targetvec,weightmat)
+			call distance(f1,momentvec,fakeparameters,targetvec,weightmat)
 			jacobian(i)=(f1-f0)/h(i)
 			if (rank==0) then
 				evaliter=evaliter-1
@@ -373,5 +377,28 @@ contains
 		end do
 	end subroutine diffdistance
 
+
+	!>to evaluate a matrix of parameter choices and print out evaluated values, as well as printing out 
+	subroutine evaluatemat(distvec,parmat, parmatsize,  pref)
+ 		integer, intent(in) :: parmatsize  !>second dimension of the parmat
+		real(dble), intent(in) :: parmat(parmatsize,parsize) !>  parmatsize x parsize matrix holding different par trials in rows
+		integer, intent(in):: pref  !> to pass preferences regarding output. Nothing in it so far.
+		!real(dble), intent(in)::weightmat(MomentSize, MomentSize)  
+		!real(dble), intent(in) :: targetvec(MomentSize)
+		real(dble), intent(out):: distvec(parmatsize) !> function evaluations done.
+
+		integer i,j,k,l,m,n
+		do i=1, parmatsize
+	
+			if (rank==0) then
+				call printpar(parmat(i,:)) 
+			end if
+			call distance(distvec(i),momentvec,parmat(i,:), targetvec, weightmat)
+		    if (rank==0) then 
+				call writemomentvec(momentvec)
+				call writeresults(distvec(i), parmat(i,:))
+			end if 
+		end do
+	end	subroutine evaluatemat
 
 end program act

@@ -184,11 +184,19 @@ integer,parameter:: gtsperiods(expsize)=(/2,4,6,8/)
 
 real(dble) parameters(parsize), lb(parsize), ub(parsize), targetvec(MomentSize), weightmat(MomentSize,MomentSize)
 
+! just moved this here
+real(dble) momentvec(MomentSize) 
 
 integer itercounter, evaliter
 
-
 real(dble), parameter:: wm=2000.0d0  !< wage multiplier, the hours of work in a period if the mom works full time. 
+
+! grid add-on
+
+integer, parameter:: parmatsize=3 !<size of the matrix of parameters to be evaluated
+real(dble) distvec(parmatsize) 
+real(dble) parmat(parmatsize,parsize) 
+
 
 ! ------------ initialize variables---------------------
 
@@ -414,31 +422,94 @@ subroutine twistparameters(dimvec, valvec)
 	end do
 end subroutine twistparameters
 
+
 ! subroutine to write interpolation coef to files
 subroutine writeintpar(solwall, solvall)
 	implicit none
 	real(dble), intent(in):: solvall(Gsizeoc+1,nperiods, nttypes)
 	real(dble), intent(in):: solwall(Gsize+1,nperiods-deltamin+2, deltamax-deltamin+1, nttypes)
+	!integer, intent(in):: itercounter
 	integer i,j,k,l, m
 	
-	open(77,file='wcoef.txt')
-	do l=1,2
-		!write(77,*) "-------------- type order=",l,"------------" 
-		do m=1,deltamax-deltamin+1
-			!write(77,*) "########   delta type=",m,"------------"
-			write(77,70) ((solwall(j,k,m,l),k=1,nperiods-deltamin+2),j=1,Gsize+1)
+	if (itercounter==1) then
+		open(77,file='wcoefALL.txt')
+		write(77,*) '---- ITERCOUNTER=     ', itercounter
+		do l=1,2
+			!write(77,*) "-------------- type order=",l,"------------" 
+			do m=1,deltamax-deltamin+1
+				!write(77,*) "########   delta type=",m,"------------"
+				write(77,70) ((solwall(j,k,m,l),k=1,nperiods-deltamin+2),j=1,Gsize+1)
+			end do
 		end do
-	end do
-	70 format(22F46.9)
-	close(77)
+		close(77)
 
-	open(66,file='vcoef.txt')
-	do l=1,2
-		write(66,60) ((solvall(j,k,l),k=1,nperiods),j=1,Gsizeoc+1)
-	end do
-	60 format(22F46.9)
-	close(66)
+		open(66,file='vcoefALL.txt')
+		write(66,*) '---- ITERCOUNTER=     ', itercounter
+		do l=1,2
+			write(66,60) ((solvall(j,k,l),k=1,nperiods),j=1,Gsizeoc+1)
+		end do
+		close(66)
+	else 
+		open(77,file='wcoefALL.txt', position="append")
+		write(77,*) '---- ITERCOUNTER=     ', itercounter, '------'
+		do l=1,2
+			!write(77,*) "-------------- type order=",l,"------------" 
+			do m=1,deltamax-deltamin+1
+				!write(77,*) "########   delta type=",m,"------------"
+				write(77,70) ((solwall(j,k,m,l),k=1,nperiods-deltamin+2),j=1,Gsize+1)
+			end do
+		end do
+		close(77)
 
+		open(66,file='vcoefALL.txt', position="append")
+		write(66,*) '---- ITERCOUNTER=     ', itercounter, '------'
+		do l=1,2
+			write(66,60) ((solvall(j,k,l),k=1,nperiods),j=1,Gsizeoc+1)
+		end do
+		close(66) 
+	end if
+		70 format(22F46.9)
+		60 format(22F46.9)
 end subroutine writeintpar
+
+! writing the moments calculated to a file for each iteration
+subroutine writemomentvec(momentvec)
+	implicit none
+	real(dble), intent(in) :: momentvec(MomentSize)
+	integer i,j,k,l, m
+	 if (itercounter==2) then
+		open(88,file='moments.txt')
+		write(88,80) itercounter-1, momentvec 
+		close(88)
+	else 
+		open(88,file='moments.txt', position="append")
+		write(88,80) itercounter-1, momentvec 
+		close(88)
+
+	end if
+		80 format(1I5,<MomentSize>G19.9)  
+		! Note: this <> thing only works in ifort.
+end subroutine writemomentvec
+ 
+
+!>writing the iteration number, distance, and parameters to a file for each iteration
+ subroutine writeresults(dist, parvec) 
+	implicit none
+	real(dble), intent(in) :: dist
+	real(dble), intent(in):: parvec(parsize)
+	integer i,j,k,l, m
+	 if (itercounter==2) then
+		open(99,file='results.txt')
+		write(99,90) itercounter-1,dist, parvec 
+		close(99)
+	else 
+		open(99,file='results.txt', position="append")
+		write(99,90) itercounter-1, dist, parvec 
+		close(99)
+
+	end if
+		90 format(1I5, <parsize+1>G19.9)  
+		! Note: this <> thing only works in ifort.
+end subroutine writeresults
 
 end module global
