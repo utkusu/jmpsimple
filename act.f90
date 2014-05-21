@@ -46,7 +46,6 @@ call MPI_BCAST(ub, parsize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 call MPI_BCAST(targetvec, MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 call MPI_BCAST(weightmat, MomentSize*MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 
-
 call nlo_create(opt, NLOPT_LN_NELDERMEAD,parsize)
 call nlo_set_lower_bounds(ires, opt, lb)
 call nlo_set_upper_bounds(ires, opt, ub)
@@ -302,7 +301,7 @@ contains
 				!do i=1, nperiods 
 					!print*, i, SScollect(3,i,1,1), smexperiencecollect(i,1,1)
 				!end do
-			call momentsalt(momentvec, SScollect, smtestoutcomescollect,  birthhistcollect, smchoicescollect, smexperiencecollect, gomega3data,glfpperiods, gexpperiods, gtsperiods, gidmat, 1)
+			call moments(momentvec, SScollect, smtestoutcomescollect,  birthhistcollect, smchoicescollect, smexperiencecollect, gomega3data,glfpperiods, gexpperiods, gtsperiods, gidmat, 1)
 			difft(1,:)=momentvec-targetvec
 			diff(:,1)=momentvec-targetvec
 			middlestep=matmul(difft,weightmat)

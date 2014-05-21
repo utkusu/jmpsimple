@@ -2,8 +2,8 @@ module emax
 !  module holds the emax calculating routines. 
 ! TODO: remove the omega4 for the interpolation stuff, so that tr and ftr routines don't get that part of those mss and tss
 ! matrices, they don't use them anyway. This will require the change of the dimensions in tr routines and removing omega4 from
-! filler and mutype from mss matrices.
-!TODO: Two child coefficients are wild. One is not, why?
+! filler and mutype from mss matrices.  
+
 
 	use global 
 	use randomgen
@@ -188,7 +188,6 @@ end subroutine termval
 
 
 ! ---------------------------------TEMP terminal values---------------------
-! TODO Replace the temp terminal value with the final decision
 !> This is the simplest terminal value calculation I can come up with.
 !> Assume the last period consumption and achievement will be there
 !> for the rest of the periods until 65 and sum up.

@@ -1054,277 +1054,10 @@ subroutine concov(datamat,output)
 end subroutine concov
 
 
-
-!subroutine moments(momentvec, SS,outcomes, choices, testoutcomes, birthhist, smchoices, smexperience, omega3data,lfpperiods, expperiods, tsperiods, idmat)
-subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperience, omega3data,lfpperiods, expperiods, tsperiods, idmat)
-	implicit none
-	real(dble),intent(in):: SS(6,nperiods,Npaths,SampleSize) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
-	!real(dble),intent(in):: outcomes(2,nperiods,Npaths,SampleSize) !< outcomes: wages of the father and mother.
-	!integer,intent(in):: choices(1,nperiods,Npaths,SampleSize) 	!< choices : the choice history of h.
-	integer,intent(in):: birthhist(Npaths,SampleSize)  		    !< the birth timing vec, 0 if one child throughout.
-	real(dble), intent(in) :: omega3data(o3size, SampleSize) 	!< holds the omega3 data for Sample people
-	real(dble), intent(in) ::smtestoutcomes(4,Ntestage,Npaths,SampleSize)  !< holds test scores for two children 
-	real(dble), intent(in) :: smchoices(3,nperiods,Npaths,SampleSize)
-	real(dble), intent(in) :: smexperience(nperiods,Npaths,SampleSize)
-	integer, intent(in):: expperiods(expsize) 		!< the array that holds the ages of mom for which experience moments calculated
-	integer, intent(in):: lfpperiods(lfpsize) 			!< the array that holds the period numbers for which labor for particapation equations are estimated.
-	integer, intent(in):: tsperiods(expsize) 		!< the array that holds the ages for which test score averages are calculated. 
-	integer, intent(in):: idmat(SampleSize,idmatsize) 	   		!<indicates the which sample units are in the jth columnth moment
-														!<calculation
-	real(dble), intent(out) :: momentvec(MomentSize) 	!< The set of moments produced by the simulated data
-		
-	! NOTE  					 ------------ON IDMAT---------------
-	! * first size(lfpperiods) of the idmat is for the periods at which participation equations are estimated.
-	! * next size(expperiods) is for the mean and variance calculations of experience levels.
-	! * following size(expperiods)-1 is for the cov(E_t,E_t+1) calculations. marking the exp pairs. 
-	! * Next is the test score averages. We will deals with tsperiods of them. And stick only to one of the tests.
-	! idmat has a column for each tsperiod. It takes 4 VALUES. 0=not in the data, 1= first child 2=second child 3=both children
-	!	so we can figure out for which kid(s) to add the test score data into the series (to calculate average).
-	! * last we have one each period in each testminage, .., testmaxage
-	! SO IDMAT HAS A SIZE = SAMPLE SIZE  x ( lfpsize + expsize + expsize-1 + tsperiods + Ntestage )
-
-
-
-	! locals 
-	integer i,j,k,l, counter, counter2, baby, twochild
-	
-	! create the regressions matrix for participation equations. the first size(lfpperiods) of the idmat holds the indicators
-	! for the involvement of the sample members in a particular period for the participation equations. example: if
-	! lfpperiods=(/3,6,9,12/), the first four columns of idmat holds the indicators for the data for these periods. By summing
-	! up all the columns, we count the total number sample points that should be entering this regressions, including the time
-	! dimension. Each of these will be associated with Npaths simulated observations
-	integer regsample
-	real(dble) lfpmat(sum(idmat(:,1:lfpsize))*Npaths,nreglfp+1) 	
-	real(dble) fulltimevec(sum(idmat(:,1:lfpsize))*Npaths)
-	real(dble) parttimevec(sum(idmat(:,1:lfpsize))*Npaths)
-	real(dble) parttimecoef(nreglfp+1)
-	real(dble) fulltimecoef(nreglfp+1)
-	
-	! for experience calculations, create a matrix that will hold the relevant experience observations
-	real(dble),allocatable:: experience(:), dualexperience(:,:)
-	real(dble) expest(expsize*2+expsize-1) 	! hold the mean and variances of experience levels. mean1,var1, mean2, var2,.. then covariances
-	real(dble) mvvec(2), covexp
-	
-	! for average test scores
-	real(dble), allocatable:: ts(:)
-	real(dble) tsest(tssize)
-	integer nspots
-
-	! for test score difference equations
-	real(dble), allocatable:: tsdiffmat(:,:)
-	real(dble), allocatable:: tsdiffvec(:)
-	real(dble) tsdiffest(nregtsdiff+1)
-	real(dble) smh, smhnext, A1, A2, A1F, A2F
-
-	! lapack stuff
-	real(dble) work(nreglfp+1+(nreglfp+1)*blocksize)
-	real(dble) worktsdiff(nregtsdiff+1+(nregtsdiff+1)*blocksize)
-	integer info, infotsdiff
-		
-	! initalize stuff
-	regsample=sum(idmat(:,1:lfpsize))*Npaths ! participation equation big sample size
-	counter=1
-	baby=0
-	twochild=0	
-	! INDICATOR MATRIX IDMAT SHOULD FOLLOW THIS ORDER
-	! STARTING OUT WITH 6A and 6B in jmpsimple document. 
-
-	!---------------------------------PARTICIPATION EQUATIONS------------------------------------------
-	! linear regressions with work status, where regressor vector is [schooling AFQT agem baby E 2child 1]
-	
-	! first fill in 1.0d0 s to the last column. 	
-	lfpmat(:,nreglfp+1)=1.d0
-	do k=1, lfpsize
-		do l=1,SampleSize
-			if ( idmat(l,k) == 1 ) then
-				do i=1, Npaths
-					if ((SS(4,lfpperiods(k),i,l)<3.1) .OR. (SS(5,lfpperiods(k),i,l)<3.1)) baby=1
-					if (SS(5,lfpperiods(k),i,l)>0.1) twochild=1
-					! fill in the regressor matrix
-					lfpmat(counter,1:2)=omega3data(1:2,l)
-					lfpmat(counter,3)=omega3data(3,l)+lfpperiods(k)
-					lfpmat(counter,4)=baby*1.0d0
-					!lfpmat(counter,5)=SS(3,lfpperiods(k),i,l)
-					lfpmat(counter,5)=smexperience(lfpperiods(k),i,l)
-		
-					lfpmat(counter,6)=twochild*1.0d0
-					! fill in the dependent variable	
-					!if (choices(1,lfpperiods(k),i,l) > 2.5) fulltimevec(counter)=1.0d0
-					!if ( (choices(1,lfpperiods(k),i,l) < 2.5) .AND. (choices(1,lfpperiods(k),i,l) > 1.5) ) parttimevec(counter)=1.0d0
-					fulltimevec(counter)=smchoices(3,lfpperiods(k),i,l)
-					parttimevec(counter)=smchoices(2,lfpperiods(k),i,l)
-					counter=counter+1
-				end do
-			end if
-		end do
-	end do
-
-	! now run the lapack to get the regression coefficients
-
-	call DGELS('N', regsample, nreglfp+1,1,lfpmat,regsample, fulltimevec, regsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
-	fulltimecoef=fulltimevec(1:nreglfp+1)
-	call DGELS('N', regsample, nreglfp+1,1,lfpmat,regsample, parttimevec, regsample,work,nreglfp+1+(nreglfp+1)*blocksize,info)
-	parttimecoef=parttimevec(1:nreglfp+1)
-	! NOTE: Do I need to go for the variance of error term? 
-	
-
-	!-----------------------------EXPERIENCE-----------------------------
-	! EXPERIENCE LEVELS: mean experience levels at age 25, 30, 35, 40. Variance at the same ages. Covariance between age 25,30,
-	! 30,35 and 35,40 wages.
-	! prepare the vectors first. idmat's following 4 columns mark the people who entered into these calculations. 
-	
-	! THE EXPPERIODS ARE AGES OF THE MOTHER, NOT PERIODS, SO WE NEED TO PICK THE CORRECT PERIOD with OMEGA3(3)
-	do k=1, expsize
-		counter=1
-		allocate( experience ( sum (idmat(:,lfpsize+k)*Npaths ) ) )
-		do l=1, SampleSize
-			if (idmat(l,lfpsize+k)==1) then
-				do i=1,Npaths
-					!experience(counter)=SS(3,expperiods(k)+omega3data(3,l),i,l)
-					experience(counter)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
-					counter=counter+1
-				end do
-			end if
-		end do
-		! now we have the correct experience vector, calculate mean and the variance.
-		call mv(experience,mvvec) 
-		expest((k-1)*2+1:2*k)=mvvec
-		deallocate (experience)
-	end do
-
-	! now covariance of experiences.
-	do k=1, expsize-1
-		counter=1
-		allocate ( dualexperience( sum(idmat(:,lfpsize+expsize+k))*Npaths,2 ) )
-		do l=1, SampleSize
-			if (idmat(l,lfpsize+expsize+k)==1) then
-				do i=1, Npaths
-					!dualexperience(counter,1)=SS(3,expperiods(k)+omega3data(3,l),i,l)
-					!dualexperience(counter,2)=SS(3,expperiods(k+1)+omega3data(3,l),i,l)
-					dualexperience(counter,1)=smexperience(expperiods(k)-nint(omega3data(3,l)+1),i,l)
-					dualexperience(counter,2)=smexperience(expperiods(k+1)-nint(omega3data(3,l)+1),i,l)
-					counter=counter+1
-				end do
-			end if
-		end do
-		! calculate covariance
-		call concov(dualexperience,covexp)
-		expest((2*expsize+k))=covexp	
-		! deallocate
-		deallocate (dualexperience)
-	end do
-	
-	!-------------------------- TEST SCORE LEVELS -----------------------------------
-	! test score levels will help to pin down gammahat parameters. match levels at different ages.  
-	! NOTE: CONTENT OF THE tsperiods is the test score numbers. For example, if first test score is at 5 years old, and the last one
-	! is at 14, "1" means at age 5, "5" means age 9. so if somebody wants to match the mean test scores at 6, 8, 10 and 12, they
-	! need to enter tsperiods=(/2,4,6,12/). this is because testoutcome matrices start from has a lower dim than SS, just enough
-	! for test scores
-
-	do k=1, tssize
-		counter=1
-		nspots=0
-		! figure out how many places in the test score vector you will need.
-		do l=1,SampleSize
-			if ( (idmat(l,lfpsize+2*expsize-1+k)>0)) nspots=nspots+1 ! if kids exist add one
-			if (idmat(l,lfpsize+2*expsize-1+k)==3) nspots=nspots+1 ! one more if two
-		end do
-		
-		allocate (ts (nspots*Npaths))
-		
-		do l=1, SampleSize
-			if ( (idmat(l,lfpsize+2*expsize-1+k)==1) .OR. (idmat(l,lfpsize+2*expsize-1+k)==3)) then  ! first child
-				do i=1, Npaths
-					if (smtestoutcomes(1, tsperiods(k), i, l) > -1.0d0 ) ts(counter)=smtestoutcomes(1, tsperiods(k), i, l)
-					counter=counter+1
-				end do
-			end if
-			! second child: if mom has a second child with test score associated with the AGE tsperiod(k)
-			if  (idmat(l,lfpsize+2*expsize-1+k)==2) then 				
-				do i=1, Npaths 
-					! check if at age2=tsperiod(k) [which corresponds to period tsperiod(k)+birthhist(i,l)-1 for mom]
-					! is a period for the ith simulation has a test score. If it does, it is the one:
-					! it is tsperiod+birthist-1 period for mom, the age of the second kid is tsperiod
-					if (smtestoutcomes(3, tsperiods(k)+birthhist(i,l)-1, i, l) > -1.0d0 ) ts(counter)=smtestoutcomes(3, tsperiods(k)+birthhist(i,l)-1, i, l)
-					counter=counter+1
-				end do
-			end if
-		end do
-		! now, calculate the average of the ts vector and put it tsest, then deallocate
-		tsest(k)=sum(ts)/nspots
-		deallocate(ts)
-	end do
-	!-------------------------TEST SCORE DIFFERENCE REGRESSIONS----------------------
-	! we will go through the number of test periods one by one. Starting from age period 6 (because this is the earliest we can have
-	! test scores for a pair of kids. Maximum is testmaxage-2. So idmat should have testmaxage-testminage elements showing us who
-	! are in the calculation for each period.
-	
-	! first count the simulated observations that will go into this
-	nspots=0
-	
-	do k=testminage+1,testmaxage-2
-		do l=1, SampleSize
-			if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
-				do i=1,Npaths 	! ... go through simulated outcomes for that mom and figure which ones have test scores for both kids at that period.
-					! if kid 2 is older than 5, then create a spot
-					if (SS(5,k,i,l) > 4.8)  nspots=nspots+1
-				end do
-			end if
-		end do
-	end do
-
-	! now we can allocate data matrix and dependent variable vectors
-	allocate(tsdiffmat (nspots, nregtsdiff+1) )
-	allocate(tsdiffvec (nspots) )
-	
-	tsdiffmat(:,nregtsdiff+1)=1.0d0
-	! another loop to fill in these guys
-	counter=1
-	do k=testminage+1,testmaxage-2
-		do l=1, SampleSize
-			if ( idmat(l,lfpsize+2*expsize-1+tssize+k)==1) then ! if this mom is in calculation for period k...
-				do i=1,Npaths 	! ... go through simulated outcomes for that mom and pick the right ones
-					! 1. fill in the labor supply related parts (smh)
-					!if ( smtestoutcomes(3, k-testminage+1,i,l) > -1.0d0 )   then ! if the second kid is old enough to have a testscore (first is kid is already at most testmaxage-2
-					if (SS(5,k,i,l)>4.8) then 
-						smh=sum(smchoices(:,k,i,l)*(/0.0d0,0.5d0,1.0d0/))
-						smhnext=sum(smchoices(:,k+1,i,l)*(/0.0d0,0.5d0,1.0d0/))
-						tsdiffmat(counter, 1:2)=(/smh,smhnext/)
-						tsdiffmat(counter, 3:5)=smh*omega3data(1:3,l)
-						tsdiffmat(counter, 6:8)=smhnext*omega3data(1:3,l)
-						tsdiffmat(counter,9:11)=omega3data(1:3,l)
-						tsdiffmat(counter,12:13)=SS(4:5,k,i,l)
-						! now fillin the tsdiffmat vec
-						A1=smtestoutcomes(1,k-testminage+1,i,l)
-						A2=smtestoutcomes(3,k-testminage+1,i,l)
-						A1f=smtestoutcomes(1,k-testminage+3,i,l)
-						A2f=smtestoutcomes(3,k-testminage+3,i,l)
-						tsdiffvec(counter)= A1f-A1+A2f-A2
-						counter=counter+1
-					end if
-				end do
-			end if
-		end do
-	end do
-
-
-	! lapack
-	call DGELS('N', nspots, nregtsdiff+1,1,tsdiffmat,nspots, tsdiffvec, nspots,worktsdiff,nregtsdiff+1+(nregtsdiff+1)*blocksize,infotsdiff)
-	tsdiffest=tsdiffvec(1:nregtsdiff+1)
-	! deallocate
-	deallocate(tsdiffvec)
-	deallocate(tsdiffmat)
-	! put all the vecs together
-	momentvec=(/fulltimecoef, parttimecoef, expest, tsest,tsdiffest/)
-
-end subroutine moments
-
-
-
 !>Subroutine moments(momentvec, SS,outcomes, choices, testoutcomes, birthhist, smchoices, smexperience, omega3data,lfpperiods, expperiods, tsperiods, idmat)
-!>This is the alternative, because regression coefficients are estimated for
-!>non-stacked samples and then averaged.
-subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperience, omega3data,lfpperiods, expperiods, tsperiods, idmat, vocal)
+!>This is the new one, because regression coefficients are estimated for
+!>non-stacked samples and then averaged. I deleted the old one, check git submissions earlier than May 2014 for that.
+subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperience, omega3data,lfpperiods, expperiods, tsperiods, idmat, vocal)
 	implicit none
 	real(dble),intent(in):: SS(6,nperiods,Npaths,SampleSize) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
 	!real(dble),intent(in):: outcomes(2,nperiods,Npaths,SampleSize) !< outcomes: wages of the father and mother.
@@ -1342,7 +1075,7 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 	integer, intent(in):: vocal						    !< =0 no output, =1 moments printed							
 	real(dble), intent(out) :: momentvec(MomentSize) 	!< The set of moments produced by the simulated data
 		
-	! NOTE  					 ------------ON IDMAT---------------
+	!   					 ------------ON IDMAT---------------
 	! * first size(lfpperiods) of the idmat is for the periods at which participation equations are estimated.
 	! * next 2*size(expperiods) is for the mean and variance calculations of experience levels.
 	! * following size(expperiods)-1 is for the cov(E_t,E_t+1) calculations. marking the exp pairs. 
@@ -1504,7 +1237,7 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 
 	!-------------------------- TEST SCORE LEVELS -----------------------------------
 	! test score levels will help to pin down gammahat parameters. match levels at different ages.  
-	! NOTE: CONTENT OF THE tsperiods is the test score numbers. For example, if first test score is at 5 years old, and the last one
+	! CONTENT OF THE tsperiods is the test score numbers. For example, if first test score is at 5 years old, and the last one
 	! is at 14, "1" means at age 5, "5" means age 9. so if somebody wants to match the mean test scores at 6, 8, 10 and 12, they
 	! need to enter tsperiods=(/2,4,6,12/). this is because testoutcome matrices start from has a lower dim than SS, just enough
 	! for test scores
@@ -1621,7 +1354,7 @@ subroutine momentsalt(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexpe
 		write(6,*) tsdiffest 
 		write(6,*) '======================================='
 	end if
-end subroutine momentsalt
+end subroutine moments
 
 end module optu
 

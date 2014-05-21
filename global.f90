@@ -63,7 +63,7 @@ integer, parameter::nmtype=1 			!< number of unobserved types for mom (ability)
 integer, parameter::natype=1 			!< number of unobserve alpha types
 integer, parameter::na1type=2 			!< number of unobserve alpha1 types
 integer, parameter::nttypes=2 			!< number of total types for two child families
-integer, parameter::nttypesoc=2 		!< number of total types for two child families
+integer, parameter::nttypesoc=2 		!< number of total types for one child families
 
 
 ! x and c grids and related utilities
@@ -80,7 +80,7 @@ real(dble), parameter::onescgridwithbirth(cgridsize*2)=1.0d0
 
 ! emax interpolation parameters
 integer, parameter:: Nmc=50	!<monte carlo integration draw size
-
+! sizes of interpolating grid parts
 integer, parameter::svecage0m=4
 integer, parameter::svecsch0m=4
 integer, parameter::svecaqft=4
@@ -96,15 +96,11 @@ real(dble), parameter:: vecsch0m(svecsch0m)=(/9.0d0,16.0d0,18.0d0,20.0d0/)
 real(dble), parameter:: vecomegaf(svecomegaf)=(/0.090d0,0.10d0, 0.130d0,0.15d0/)
 real(dble) , parameter:: vecaqft(svecaqft)=(/.1d0,.3d0,0.6d0,0.8d0/)
 
-! temp A values for interpolation: TODO this will need to change every year, depending on the test scores.
+! temp A values for interpolation. See setvecAs to see how these were set. 
 real(dble) veca1(sveca1)
 real(dble) veca2(sveca2)
-!real(dble), parameter::veca2(sveca2)=(/1.0d0,2.0d0/)
 
-! temp A values for interpolation
 
-!real(dble), parameter:: vecdelta(3)=(/2.0d0,4.0d0,6.0d0/)
-!integer, parameter:: nintpfinal=432*375*3 			!< # of interpolating points: above 5 each for E and As and 3 for delta
 ! # of interpolating points: above 5 each for E and As 
 integer, parameter::nintp= svecage0m*svecsch0m*svecomegaf*svecaqft*sveca1*sveca2*svecE
 integer, parameter:: nintpoc=svecage0m*svecsch0m*svecomegaf*svecaqft*sveca1*svecE
@@ -238,12 +234,6 @@ contains
 			read (14,*) (llmsmat(i,j),j=1,SampleSize)
 		end do
 		close(14)
-
-
-		!TODO DON'T FORGET THE DELETE US ONCE DONE WITH DATA FILES	
-		!gidmat=1
-		!gomega3data=20.0d0
-		!llmsmat=0.05d0
 	end subroutine readdata
 
 	subroutine readsomeparam()
@@ -270,21 +260,10 @@ contains
 			read(19,*) (gparBmat(i,j),j=1,nfert)
 		end do
 		close(19)
-		
-		!gparBmat(:,1)=(/ -0.05, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		!gparBmat(:,2)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		!gparBmat(:,3)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		!gparBmat(:,4)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		!gparBmat(:,5)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		!gparBmat(:,6)=(/ 0.01, 0.01, 0.01, 0.01, 0.01/)*1.0d0
-		
-		
-		! TODO ERASE ME
-		!glambdas=1.0d0
-		!gsigmaetas=0.1d0
  	end subroutine readsomeparam
 	
 	! use the the mean test scores and their variance to set up grid points for veca1 and veca2
+	! These points are used in the interpolations
 	subroutine setvecAs(period, delta, noc)
 		implicit none
 		real(dble) period, delta
@@ -292,7 +271,7 @@ contains
 		real(dble) meantestscore(Ntestage)
 		real(dble) variancetestscores(Ntestage)
 		integer i, j, age1, age2
-		! TODO: insert data here!!!
+		! insert data here!!!
 		meantestscore=(/ 14.48d0, 17.8d0 , 25.5d0 , 35.38d0, 40.28d0,46.28d0, 50.27d0, 53.67d0, 56.06d0, 58.87d0  /)
 		variancetestscores=(/16.0d0, 25.0d0, 64.0d0, 81.0d0, 81.0d0,81.0d0, 100.0d0, 121.0d0, 100.0d0,121.0d0 /)
 		
@@ -338,9 +317,6 @@ contains
 		targetvec=setiimat(1,:)
 		weightmat=setiimat(2:MomentSize+1,:)
 
-		! TODO ERASE ME
-		!targetvec=0.0d0
-		!weightmat=1.0d0
 end subroutine setii
 
 ! ---- parameter utilities------
