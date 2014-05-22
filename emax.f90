@@ -770,9 +770,9 @@ function emaxfinal(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta)
 	! same with husband income
 	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH)  
 	! uh's for each h choice 
-	uh0=uh(0.0d0,wageh,omega2(1:2),parU(3:7))
-	uhp=uh(0.5d0,0.5*wage*wm+wageh,omega2(1:2),parU(3:7))
-	uhf=uh(1.0d0,(wage*wm+wageh),omega2(1:2),parU(3:7))
+	uh0=uh(0.0d0,wageh,omega2(1:2),parU(3:))
+	uhp=uh(0.5d0,0.5*wage*wm+wageh,omega2(1:2),parU(3:))
+	uhf=uh(1.0d0,(wage*wm+wageh),omega2(1:2),parU(3:))
 	! terminal values calcuted, for now using a very simple thing
 	call termvaltemp(TV,uc,uh0,uhp,uhf,beta,omega2(3)) ! TODO TEMP TERM VALUES
 	! distribute choice specific current returns to a Nmcx3 matrix
@@ -815,9 +815,9 @@ function emaxlate(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV
 	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) 
 	! uh's for each h choice 
 	! income=consumption
-	uh0=uh(0.0d0,wageh,omega2(1:2),parU(3:7))
-	uhp=uh(0.5d0,(0.5d0*wage*wm+wageh),omega2(1:2),parU(3:7))
-	uhf=uh(1.0d0,(wage*wm+wageh),omega2(1:2),parU(3:7))
+	uh0=uh(0.0d0,wageh,omega2(1:2),parU(3:))
+	uhp=uh(0.5d0,(0.5d0*wage*wm+wageh),omega2(1:2),parU(3:))
+	uhf=uh(1.0d0,(wage*wm+wageh),omega2(1:2),parU(3:))
 	! future values needed.
 	call fvlate(FV,omega1, omega2,omega3,omega4,parFV)
 	! distribute choice specific current returns to a Nmcx3 matrix
@@ -870,9 +870,9 @@ function emaxhc(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV,r
 
 	! calculate utility levels associated with each of the h,c bundles.
 	do i=1,cgridsize
-		uh0(:,i)=uh(0.0d0,(wageh)*cgrid(i),omega2(1:2),parU(3:7))
-		uhp(:,i)=uh(0.50d0,(wm*wage*0.50d0+wageh)*cgrid(i),omega2(1:2),parU(3:7))
-		uhf(:,i)=uh(1.0d0,(wm*wage+wageh)*cgrid(i),omega2(1:2),parU(3:7))
+		uh0(:,i)=uh(0.0d0,(wageh)*cgrid(i),omega2(1:2),parU(3:))
+		uhp(:,i)=uh(0.50d0,(wm*wage*0.50d0+wageh)*cgrid(i),omega2(1:2),parU(3:))
+		uhf(:,i)=uh(1.0d0,(wm*wage+wageh)*cgrid(i),omega2(1:2),parU(3:))
 	end do 
 	
 	! get the future values associated with each h,c
@@ -924,9 +924,9 @@ function emaxhcx(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV,
 	! calculate utility levels associated with each of the h,c,x bundles. And fill Nmc x cgridsize*xgridsize matrices
 	do i=1,cgridsize  
 		do j=1,xgridsize
-			uh0(:,(i-1)*xgridsize+j)=uh(0.0d0,(wageh)*cgrid(i),omega2(1:2),parU(3:7))
-			uhp(:,(i-1)*xgridsize+j)=uh(0.50d0,(wm*wage*0.50d0+wageh)*cgrid(i),omega2(1:2),parU(3:7))
-			uhf(:,(i-1)*xgridsize+j)=uh(1.0d0,(wm*wage+wageh)*cgrid(i),omega2(1:2),parU(3:7))
+			uh0(:,(i-1)*xgridsize+j)=uh(0.0d0,(wageh)*cgrid(i),omega2(1:2),parU(3:))
+			uhp(:,(i-1)*xgridsize+j)=uh(0.50d0,(wm*wage*0.50d0+wageh)*cgrid(i),omega2(1:2),parU(3:))
+			uhf(:,(i-1)*xgridsize+j)=uh(1.0d0,(wm*wage+wageh)*cgrid(i),omega2(1:2),parU(3:))
 		end do
 	end do 
 	
@@ -978,9 +978,9 @@ function emaxocfinal(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta)
 	! same with husband income
 	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) 
 		! uh's for each h choice 
-	uh0=uh(0.0d0,(wageh),omega2(1:2),parU(3:7))
-	uhp=uh(0.5d0,(wm*wage*0.50d0+wageh),omega2(1:2),parU(3:7))
-	uhf=uh(1.0d0,(wm*wage+wageh),omega2(1:2),parU(3:7))
+	uh0=uh(0.0d0,(wageh),omega2(1:2),parU(3:))
+	uhp=uh(0.5d0,(wm*wage*0.50d0+wageh),omega2(1:2),parU(3:))
+	uhf=uh(1.0d0,(wm*wage+wageh),omega2(1:2),parU(3:))
 	! terminal values calcuted, for now using a very simple thing
 	call termvaltemp(TV,uc,uh0,uhp,uhf,beta,omega2(3))
 	! distribute choice specific current returns to a Nmcx3 matrix
@@ -1024,9 +1024,9 @@ function emaxoclate(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,par
 	wageh=wagehfquick(omega3(4), omega2(1), eps(:,5),parH) 
 
 	! uh's for each h choice 
-	uh0=uhoc(0.0d0,(wageh),omega2(1),parU(3:7))
-	uhp=uhoc(0.5d0,(wm*wage*0.5d0+wageh),omega2(1),parU(3:7))
-	uhf=uhoc(1.0d0,(wm*wage+wageh),omega2(1),parU(3:7))
+	uh0=uhoc(0.0d0,(wageh),omega2(1),parU(3:))
+	uhp=uhoc(0.5d0,(wm*wage*0.5d0+wageh),omega2(1),parU(3:))
+	uhf=uhoc(1.0d0,(wm*wage+wageh),omega2(1),parU(3:))
 	! future values calcuted and added.
 	call fvoclate(FV,omega1, omega2,omega3,omega4,parFV)
 	! distribute choice specific current returns to a Nmcx3 matrix
@@ -1077,9 +1077,9 @@ function emaxochc(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parFV
 
 	! calculate utility levels associated with each of the h,c bundles.
 	do i=1,cgridsize
-		uh0(:,i)=uhoc(0.0d0,(wageh)*cgrid(i),omega2(1),parU(3:7))
-		uhp(:,i)=uhoc(0.50d0,(wm*wage*0.5d0+wageh)*cgrid(i),omega2(1),parU(3:7))
-		uhf(:,i)=uhoc(1.0d0,(wm*wage+wageh)*cgrid(i),omega2(1),parU(3:7))
+		uh0(:,i)=uhoc(0.0d0,(wageh)*cgrid(i),omega2(1),parU(3:))
+		uhp(:,i)=uhoc(0.50d0,(wm*wage*0.5d0+wageh)*cgrid(i),omega2(1),parU(3:))
+		uhf(:,i)=uhoc(1.0d0,(wm*wage+wageh)*cgrid(i),omega2(1),parU(3:))
 	end do 
 	
 	! get the future values associated with each h,c
@@ -1154,9 +1154,9 @@ function emaxochcb(omega1,omega2,omega3,omega4,eps,parA,parU,parW,parH,beta,parF
 		!uhf(:,(i-1)*2+1:(i-1)*2+2)=uhf(:,(i-1)*2+1:(i-1)*2+2)+eps(:,5:6)
 	!end do
 	do i=1,cgridsize
-		uh0(:,i)=uh(0.0d0,(wageh)*cgrid(i),omega2(1:2),parU(3:7))
-		uhp(:,i)=uh(0.50d0,(wm*wage*0.50d0+wageh)*cgrid(i),omega2(1:2),parU(3:7))
-		uhf(:,i)=uh(1.0d0,(wm*wage+wageh)*cgrid(i),omega2(1:2),parU(3:7))
+		uh0(:,i)=uh(0.0d0,(wageh)*cgrid(i),omega2(1:2),parU(3:))
+		uhp(:,i)=uh(0.50d0,(wm*wage*0.50d0+wageh)*cgrid(i),omega2(1:2),parU(3:))
+		uhf(:,i)=uh(1.0d0,(wm*wage+wageh)*cgrid(i),omega2(1:2),parU(3:))
 	end do 
 
 	! now collect everything together
@@ -1234,10 +1234,8 @@ end function emaxochcb
 										!omega2=(/22.0d0,22.0d0-vecdelta(n)+1,22+vecage0m(i)-1,llmsvec(counter),vecage0f(j)+22-1/)
 										!omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecsch0f(m)/)
 										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/22,counter/))
-										!!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
 										!vemax(counter)=emaxfinal(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta)
 										!mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
-										!print*, 'counter at', counter, 'calculated', vemax(counter)
 										!counter=counter+1
 									!end do
 								!end do
@@ -1303,7 +1301,6 @@ subroutine coeffinal(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma)
 										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+delta),counter/))
 										vemax(counter)=emaxfinal(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
-										!print *, 'counter at', counter, 'calculated', vemax(counter)
 										counter=counter+1
 									end do
 								end do
@@ -1316,19 +1313,6 @@ subroutine coeffinal(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma)
 	end do
 
 	call tr_late(tmss,mss,nintp) 			! transform the state space 
-	
-	!open(12, file = 'a.txt')
-	!do k=1,nintp
-	!write(12, 900)  (tmss(k,j) , j=1,Gsize+1)
-	!end do
-	!900 format(16f30.10)
-	!close(12)
-	!open(13, file = 'b.txt')
-	!write(13, "(f30.10)")  (vemax(k) , k=1,nintp)
-	!close(13)
-
-
-	
 	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
 	coef=vemax(1:Gsize+1)
 	if (info .NE. 0)	print*, 'final period DGELS exploded in period, delta', period, delta
@@ -1381,10 +1365,8 @@ subroutine coeflate(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,par
 										omega2=(/period,(period-delta+1),period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
 										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+delta),counter/))
-										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
 										vemax(counter)=emaxlate(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
-										!print *, 'counter at', counter, 'calculated', vemax(counter)
 										counter=counter+1
 									end do
 								end do
@@ -1400,16 +1382,7 @@ subroutine coeflate(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,par
 	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
 	if (info .NE. 0)	print*, 'late DGELS exploded in period, delta', period, delta
 	coef=vemax(1:Gsize+1)
-	
-	!open(12, file = 'a.txt')
-	!do k=1,nintp
-	!write(12, 900)  (tmss(k,j) , j=1,Gsize-1)
-	!end do
-	!900 format(15f9.5)
-	!close(12)
-	!open(13, file = 'b.txt')
-	!write(13, "(f10.5)")  (vemax(k) , k=1,nintp)
-	!close(13)
+
 end subroutine coeflate
 
 
@@ -1461,10 +1434,8 @@ subroutine coefhc(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parFV
 										omega2=(/period,(period-delta+1),period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
 										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+delta),counter/))
-										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
 										vemax(counter)=emaxhc(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,rho)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
-									!	print *, 'counter at', counter, 'calculated', vemax(counter)
 										counter=counter+1
 									end do
 								end do
@@ -1532,7 +1503,6 @@ subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parF
 										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
 										vemax(counter)=emaxhcx(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,rho)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
-										!print *, 'counter at', counter, 'calculated', vemax(counter)
 										counter=counter+1
 									end do
 								end do
@@ -1546,18 +1516,8 @@ subroutine coefhcx(coef,period,delta, mutype,parA,parU,parW,parH,beta,sigma,parF
 	 
 
 	call tr_late(tmss,mss,nintp) 			! transform the state space 
-	!if ((nint(period)==7) .AND. (nint(delta)==4)) then
-		!open(12, file = 'a.txt')
-		!do k=1,nintp
-			!write(12, 900)  (tmss(k,j) , j=1,Gsize+1)
-		!end do
-		!900 format(16f30.10)
-		!close(12)
-		!open(13, file = 'b.txt')
-		!write(13, "(f30.10)")  (vemax(k) , k=1,nintp)
-		!close(13)
-	!end if 
-call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
+
+	call DGELS('N',nintp,Gsize+1,1,tmss, nintp, vemax, nintp,work, Gsize+(Gsize)*blocksize,info)
 	coef=vemax(1:Gsize+1)
 
 	if (info .NE. 0)	print*, 'hcx DGELS exploded in period,delta', period,delta
@@ -1618,19 +1578,8 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 										omega2=(/period,0.0d0,period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
 										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+1),counter/))
-										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
-										!if  ((rank==1) .AND. (counter==1)) then
-											!print*, '--------------CORE------------------'
-											!print*, omega1
-											!print*, omega2
-											!print*, omega3
-											!print*, mu
-											!print*, eps(1:10,1)
-											!print*, '--------------CORE------------------'
-										!end if
 										vemax(counter)=emaxocfinal(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
-										!print *, 'counter at', counter, 'calculated', vemax(counter)
 										counter=counter+1
 									end do
 								end do
@@ -1642,19 +1591,6 @@ subroutine coefocfinal(coef,period, mutype,parA,parU,parW,parH,beta,sigma)
 		!end do
 	end do
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space 
-	!if (rank==1) then
-		!open(22, file = 'a.txt')
-		!do k=1,nintpoc
-			!write(22, 900)  (tmss(k,j) , j=1,Gsizeoc+1)
-		!end do
-		!close(22)
-		!open(23, file = 'b.txt')
-		!do k=1,nintpoc
-			!write(23, 900)  vemax(k)
-		!end do
-		!900 format(16f20.10)
-		!close(23)
-	!end if
 close(rank)
 	
 	call DGELS('N',nintpoc,Gsizeoc+1,1, tmss, nintpoc, vemax, nintpoc,work, Gsizeoc+(Gsizeoc)*blocksize,info)
@@ -1708,10 +1644,8 @@ subroutine coefoclate(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV)
 										omega2=(/period,0.0d0,period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
 										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+1),counter/))
-										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
 										vemax(counter)=emaxoclate(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
-										!print *, 'counter at', counter, 'calculated', vemax(counter)
 										counter=counter+1
 									end do
 								end do
@@ -1779,10 +1713,8 @@ subroutine coefochc(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,rho
 										omega2=(/period,0.0d0,period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
 										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+1),counter/))
-										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
 										vemax(counter)=emaxochc(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,rho)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
-										!print *, 'counter at', counter, 'calculated', vemax(counter)
 										counter=counter+1
 									end do
 								end do
@@ -1854,10 +1786,8 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 										omega2=(/period,0.0d0,period+vecage0m(i)-1,llmsvec(counter)/)
 										omega3=(/vecsch0m(k), vecaqft(l),vecage0m(i),vecomegaf(m)/)
 										eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,(/nint(period*10+1),counter/))
-										!eps=randmnv(Nmc,shocksize1,mu,sigma, 3,1,gseed)
 										vemax(counter)=emaxochcb(omega1,omega2,omega3,mutype,eps,parA,parU,parW,parH,beta,parFV,parFVv,parBmat(:,nint(period)),typevec,typeprob,rho)
 										mss(counter,:)=(/omega1,omega2,omega3,mutype/)	
-										!print *, 'counter at', counter, 'calculated', vemax(counter)
 										counter=counter+1
 									end do
 								end do
@@ -1869,14 +1799,6 @@ subroutine coefochcb(coef,period, mutype,parA,parU,parW,parH,beta,sigma,parFV,pa
 		!end do
 	end do
 	call troc_late(tmss,mss,nintpoc) 			! transform the state space troc_late
-	!if (nint(period)==1) then
-		!print*, rank,	size(tmss,1), size(tmss,2)
-		!do k=1,nintpoc
-			!write(rank, 900)  (tmss(k,j) , j=1,Gsizeoc+1)
-		!end do
-	!end if
-	!900 format(16f20.10)
-	
 	call DGELS('N',nintpoc,Gsizeoc+1,1,tmss, nintpoc, vemax, nintp,work, Gsizeoc+(Gsizeoc)*blocksize,info)
 	if (info .NE. 0) then
 		print*, 'OC: hcb DGELS exploded in period', period
@@ -1917,24 +1839,12 @@ subroutine wsolver(solw,delta,ftype,parA,parW,parH,parU,beta,Sigma,rho)
 		! if the second kid is also out of the zone of mother's influence, use coeflate
 		if (period>=astar+delta-1) then 			
 			call coeflate(coefnew,period*1.0d0,delta*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,coef)
-		!print*, '------------------ delta= ', delta, ' --------------------'
-		!print*, 'Calculated coef for late period'
-		!print*, 'period is ', period
-		!print*, 'coef is ', coefnew
 !		 second kid is influenced by the mother but not the first one.
 		else if ((period<astar+delta-1).AND.(astar<=period)) then
 			call coefhc(coefnew, period*1.0d0, delta*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma, coef,rho)
-		!print*, '------------------ delta= ', delta, ' --------------------'
-		!print*, 'Calculated coef for hc period'
-		!print*, 'period is ', period
-		!print*, 'coef is ', coefnew
-		!! period less than 15 but >=delta, so mom also chooses x
+		! period less than 15 but >=delta, so mom also chooses x
 		else
 			call coefhcx(coefnew, period*1.0d0, delta*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma, coef,rho)
-		!print*, '------------------ delta= ', delta, ' --------------------'
-		!print*, 'Calculated coef for hcx period'
-		!print*, 'period is ', period
-		!print*, 'coef is ', coefnew
 		end if
 		
 		! now store these coefficients properly
@@ -1975,15 +1885,9 @@ subroutine vsolver(solv,ftype,parA,parW,parH,parU,parBmat,beta,Sigma, wcoef,type
 		! if the kid is  out of the zone of mother's influence, use coefoclate
 		if (period>=astar) then 			
 			call coefoclate(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,coef)
-			!print*, 'Calculated coef for late period'
-			!print*, 'period is ', period
-			!print*, 'late period=',period,'coef is ', coefnew
 		! first kid is affected by the mom, but mom is out of the fecund period. 
 		else if ((period<astar).AND.(deltamax<=period)) then
 			call coefochc(coefnew, period*1.0d0, ftype(1:3),parA, paractualU, parW,parH,beta,sigma,coef,rho)
-			!print*, 'Calculated coef for hc  period'
-			!print*, 'period is ', period
-			!print*, 'coef is ', coefnew
 		else
 		! period less than astar, and mother still decides on contraception so a second baby is still in cards.
 		! this one is complicated because it has to properly take not only the coefficients estimated in the earlier iterations in
@@ -1992,11 +1896,7 @@ subroutine vsolver(solv,ftype,parA,parW,parH,parU,parBmat,beta,Sigma, wcoef,type
 	
 		! one child regime fv parameters
 		! and parameters of fv for two child regime, with all possible child types for the second one.
-			call coefochcb(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,wcoef(:,period+1,period,:),coef,parBmat,typevec,typeprob,rho)
-			
-			!print*, 'Calculated coef for hcB  period'
-			!print*, 'period is ', period
-			!print*, 'coef is ', coefnew
+			call coefochcb(coefnew,period*1.0d0, ftype(1:3),parA,paractualU,parW,parH,beta,sigma,wcoef(:,period+1,period,:),coef,parBmat,typevec,typeprob,rho)	
 		end if
 		
 		! now store these coefficients properly
