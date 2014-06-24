@@ -89,7 +89,7 @@ implicit none
 	! generate a matrix N(0,1)'
 
 	do i=1,k
-		Z(i,:)=randnv(n,0.0d0,1.0d0, opt,seedm,userseed)
+		Z(i,:)=randnv(n,0.0d0,1.0d0, opt,seedm,i*10*userseed)
 	end do
 	! multiply with T
 	laststep=matmul(T,Z)

@@ -504,7 +504,12 @@ subroutine simhist(SS,outcomes,testoutcomes, choices, xchoices,birthhist,smchoic
 		SS(3,period,:)=next(3,:)
 		SS(4,period,:)=SS(4,period-1,:)+1.0d0 	! update age1
 		do i=1,Npaths
-			if (birthhist(i)>0) SS(5,period,i)=SS(5,period-1,i)+1 		!  DO NOT update age2 if birth did not happen
+			if (birthhist(i)>0.001) then
+				SS(5,period,i)=SS(5,period-1,i)+1 		!  DO NOT update age2 if birth did not happen
+				if (id==1 .AND. i==4) print*,'did this',  SS(5,period,i), period, birthhist(i)
+			else
+				SS(5,period,i)=0
+			end if
 		end do
 
 		SS(6,period,:)=SS(6,period-1,:)+1.0d0 	! udpate agem
@@ -1260,8 +1265,10 @@ subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperie
 		do l=1, SampleSize
 			if ( (idmat(l,lfpsize+2*expsize-1+k)==1) .OR. (idmat(l,lfpsize+2*expsize-1+k)==3)) then  ! first child
 				do i=1, Npaths
-					if (smtestoutcomes(1, tsperiods(k), i, l) > 0.0d0 ) ts(counter)=smtestoutcomes(1, tsperiods(k), i, l)
-					counter=counter+1
+					if (smtestoutcomes(1, tsperiods(k), i, l) >-99.0d00 ) then
+						ts(counter)=smtestoutcomes(1, tsperiods(k), i, l)
+						counter=counter+1
+					end if
 				end do
 			end if
 			! second child: if mom has a second child with test score associated with the AGE tsperiod(k)

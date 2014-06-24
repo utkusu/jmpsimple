@@ -189,7 +189,7 @@ real(dble), parameter:: wm=2000.0d0  !< wage multiplier, the hours of work in a 
 
 ! grid add-on
 
-integer, parameter:: parmatsize=3 !<size of the matrix of parameters to be evaluated
+integer, parameter:: parmatsize=4 !<size of the matrix of parameters to be evaluated
 real(dble) distvec(parmatsize) 
 real(dble) parmat(parmatsize,parsize) 
 
@@ -406,7 +406,7 @@ subroutine writeintpar(solwall, solvall)
 	real(dble), intent(in):: solwall(Gsize+1,nperiods-deltamin+2, deltamax-deltamin+1, nttypes)
 	!integer, intent(in):: itercounter
 	integer i,j,k,l, m
-	
+
 	if (itercounter==1) then
 		open(77,file='wcoefALL.txt')
 		write(77,*) '---- ITERCOUNTER=     ', itercounter
@@ -444,8 +444,8 @@ subroutine writeintpar(solwall, solvall)
 		end do
 		close(66) 
 	end if
-		70 format(22F46.9)
-		60 format(22F46.9)
+	70 format(22F46.9)
+	60 format(22F46.9)
 end subroutine writeintpar
 
 ! writing the moments calculated to a file for each iteration
@@ -453,8 +453,17 @@ subroutine writemomentvec(momentvec)
 	implicit none
 	real(dble), intent(in) :: momentvec(MomentSize)
 	integer i,j,k,l, m
-	 if (itercounter==2) then
+	character (len=6):: momentnames(MomentSize)
+	momentnames= (/"ft_sch", "ft_afq", "ft_age","ft_bby","ft_exp", "ft_2ch", "ft_con" ,   &
+		"pt_sch", "pt_afq", "pt_age","pt_bby","pt_exp", "pt_2ch","pt_con" ,   &
+		"mexp25", "vexp25", "mexp30", "vexp30", "mexp35", "vexp35","mexp40", "vexp40", "cv2530","cv3035", "cv3540", &
+		"mcom_1", "mcom_2","mcom_3","mcom_4", & 
+		"d_tau1", "d_tau2", "dt1sch", "dt1afq", "dt1age", "dt2sch", "dt2afq", "dt2age", &
+		"d_agem", "d_schm", "d_afqt", "d_agef", "d_agf2", "d_ages", "consta"/)
+
+	if (itercounter==2) then
 		open(88,file='moments.txt')
+		write(88,81) momentnames
 		write(88,80) itercounter-1, momentvec 
 		close(88)
 	else 
@@ -463,19 +472,28 @@ subroutine writemomentvec(momentvec)
 		close(88)
 
 	end if
-		80 format(1I5,<MomentSize>G19.9)  
-		! Note: this <> thing only works in ifort.
+	80 format(1I5,<MomentSize>G19.9)  
+	81 format(<MomentSize+1>G19.9)
+	! Note: this <> thing only works in ifort.
 end subroutine writemomentvec
- 
+
 
 !>writing the iteration number, distance, and parameters to a file for each iteration
- subroutine writeresults(dist, parvec) 
+subroutine writeresults(dist, parvec) 
 	implicit none
 	real(dble), intent(in) :: dist
 	real(dble), intent(in):: parvec(parsize)
+	character (len=7):: parnames(parsize+1)
 	integer i,j,k,l, m
-	 if (itercounter==2) then
+	parnames= (/"distanc","gh1_sch", "gh2_afq", "gh3_age",  &
+		"uti_phi", "u_alpha", "a2_cons", "a3_cexp", "a4_baby", "a5_hbby", &
+		"a1_type", "a2_type", "prob_a1", &
+		"sigma11", "sigma22", "sigma33", "sigma12", "sigma13", "sigma23", &
+		"_beta__", "muchild"/)
+
+	if (itercounter==2) then
 		open(99,file='results.txt')
+		write(99,91) parnames
 		write(99,90) itercounter-1,dist, parvec 
 		close(99)
 	else 
@@ -484,8 +502,9 @@ end subroutine writemomentvec
 		close(99)
 
 	end if
-		90 format(1I5, <parsize+1>G19.9)  
-		! Note: this <> thing only works in ifort.
+	90 format(1I5, <parsize+1>G19.9)  
+	91 format(<parsize+1>G19.9)
+	! Note: this <> thing only works in ifort.
 end subroutine writeresults
 
 end module global
