@@ -1822,7 +1822,6 @@ subroutine wsolver(solw,delta,ftype,parA,parW,parH,parU,beta,Sigma,rho)
 	real(dble) coefnew(Gsize+1)
 	real(dble) paractualU(size(parU))
 	! -------------------------ACTION-----------------------------------
-	! 
 	! fill up the sol with -10^7
 	solw=-10000000.0d0
 	period=22

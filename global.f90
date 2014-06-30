@@ -118,7 +118,7 @@ integer, parameter:: blocksize=64
 
 ! MPI Globals
 ! don't put status yet
-integer nproc, rank, ier, sender, position, number_sent, number_received, order, tag, rorder, order3, order4
+integer nproc, rank, ier, sender, position, number_sent, number_received,  tag, rorder, order3, order4, order
 
 ! parameter globals
 integer, parameter:: parsize=20
@@ -182,6 +182,12 @@ real(dble) parameters(parsize), lb(parsize), ub(parsize), targetvec(MomentSize),
 
 ! just moved this here
 real(dble) momentvec(MomentSize) 
+! adding these here, is even newer.
+real(dble) parttimecoef(nreglfp+1)
+real(dble) fulltimecoef(nreglfp+1)    
+real(dble) expest(expsize*2+expsize-1) 	
+real(dble) tsest(tssize)
+real(dble) tsdiffest(nregtsdiff+1) 
 
 integer itercounter, evaliter
 
@@ -348,6 +354,28 @@ subroutine printpar(parvec)
 		print*, '------ End of Parameters -----'
 end subroutine printpar
 
+subroutine printmoments(fulltimecoef, parttimecoef, expest, tsest, tsdiffest)
+	implicit none
+	real(dble), intent(in) :: parttimecoef(nreglfp+1)
+	real(dble), intent(in) :: fulltimecoef(nreglfp+1)    
+	real(dble), intent(in) :: expest(expsize*2+expsize-1) 	
+	real(dble), intent(in) :: tsest(tssize)
+	real(dble) , intent(in):: tsdiffest(nregtsdiff+1) 
+	!
+	write(6,*) '====    Moment Estimates Requested    =='
+	write(6,*) 'full time coef:' 
+	write(6,*) fulltimecoef 
+	write(6,*) 'part time coef:' 
+	write(6,*) parttimecoef 
+	write(6,*) 'experience moments' 
+	write(6,*) expest
+	write(6,*) 'test score moments' 
+	write(6,*) tsest
+	write(6,*) 'tsdiff coef:' 
+	write(6,*) tsdiffest 
+	write(6,*) '======================================='
+end subroutine printmoments
+
 ! if called (after optimstuff) sets the parameter vectors
 subroutine setparameters(mode)
 	implicit none
@@ -472,8 +500,8 @@ subroutine writemomentvec(momentvec)
 		close(88)
 
 	end if
-	80 format(1I5,<MomentSize>G19.9)  
-	81 format(<MomentSize+1>G19.9)
+	80 format(1I5,<MomentSize>G29.15)  
+	81 format(<MomentSize+1>G29.15)
 	! Note: this <> thing only works in ifort.
 end subroutine writemomentvec
 
@@ -502,8 +530,8 @@ subroutine writeresults(dist, parvec)
 		close(99)
 
 	end if
-	90 format(1I5, <parsize+1>G19.9)  
-	91 format(<parsize+1>G19.9)
+	90 format(1I5, <parsize+1>G29.15)  
+	91 format(<parsize+1>G29.15)
 	! Note: this <> thing only works in ifort.
 end subroutine writeresults
 

@@ -1062,7 +1062,7 @@ end subroutine concov
 !>Subroutine moments(momentvec, SS,outcomes, choices, testoutcomes, birthhist, smchoices, smexperience, omega3data,lfpperiods, expperiods, tsperiods, idmat)
 !>This is the new one, because regression coefficients are estimated for
 !>non-stacked samples and then averaged. I deleted the old one, check git submissions earlier than May 2014 for that.
-subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperience, omega3data,lfpperiods, expperiods, tsperiods, idmat, vocal)
+subroutine moments(momentvec, fulltimecoef, parttimecoef, expest, tsest, tsdiffest,SS,smtestoutcomes, birthhist, smchoices, smexperience, omega3data,lfpperiods, expperiods, tsperiods, idmat, vocal)
 	implicit none
 	real(dble),intent(in):: SS(6,nperiods,Npaths,SampleSize) 		!< Simulated State space (A1,A2,E,age1,age2,agem)xnperiods,Npaths	
 	!real(dble),intent(in):: outcomes(2,nperiods,Npaths,SampleSize) !< outcomes: wages of the father and mother.
@@ -1079,7 +1079,11 @@ subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperie
 														!<calculation
 	integer, intent(in):: vocal						    !< =0 no output, =1 moments printed							
 	real(dble), intent(out) :: momentvec(MomentSize) 	!< The set of moments produced by the simulated data
-		
+	real(dble), intent(out) :: parttimecoef(nreglfp+1)
+	real(dble), intent(out) :: fulltimecoef(nreglfp+1)    
+	real(dble), intent(out) :: expest(expsize*2+expsize-1) 	! hold the mean and variances of experience levels. mean1,var1, mean2, var2,.. then covariances
+	real(dble), intent(out) :: tsest(tssize)
+	real(dble) , intent(out):: tsdiffest(nregtsdiff+1) 
 	!   					 ------------ON IDMAT---------------
 	! * first size(lfpperiods) of the idmat is for the periods at which participation equations are estimated.
 	! * next 2*size(expperiods) is for the mean and variance calculations of experience levels.
@@ -1111,26 +1115,23 @@ subroutine moments(momentvec, SS,smtestoutcomes, birthhist, smchoices, smexperie
 	real(dble) afulltimevec(sum(idmat(:,1:lfpsize)))
 	real(dble) aparttimevec(sum(idmat(:,1:lfpsize)))
 	
-	real(dble) parttimecoef(nreglfp+1)
-	real(dble) fulltimecoef(nreglfp+1)
+	
 	real(dble) parttimecoefvec(Npaths,nreglfp+1)
 	real(dble) fulltimecoefvec(Npaths,nreglfp+1)
 	
 	! for experience calculations, create a matrix that will hold the relevant experience observations
 	real(dble),allocatable:: experience(:), dualexperience(:,:)
-	real(dble) expest(expsize*2+expsize-1) 	! hold the mean and variances of experience levels. mean1,var1, mean2, var2,.. then covariances
 	real(dble) expestmat(Npaths,expsize*2+expsize-1) 	! matrix to hold the calculations for each simulation
 	real(dble) mvvec(2), covexp
 	
 	! for average test scores
 	real(dble), allocatable:: ts(:)
-	real(dble) tsest(tssize)
 	integer nspots
 
 	! for test score difference equations
 	real(dble), allocatable:: tsdiffmat(:,:)
 	real(dble), allocatable:: tsdiffvec(:)
-	real(dble) tsdiffest(nregtsdiff+1), tsdiffestmat(Npaths,nregtsdiff+1)
+	real(dble) tsdiffestmat(Npaths,nregtsdiff+1)
 
 
 	real(dble) smh, smhnext, A1, A2, A1F, A2F

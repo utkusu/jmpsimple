@@ -167,8 +167,10 @@ contains
 		! ---------------------------------------MASTER----------------------------------
 		if (rank==0) then
 			starttime=MPI_WTIME()
+			print*, '                            '
+			print*, ' ---      NEW ITERATION     ---'
 			print*, 'starting iteration', itercounter
-
+			print*, 'This is evaluation point', evaliter
 			! new in Jan: write the parameters to a file
 
 			if (itercounter==1) then
@@ -180,7 +182,7 @@ contains
 				write(333,3333) (parameters(i),i=1,parsize)
 				close(333)
 			end if 
-			3333 format(20F25.10)
+			3333 format(20F30.16)
 		!------------------- MASTER: W SOLVER -----------------
 			! send order numbers to workers
 			number_sent=0
@@ -211,11 +213,11 @@ contains
 				end if
 			end do
 			
-			
+			print*,   'Solved for W Coefficients'
 			! SOLUTION OF W is done.
 
 			call MPI_BCAST(solwall, (Gsize+1)*(nperiods-deltamin+2)*(deltamax-deltamin+1)*nttypes, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
-		
+
 			! ------------MASTER: Solution for V----------------
 			number_sent=0
 			do i=1,min(nproc-1,na1type)
@@ -237,6 +239,7 @@ contains
 				call MPI_SEND(order, 1, MPI_INTEGER,sender ,10, MPI_COMM_WORLD, ier)
 			end do
 	
+			print*,   'Solved for V Coefficients'
 
 		! ----------------------------------workers--------------------------------
 		else
@@ -268,7 +271,6 @@ contains
 					! get the correct mother type from solwall
 					wcoef(:,:,:,1)=solwall(:,:,:,order)
 					call vsolver(solv,(/nctype,nctype,gmtype,parUpart(2),a1type(order)/), parA,gparW,gparH(4:5),parU,gparBmat, beta,sigma,wcoef,(/nctype/),(/1.0d0/),grho)
-					!print*, solv
 					rorder=order   ! returning the order
 					call MPI_SEND(rorder, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, ier)
 					call MPI_SEND(solv,(Gsizeoc+1)*nperiods,MPI_DOUBLE_PRECISION,0,1,MPI_COMM_WORLD,ier)
@@ -301,7 +303,7 @@ contains
 				!do i=1, nperiods 
 					!print*, i, SScollect(3,i,1,1), smexperiencecollect(i,1,1)
 				!end do
-			call moments(momentvec, SScollect, smtestoutcomescollect,  birthhistcollect, smchoicescollect, smexperiencecollect, gomega3data,glfpperiods, gexpperiods, gtsperiods, gidmat, 1)
+			call moments(momentvec, fulltimecoef, parttimecoef, expest, tsest, tsdiffest, SScollect, smtestoutcomescollect,  birthhistcollect, smchoicescollect, smexperiencecollect, gomega3data,glfpperiods, gexpperiods, gtsperiods, gidmat, 0)
 			difft(1,:)=momentvec-targetvec
 			diff(:,1)=momentvec-targetvec
 			middlestep=matmul(difft,weightmat)
@@ -311,16 +313,20 @@ contains
 			print*, '=================================================='
 			print*, '-------------- ITERATION SUMMARY ----------------'
 			print*, '=================================================='
-			print*, 'This is iteration', itercounter
+			print*, 'This is raw iteration', itercounter
 			print*, 'Number of Evaluated Points', evaliter ! for gradient methods.
+			call printpar(parameters) 
 			print*, 'Distance is', dist
 			print*, 'solution calc took', soltime-starttime
 			print*, 'simulation and moments', endtime-soltime
 			print*, 'whole thing took', endtime-starttime
-			write(6,*) '===='
-			!print*,  'parameters:', parameters
-			print*, '=================================================='
+			write(6,*) '=============================================='
+			call printmoments(fulltimecoef, parttimecoef, expest, tsest, tsdiffest)
+			print*, '==============END OF ITERATION=================='
+			call writemomentvec(momentvec)
+			call writeresults(dist, parameters)
 			itercounter=itercounter+1
+			evaliter=evaliter+1
 		end if
 	end subroutine distance
 
@@ -328,57 +334,86 @@ contains
 	!> make the distance function and its numerical derivatives a function to be evaluated by the optimizer
 	subroutine objfunc(val, n, xvec, grad, need_gradient, fmat)
 		implicit none
+		include 'mpif.h'
 		integer n, need_gradient
 		real(dble) val, xvec(n), grad(n), jacobian(n)
 		real(dble) dist, fmat 
-
-		if (rank==0) then
-			print*, 'itercounter=', itercounter
-			print*, 'evaliter', evaliter
-			call printpar(xvec) 
+ 
+ 		if ( need_gradient .NE. 0 ) then
+			!call diffdistance(jacobian,xvec, dist)
+			call num_derivative(jacobian,xvec)
+			grad=jacobian
 		end if
 		
 		call distance(dist, momentvec, xvec, targetvec, weightmat)
-		if (rank==0) then 
-			call writemomentvec(momentvec)
-			call writeresults(dist, xvec)
-		end if 
-			evaliter=evaliter+1
 		val=dist
-		if ( need_gradient .NE. 0 ) then
-			call diffdistance(jacobian,xvec, dist)
-			grad=jacobian
-		end if
-	end subroutine objfunc
+   end subroutine objfunc
 	! takes the forward numerical derivative of the distance function, using already calculated f0
 
 
-	subroutine diffdistance(jacobian, parameters,f0)
+	!subroutine diffdistance(jacobian, parameters,f0)
+		!implicit none
+		!real(dble) jacobian(parsize)
+		!real(dble) parameters(parsize)
+		!real(dble) f0
+		!real(dble) f1
+		!real(dble) h(parsize),hbar(parsize),xh(parsize), fakeparameters(parsize)
+		!integer i
+		
+		!hbar=(0.00000001)*max(abs(parameters),1.0d0)
+		!xh=parameters+hbar
+		!h=xh-parameters
+		!do i=1,parsize
+			!fakeparameters=parameters; fakeparameters(i)=xh(i)
+			!call distance(f1,momentvec,fakeparameters,targetvec,weightmat)
+			!jacobian(i)=(f1-f0)/h(i)
+			!if (rank==0) then
+				!evaliter=evaliter-1
+				!print*, 'this is a step in direction', i
+			!end if
+		!end do
+	!end subroutine diffdistance
+
+! the new one	
+	subroutine num_derivative(jacobian, parameters)
 		implicit none
-		real(dble) jacobian(parsize)
-		real(dble) parameters(parsize)
+		include 'mpif.h'
+		real(dble), intent(in):: parameters(parsize)
+		real(dble), intent(out):: jacobian(parsize)
 		real(dble) f0
 		real(dble) f1
 		real(dble) h(parsize),hbar(parsize),xh(parsize), fakeparameters(parsize)
 		integer i
-		
+		! get the initial point's value	
+
+		if (rank==0) print*, 'This is an initial eval for jacobian' 
+		call distance(f0,momentvec,parameters,targetvec,weightmat)
+		! reduce evaliter count 
+		if (rank==0) then
+			evaliter=evaliter-1
+		end if
+		! taking the steps	
 		hbar=(0.00000001)*max(abs(parameters),1.0d0)
 		xh=parameters+hbar
 		h=xh-parameters
 		do i=1,parsize
+			if (rank==0) then
+				! reduce the evaluation count
+				print*, 'Now I am taking a step in direction', i
+			end if
 			fakeparameters=parameters; fakeparameters(i)=xh(i)
 			call distance(f1,momentvec,fakeparameters,targetvec,weightmat)
+			if (rank==0) evaliter=evaliter-1
 			jacobian(i)=(f1-f0)/h(i)
-			if (rank==0) then
-				evaliter=evaliter-1
-				print*, 'this is a step in direction', i
-			end if
 		end do
-	end subroutine diffdistance
+	end subroutine num_derivative
+
 
 
 	!>to evaluate a matrix of parameter choices and print out evaluated values, as well as printing out 
 	subroutine evaluatemat(distvec,parmat, parmatsize,  pref)
+		implicit none
+		include 'mpif.h'
  		integer, intent(in) :: parmatsize  !>second dimension of the parmat
 		real(dble), intent(in) :: parmat(parmatsize,parsize) !>  parmatsize x parsize matrix holding different par trials in rows
 		integer, intent(in):: pref  !> to pass preferences regarding output. Nothing in it so far.

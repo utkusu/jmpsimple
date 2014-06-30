@@ -16,7 +16,7 @@ else
 	ifeq ($(f),1)
 		switch= -llapack -O2 
 	else
-		switch= -llapack -debug -heap-arrays 
+		switch= -llapack -debug -heap-arrays -CB 
 
 	endif
 endif
