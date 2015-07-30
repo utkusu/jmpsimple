@@ -11,8 +11,8 @@ include 'mpif.h'
 include 'nlopt.f'
 real(dble)  dist, fakeg(parsize)
 ! nlopt stuff
-integer*8 opt
-integer ires
+integer*8 opt, localopt
+integer ires, iresopt
 real(dble) minf
 real(dble)  fmat
 opt=0; fmat=1.0d0
@@ -46,13 +46,16 @@ call MPI_BCAST(ub, parsize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 call MPI_BCAST(targetvec, MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 call MPI_BCAST(weightmat, MomentSize*MomentSize, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ier)
 
-call nlo_create(opt, NLOPT_LN_NELDERMEAD,parsize)
+!call nlo_create(localopt, NLOPT_LN_NELDERMEAD,parsize)
+call nlo_create(opt, NLOPT_LN_SBPLX,parsize)
+!call nlo_set_local_optimizer(ires,opt,localopt)
 call nlo_set_lower_bounds(ires, opt, lb)
 call nlo_set_upper_bounds(ires, opt, ub)
 call nlo_set_min_objective(ires, opt, objfunc, fmat)
-call nlo_set_maxeval(ires,opt,400)
+call nlo_set_maxeval(ires,opt,4000)
 !call nlo_set_xtol_rel(ires, opt, 0.0001d0)
 
+!call nlo_destroy(localopt)
 call nlo_optimize(ires, opt, parameters, minf)
 if (rank==0) then 
 	print*, ires

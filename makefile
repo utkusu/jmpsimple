@@ -3,25 +3,16 @@
 # ----------------------------------
 #FORTRAN_COMPILER=mpif90
 objects= global.o randomgen.o emax.o optu.o act.o
+FORTRAN_COMPILER=mpif90
 
-ifeq ($(ifortran),1)
-	FORTRAN_COMPILER=ifort
-	ifeq ($(d),1)
-		switch= -llapack -O2 
-	else
-		switch= -llapack -debug -heap-arrays -CB 
-	endif
+ifeq ($(f),1)
+	switch= -O2 -DOPENBLAS_ARCH_X86_64=1 -DOPENBLAS___64BIT__=1 -DOPENBLAS_ARCH_X86_64=1 -DOPENBLAS___64BIT__=1 -l/usr/include/atlas -l/usr/include/openblas -lptlapack -lopenblas_openmp
 else
-	FORTRAN_COMPILER=mpif90
-	ifeq ($(f),1)
-		switch= -llapack -O2 
-	else
-		switch= -llapack -debug -heap-arrays -CB 
-
-	endif
+	switch=  -O2 -DOPENBLAS_ARCH_X86_64=1 -DOPENBLAS___64BIT__=1 -DOPENBLAS_ARCH_X86_64=1 -DOPENBLAS___64BIT__=1 -l/usr/include/atlas -l/usr/include/openblas -lptlapack -lopenblas_openmp -debug -heap-arrays -CB 
 endif
+
 exec: $(objects)
-	$(FORTRAN_COMPILER) $(switch)-o exec $(objects)  -I/home/utkusu/nlopt/include -L/home/utkusu/nlopt/lib -lnlopt -lm 
+	$(FORTRAN_COMPILER) $(switch) -o exec $(objects) -I/home/utkusu/nlopt/include -L/home/utkusu/nlopt/lib -lnlopt -lm 
 global.mod: global.o global.f90
 	$(FORTRAN_COMPILER) $(switch) -c global.f90
 global.o: global.f90
